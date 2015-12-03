@@ -4,8 +4,6 @@
 void
 _arb_log1mexp(arb_t z, const arb_t x, slong prec)
 {
-    int c;
-
     /* log(1 - exp(-x)) : see log1mexp-note.pdf in CRAN */
     if (arf_cmp_2exp_si(arb_midref(x), 0) < 0)
     {
@@ -138,7 +136,55 @@ _init_M0(arb_mat_t M0, ulong n, ulong m, const fmpq * pi)
     /* fill the first column */
     for (i = 0; i < n+1; i++)
     {
-        arb_mat_entry(
+        arb_mat_entry();
     }
 }
 
+int
+main(int argc, char *argc[])
+{
+    /* use hardcoded parameters but command-line sequences */
+    slong i;
+
+    fmpq_t birth, death, t;
+    fmpq pi[4];
+    fmpq qi[4];
+
+    /* birth = 1 */
+    fmpq_init(birth);
+    fmpq_set_si(birth, 1, 1);
+
+    /* death = 1/2 */
+    fmpq_init(death);
+    fmpq_set_si(death, 1, 2);
+
+    /* t = 1/10 */
+    fmpq_init(t);
+    fmpq_set_si(t, 1, 10);
+
+    /* pi = (0.27, 0.24, 0.26, 0.23) */
+    for (i = 0; i < 4; i++)
+    {
+        fmpq_init(pi+i);
+    }
+    fmpq_set_si(pi+0, 27, 100);
+    fmpq_set_si(pi+1, 24, 100);
+    fmpq_set_si(pi+2, 26, 100);
+    fmpq_set_si(pi+3, 23, 100);
+
+    /* qi = 1 - pi */
+    for (i = 0; i < 4; i++)
+    {
+        fmpq_init(qi+i);
+    }
+
+    n = 10;
+    m = 10;
+
+    /* initialize log gamma vector */
+    v = 
+    _get_log_gamma(arb_ptr * v, ulong n, const fmpq_t birth, const fmpq_t death,
+                   slong prec);
+
+    return 0;
+}
