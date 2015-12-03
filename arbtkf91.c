@@ -1,6 +1,16 @@
 /*
  */
 
+/* constants related to a serialization */
+#define IDX_BASE_TRANS 0
+#define IDX_BASE_PI 16
+#define IDX_LAMBDA 20
+#define IDX_MU 21
+#define IDX_BETA 22
+#define IDX_LAMBDA_MU 23
+#define IDX_LAMBDA_BETA 24
+
+
 typedef struct
 {
     fmpq lambda[1];
@@ -37,6 +47,64 @@ user_params_clear(user_params_t p)
         fmpq_clear(p->pi+i);
     }
 }
+
+
+
+
+typedef struct
+{
+    slong *data;
+    ulong m;
+    ulong n;
+    ulong k;
+    ulong l;
+}
+tableau_struct;
+
+typedef tableau_struct tableau_t[1];
+
+void
+tableau_init(tableau_t T, ulong m, ulong n, ulong k, ulong l)
+{
+    ulong x, y, z, w;
+
+    /* brutal error checking */
+    if (k != 3) abort();
+    if (l != 25) abort();
+
+    /* allocate the table */
+    T->data = (slong *) malloc(m*n*k*l * sizeof(long));
+    T->m = m;
+    T->n = n;
+    T->k = k;
+    T->l = l;
+    
+    /*
+     * Initialize the entries of the tableau.
+     * These are integer coefficients defining a linear combination
+     * of complicated expressions.
+     * Only the coefficients matter here, not the expression values.
+     */
+}
+
+slong *
+tableau_entry(tableau_t T, ulong x, ulong y, ulong z, ulong w)
+{
+    return T->data + T->l * (T->k * (T->n * x + y) + z) + w;
+}
+
+void
+tableau_clear(tableau_t T)
+{
+    free(T->data);
+    T->data = NULL;
+    T->m = 0;
+    T->n = 0;
+    T->k = 0;
+    T->l = 0;
+}
+
+
 
 
 
@@ -410,12 +478,45 @@ _compute_elements(arb_ptr v, const user_params_t p, slong prec)
     }
 }
 
+
+void
+_fill_sequence_vector(int *v, const char *str, size_t n)
+{
+    int i;
+    for (i = 0; i < n; i++)
+    {
+        switch(str[i])
+        {
+            case 'A' : v[i] = 0; break;
+            case 'C' : v[i] = 1; break;
+            case 'G' : v[i] = 2; break;
+            case 'T' : v[i] = 3; break;
+            default:
+               abort();
+        }
+    }
+}
+
 int
 main(int argc, char *argc[])
 {
-    /* use hardcoded parameters but command-line sequences */
-
     user_params_t p;
+    tableau_t T;
+
+    const char strA[] = "ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA";
+    const char strB[] = "AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA";
+
+    ulong *A;
+    ulong *B;
+
+    size_t szA, szB;
+
+    ulong m, n, k, l;
+
+    slong i;
+
+
+    /* initialize the parameter vector with hardcoded parameter values */
 
     user_params_init(p);
 
@@ -430,10 +531,32 @@ main(int argc, char *argc[])
     fmpq_set_si(p->pi+2, 26, 100);
     fmpq_set_si(p->pi+3, 23, 100);
 
-    n = 10;
-    m = 10;
 
+    /* initialize the tableau with hardcoded sequences */
+
+    szA = strlen(strA);
+    A = (ulong *) malloc(szA * sizeof(ulong));
+    _fill_sequence_vector(A, strA, szA);
+
+    szB = strlen(strB);
+    B = (ulong *) malloc(szA * sizeof(ulong));
+    _fill_sequence_vector(B, strB, szB);
+
+    /* define the dimensions of the tableau */
+    m = szA + 1;
+    n = szB + 1;
+    k = 3;
+    l = 25;
+
+    /* allocate the tableau */
+    tableau_init(T, m, n, k, l);
+
+
+    tableau_clear(T);
     user_params_clear(p);
+
+    free(A);
+    free(B);
 
     return 0;
 }
