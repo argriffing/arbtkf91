@@ -2,8 +2,8 @@
  */
 
 /* constants related to a serialization */
-#define IDX_BASE_TRANS 0
-#define IDX_BASE_PI 16
+#define IDX_TRANS 0
+#define IDX_PI 16
 #define IDX_LAMBDA 20
 #define IDX_MU 21
 #define IDX_BETA 22
@@ -49,6 +49,25 @@ user_params_clear(user_params_t p)
 }
 
 
+void
+_slong_vec_add(slong *c, const slong *a, const slong *b, ulong n)
+{
+    ulong i;
+    for (i = 0; i < n; i++)
+    {
+        c[i] = a[i] + b[i];
+    }
+}
+
+void
+_slong_vec_add_inplace(slong *c, const slong *a, ulong n)
+{
+    ulong i;
+    for (i = 0; i < n; i++)
+    {
+        c[i] += a[i];
+    }
+}
 
 
 typedef struct
@@ -63,17 +82,51 @@ tableau_struct;
 
 typedef tableau_struct tableau_t[1];
 
+slong *
+tableau_entry(tableau_t T, ulong x, ulong y, ulong z, ulong w)
+{
+    return T->data + T->l * (T->k * (T->n * x + y) + z) + w;
+}
+
+slong *
+tableau_vec(tableau_t T, ulong x, ulong y, ulong z)
+{
+    return T->data + T->l * (T->k * (T->n * x + y) + z);
+}
+
+slong *tableau_M0_vec(tableau_t T, ulong x, ulong y) {
+    return tableau_vec(T, x, y, 0);
+}
+slong *tableau_M1_vec(tableau_t T, ulong x, ulong y) {
+    return tableau_vec(T, x, y, 1);
+}
+slong *tableau_M2_vec(tableau_t T, ulong x, ulong y) {
+    return tableau_vec(T, x, y, 2);
+}
+
+void tableau_M0_add(tableau_t T, ulong x, ulong y, ulong w, slong value) {
+    *tableau_entry(T, x, y, 0, w) += value;
+}
+void tableau_M1_add(tableau_t T, ulong x, ulong y, ulong w, slong value) {
+    *tableau_entry(T, x, y, 1, w) += value;
+}
+void tableau_M2_add(tableau_t T, ulong x, ulong y, ulong w, slong value) {
+    *tableau_entry(T, x, y, 2, w) += value;
+}
+
 void
-tableau_init(tableau_t T, ulong m, ulong n, ulong k, ulong l)
+tableau_init(tableau_t T, ulong m, ulong n, ulong k, ulong l,
+        const int *A, const int *B)
 {
     ulong x, y, z, w;
+    ulong i, j;
 
     /* brutal error checking */
     if (k != 3) abort();
     if (l != 25) abort();
 
     /* allocate the table */
-    T->data = (slong *) malloc(m*n*k*l * sizeof(long));
+    T->data = (slong *) calloc(m*n*k*l, sizeof(long));
     T->m = m;
     T->n = n;
     T->k = k;
@@ -85,12 +138,78 @@ tableau_init(tableau_t T, ulong m, ulong n, ulong k, ulong l)
      * of complicated expressions.
      * Only the coefficients matter here, not the expression values.
      */
-}
 
-slong *
-tableau_entry(tableau_t T, ulong x, ulong y, ulong z, ulong w)
-{
-    return T->data + T->l * (T->k * (T->n * x + y) + z) + w;
+    /* M1(0,0) = log(1 - lam/mu) + log(1 - lam*b) */
+    tableau_M1_add(T, 0, 0, IDX_LAMBDA_MU, 1);
+    tableau_M1_add(T, 0, 0, IDX_LAMBDA_BETA, 1);
+
+    /* M0(1,0) = log(1 - lam/mu) + log(1 - lam*b) + log(b) + log(pi_A_1) */
+    tableau_M0_add(T, 1, 0, IDX_LAMBDA_MU, 1);
+    tableau_M0_add(T, 1, 0, IDX_LAMBDA_BETA, 1);
+    tableau_M0_add(T, 1, 0, IDX_BETA, 1);
+    tableau_M0_add(T, 1, 0, IDX_PI + A[1], 1);
+
+    /* M0(i,0) = M0(i-1,0) + 2*log(lam*b) + log(pi_A_i), i >= 2 */
+    for (i = 2; i < m; i++)
+    {
+        _slong_vec_add_inplace(
+                tableau_M0_vec(T, i, 0),
+                tableau_M0_vec(T, i-1, 0), k);
+        tableau_M0_add(T, i, 0, IDX_LAMDA, 2);
+        tableau_M0_add(T, i, 0, IDX_BETA, 2);
+        tableau_M0_add(T, i, 0, IDX_PI + A[i], 1);
+    }
+
+    /* M2(0,1) = log(1 - lam/mu) + log(1 - lam*b) + log(lam*b) + log(pi_B_1) */
+    tableau_M2_add(T, 0, 1, IDX_LAMBDA_MU, 1);
+    tableau_M2_add(T, 0, 1, IDX_LAMBDA_BETA, 1);
+    tableau_M2_add(T, 0, 1, IDX_LAMBDA, 1);
+    tableau_M2_add(T, 0, 1, IDX_BETA, 1);
+    tableau_M2_add(T, 0, 1, IDX_PI + B[1], 1);
+
+    /* M2(0,j) = M2(0,j-1) + log(lam*b) + log(pi_B_j), j >= 2 */
+    for (j = 2; j < n; j++)
+    {
+        _slong_vec_add_inplace(
+                tableau_M2_vec(T, 0, j),
+                tableau_M2_vec(T, 0, j-1), k);
+        tableau_M2_add(T, 0, j, IDX_LAMBDA, 1);
+        tableau_M2_add(T, 0, j, IDX_BETA, 1);
+        tableau_M2_add(T, 0, j, IDX_PI + B[j], 1);
+    }
+
+    /*
+     * Initialize the rest of the tableau.
+     * I think this corresponds to all entries such that min(i, j) >= 1.
+     */
+    for (i = 1; i < n; i++)
+    {
+        for (j = 1; j < m; j++)
+        {
+            /* M0(i,j) = log(lam*b*pi_A_i) */
+            tableau_M0_add(T, i, j, IDX_LAMBDA, 1);
+            tableau_M0_add(T, i, j, IDX_BETA, 1);
+            tableau_M0_add(T, i, j, IDX_PI + A[i], 1);
+
+            /* M1(i, j) += log(lam/mu * pi_A_i) */
+            tableau_M1_add(T, i, j, IDX_LAMBDA, 1);
+            tableau_M1_add(T, i, j, IDX_MU, -1);
+            tableau_M1_add(T, i, j, IDX_PI + A[i], 1);
+
+            /* M1(i, j) += log(1 - lam*b) + trans_Ai_Bj */
+            tableau_M1_add(T, i, j, IDX_LAM_BETA, 1);
+            tableau_M1_add(T, i, j, IDX_TRANS + 4*, 1);
+
+        }
+    }
+
+    for (x = 0; x < m; x++)
+    {
+        for (y = 0; y < n; y++)
+        {
+            tableau_entry(T, x, y, 0);
+        }
+    }
 }
 
 void
@@ -480,7 +599,7 @@ _compute_elements(arb_ptr v, const user_params_t p, slong prec)
 
 
 void
-_fill_sequence_vector(int *v, const char *str, size_t n)
+_fill_sequence_vector(slong *v, const char *str, size_t n)
 {
     int i;
     for (i = 0; i < n; i++)
@@ -506,8 +625,8 @@ main(int argc, char *argc[])
     const char strA[] = "ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA";
     const char strB[] = "AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA";
 
-    ulong *A;
-    ulong *B;
+    slong *A;
+    slong *B;
 
     size_t szA, szB;
 
@@ -535,12 +654,14 @@ main(int argc, char *argc[])
     /* initialize the tableau with hardcoded sequences */
 
     szA = strlen(strA);
-    A = (ulong *) malloc(szA * sizeof(ulong));
-    _fill_sequence_vector(A, strA, szA);
+    A = (slong *) malloc(szA * sizeof(slong+1));
+    A[0] = -1;
+    _fill_sequence_vector(A+1, strA, szA);
 
     szB = strlen(strB);
-    B = (ulong *) malloc(szA * sizeof(ulong));
-    _fill_sequence_vector(B, strB, szB);
+    B = (slong *) malloc(szA * sizeof(slong+1));
+    B[0] = -1;
+    _fill_sequence_vector(B+1, strB, szB);
 
     /* define the dimensions of the tableau */
     m = szA + 1;
