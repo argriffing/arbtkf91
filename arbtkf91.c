@@ -11,43 +11,7 @@
 #define IDX_LAMBDA_BETA 24
 
 
-typedef struct
-{
-    fmpq lambda[1];
-    fmpq mu[1];
-    fmpq t[1];
-    fmpq pi[4];
-}
-user_params_struct;
-
-typedef user_params_struct user_params_t[1];
-
-void
-user_params_init(user_params_t p)
-{
-    slong i;
-    fmpq_init(p->lambda);
-    fmpq_init(p->mu);
-    fmpq_init(p->t);
-    for (i = 0; i < 4; i++)
-    {
-        fmpq_init(p->pi+i);
-    }
-}
-
-void
-user_params_clear(user_params_t p)
-{
-    slong i;
-    fmpq_clear(p->lambda);
-    fmpq_clear(p->mu);
-    fmpq_clear(p->t);
-    for (i = 0; i < 4; i++)
-    {
-        fmpq_clear(p->pi+i);
-    }
-}
-
+/* TODO: just use fmpz vectors instead of this; the overhead is small */
 
 void
 _slong_vec_add(slong *c, const slong *a, const slong *b, ulong n)
@@ -68,6 +32,9 @@ _slong_vec_add_inplace(slong *c, const slong *a, ulong n)
         c[i] += a[i];
     }
 }
+
+
+
 
 
 typedef struct
@@ -182,9 +149,9 @@ tableau_init(tableau_t T, ulong m, ulong n, ulong k, ulong l,
      * Initialize the rest of the tableau.
      * I think this corresponds to all entries such that min(i, j) >= 1.
      */
-    for (i = 1; i < n; i++)
+    for (i = 1; i < n+1; i++)
     {
-        for (j = 1; j < m; j++)
+        for (j = 1; j < m+1; j++)
         {
             /* M0(i,j) = log(lam*b*pi_A_i) */
             tableau_M0_add(T, i, j, IDX_LAMBDA, 1);
@@ -198,8 +165,12 @@ tableau_init(tableau_t T, ulong m, ulong n, ulong k, ulong l,
 
             /* M1(i, j) += log(1 - lam*b) + trans_Ai_Bj */
             tableau_M1_add(T, i, j, IDX_LAM_BETA, 1);
-            tableau_M1_add(T, i, j, IDX_TRANS + 4*, 1);
+            tableau_M1_add(T, i, j, IDX_TRANS + A[i]*4 + B[j], 1);
 
+            /* M2(i, j) += log(lam*b*pi_B_j) */
+            tableau_M2_add(T, i, j, IDX_LAMBDA, 1);
+            tableau_M2_add(T, i, j, IDX_BETA, 1);
+            tableau_M2_add(T, i, j, IDX_PI + B[j], 1);
         }
     }
 
