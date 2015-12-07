@@ -1,20 +1,15 @@
 /*
- * Given a list of rational numbers, define some kind of decomposition.
- * Compute a list of co-prime integers.
- * Write each of the provided rational numbers as products of integer powers
- * of the co-prime integers in the computed list.
- *
- * Reference:
- * Factor Refinement
+ * "Factor Refinement"
  * Eric Bach, James Driscoll, Jeffrey Shallit
  * Computer Sciences Technical Report #883
  * October 1989.
+ *
+ * GPL implementation by Alex G. 2015.
  */
 
 #include "flint.h"
 #include "fmpz.h"
 #include "fmpz_vec.h"
-#include "ulong_extras.h"
 
 
 /* factor refinement node */
