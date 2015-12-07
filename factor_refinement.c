@@ -382,9 +382,6 @@ factor_refine(fmpz **ybase, fmpz **yexp, slong *ylen,
         }
     }
 
-    //flint_printf("linked list before converting to vec: \n");
-    //fr_node_list_print(L);
-
     /* convert the linked list to a more standard format */
     *ylen = fr_node_list_length(L);
     *ybase = _fmpz_vec_init(*ylen);
@@ -422,7 +419,7 @@ int test_factor_refinement()
     flint_printf("factor_refinement....");
     fflush(stdout);
 
-    for (i = 0; i < 1000; i++)
+    for (i = 0; i < 100; i++)
     {
         fmpz *x, *ybase, *yexp;
         slong xlen, ylen;
@@ -432,22 +429,16 @@ int test_factor_refinement()
         x = ybase = yexp = NULL;
         xlen = ylen = 0;
 
-        bits = n_randint(state, 30) + 2;
-        xlen = n_randint(state, 30) + 1;
+        bits = n_randint(state, 100) + 2;
+        xlen = n_randint(state, 100) + 1;
 
         /* create the random input vector of positive integers */
         x = _fmpz_vec_init(xlen);
         _fmpz_vec_randtest_pos(x, state, xlen, bits);
 
-        /* show the test vector */
-        //flint_printf("length-prefixed test vector: ");
-        //_fmpz_vec_print(x, xlen);
-        //flint_printf("\n");
-
         factor_refine(&ybase, &yexp, &ylen, x, xlen);
 
         /* check that products are equal */
-        /*
         {
             fmpz_t a, b, p;
             slong j, u;
@@ -479,9 +470,8 @@ int test_factor_refinement()
             fmpz_clear(b);
             fmpz_clear(p);
         }
-        */
 
-        /* check that the base is coprime */
+        /* check that elements of the base are pairwise coprime */
         {
             slong u, v;
             fmpz_t g;
@@ -513,6 +503,7 @@ int test_factor_refinement()
     flint_printf("PASS\n");
     return 0;
 }
+
 
 int main(int argc, char *argv[])
 {
