@@ -488,6 +488,31 @@ int test_factor_refinement()
             fmpz_clear(g);
         }
 
+        /* check that each input is a product of powers of outputs */
+        {
+            slong u, v;
+            fmpz_t a;
+            fmpz_init(a);
+            for (u = 0; u < xlen; u++)
+            {
+                fmpz_set(a, x+u);
+                for (v = 0; v < ylen && !fmpz_is_one(a); v++)
+                {
+                    while (fmpz_divisible(a, ybase+v))
+                    {
+                        fmpz_divexact(a, a, ybase+v);
+                    }
+                }
+                if (!fmpz_is_one(a))
+                {
+                    flint_printf("FAIL:\n");
+                    fmpz_print(ybase+u); flint_printf("\n");
+                    abort();
+                }
+            }
+            fmpz_clear(a);
+        }
+
         _fmpz_vec_clear(x, xlen);
         _fmpz_vec_clear(ybase, ylen);
         _fmpz_vec_clear(yexp, ylen);
