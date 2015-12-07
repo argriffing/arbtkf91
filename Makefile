@@ -8,20 +8,29 @@ WARNINGS=-Wall  -Wunused-parameter -Wredundant-decls  -Wreturn-type  -Wswitch-de
 
 CFLAGS+= $(WARNINGS) -O3 $(DEFS) $(GLOBAL_DEFS) -march=native
 
-TARGET=bin/my-executable
-
-valgrind: CFLAGS+= -g
+TARGET=factor_refinement.o
 
 
+all: $(TARGET)
 
-all:	$(TARGET)
+# force the test scripts to be built by listing them as requirements
+tests: $(TARGET) tests/t-factor_refinement
 
-valgrind: $(TARGET)
-	valgrind --leak-check=yes $(TARGET)
+# run the test scripts
+check: tests/t-factor_refinement
+	bin/t-factor_refinement
 
+# build the test scripts
+tests/t-factor_refinement: tests/t-factor_refinement.c $(TARGET)
+	$(CC) tests/t-factor_refinement.c $(TARGET) \
+		-o bin/t-factor_refinement \
+		-I. $(CFLAGS) $(LIBS)
+
+# build the factor refinement object file
 $(TARGET):
-	$(CC) factor_refinement.c -o $(TARGET) $(CFLAGS) $(INCLUDES) $(LIBS)
+	$(CC) factor_refinement.c -c $(CFLAGS) $(INCLUDES) $(LIBS)
 
 clean:
 	rm -f *.o
 	rm -f $(TARGET)
+	rm -f bin/t-factor_refinement
