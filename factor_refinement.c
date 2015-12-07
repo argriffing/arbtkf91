@@ -7,12 +7,9 @@
  * GPL implementation by Alex G. 2015.
  */
 
-#include "flint.h"
-#include "fmpz.h"
-#include "fmpz_vec.h"
+#include "factor_refinement.h"
+#include "flint/fmpz_vec.h"
 
-
-/* factor refinement node */
 
 #define fr_node_mref(x) (&(x)->m)
 #define fr_node_eref(x) (&(x)->e)
@@ -25,6 +22,43 @@ typedef struct fr_node_struct
 } fr_node_struct;
 
 typedef fr_node_struct * fr_node_ptr;
+
+
+/* the harsher gcc warning flags are making me add some declarations */
+
+/* functions directly related to factor refinement nodes */
+void fr_node_init(fr_node_ptr x);
+void fr_node_init_fmpz_fmpz(fr_node_ptr x, const fmpz_t m, const fmpz_t e);
+void fr_node_clear(fr_node_ptr x);
+int fr_node_is_one(fr_node_ptr x);
+void fr_node_set_fmpz_fmpz(fr_node_ptr x, const fmpz_t m, const fmpz_t e);
+void fr_node_get_fmpz_fmpz(fmpz_t m, fmpz_t e, fr_node_ptr x);
+
+/* functions related to lists of factor refinement nodes */
+slong fr_node_list_length(fr_node_ptr x);
+void fr_node_list_pop_front(fr_node_ptr *phead, fr_node_ptr *ptail);
+void fr_node_list_concat(fr_node_ptr *phead, fr_node_ptr *ptail,
+        fr_node_ptr rhead, fr_node_ptr rtail);
+void fr_node_list_clear(fr_node_ptr head);
+void fr_node_list_print(fr_node_ptr head);
+
+/* functions related to the actual algorithms of interest */
+void pair_refine_unreduced(fr_node_ptr *phead,
+        fmpz_t m1, fmpz_t e1, fmpz_t m2, fmpz_t e2);
+void remove_ones(fr_node_ptr *phead, fr_node_ptr *ptail, fr_node_ptr ohead);
+void pair_refine(fr_node_ptr *phead, fr_node_ptr *ptail,
+        fmpz_t m1, fmpz_t e1, fmpz_t m2, fmpz_t e2);
+void pair_refine_si(fr_node_ptr *phead,
+        slong m1, slong e1, slong m2, slong e2);
+void augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
+        const fmpz_t m_jp1,
+        fr_node_ptr L_j, fr_node_ptr L_j_tail);
+
+/* functions related to testing */
+void _fmpz_vec_randtest_pos(fmpz * f, flint_rand_t state,
+        slong len, mp_bitcnt_t bits);
+int test_factor_refinement();
+
 
 void
 fr_node_init(fr_node_ptr x)
@@ -360,7 +394,7 @@ augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
 }
 
 void
-factor_refine(fmpz **ybase, fmpz **yexp, slong *ylen,
+factor_refinement(fmpz **ybase, fmpz **yexp, slong *ylen,
               const fmpz *x, const slong xlen)
 {
     fr_node_ptr L, L_tail, curr;
@@ -431,7 +465,7 @@ int test_factor_refinement()
         x = _fmpz_vec_init(xlen);
         _fmpz_vec_randtest_pos(x, state, xlen, bits);
 
-        factor_refine(&ybase, &yexp, &ylen, x, xlen);
+        factor_refinement(&ybase, &yexp, &ylen, x, xlen);
 
         /* check that products are equal */
         {
@@ -525,7 +559,7 @@ int test_factor_refinement()
 }
 
 
-int main(int argc, char *argv[])
+int main()
 {
     /*
     fr_node_ptr head;
@@ -556,7 +590,7 @@ int main(int argc, char *argv[])
     flint_printf("\n");
 
     flint_printf("refining the factorization...\n");
-    factor_refine(&ybase, &yexp, &ylen, x, xlen);
+    factor_refinement(&ybase, &yexp, &ylen, x, xlen);
 
     flint_printf("base: ");
     _fmpz_vec_print(ybase, ylen);
