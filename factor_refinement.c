@@ -14,6 +14,7 @@
 #include "flint.h"
 #include "fmpz.h"
 #include "fmpz_vec.h"
+#include "ulong_extras.h"
 
 
 /* factor refinement node */
@@ -117,6 +118,12 @@ void
 fr_node_list_concat(fr_node_ptr *phead, fr_node_ptr *ptail,
         fr_node_ptr rhead, fr_node_ptr rtail)
 {
+    /* if the second list is empty then do nothing */
+    if (!rhead)
+    {
+        return;
+    }
+
     /* if the first list is empty then use the second list */
     if (!(*phead))
     {
@@ -124,14 +131,8 @@ fr_node_list_concat(fr_node_ptr *phead, fr_node_ptr *ptail,
         (*ptail) = rtail;
         return;
     }
-    
-    /* if the second list is empty then use the first list */
-    if (!rhead)
-    {
-        return;
-    }
 
-    /* if neither list is empty then connect the tail to the head */
+    /* neither list is empty so connect the tail to the head */
     (*ptail)->next = rhead;
     *ptail = rtail;
 }
@@ -234,8 +235,6 @@ pair_refine_unreduced(fr_node_ptr *phead,
 void
 remove_ones(fr_node_ptr *phead, fr_node_ptr *ptail, fr_node_ptr ohead)
 {
-    /* phead will be set to the head of a list without ones */
-
     fr_node_ptr head, curr, ocurr, onext;
 
     if (!ohead)
@@ -262,12 +261,12 @@ remove_ones(fr_node_ptr *phead, fr_node_ptr *ptail, fr_node_ptr ohead)
             if (!head)
             {
                 head = ocurr;
-                curr = head;
+                curr = ocurr;
             }
             else
             {
                 curr->next = ocurr;
-                curr = ocurr;
+                curr = curr->next;
             }
         }
         ocurr = onext;
@@ -284,18 +283,8 @@ pair_refine(fr_node_ptr *phead, fr_node_ptr *ptail,
         fmpz_t m2, fmpz_t e2)
 {
     pair_refine_unreduced(phead, m1, e1, m2, e2);
-
-    flint_printf("before removing ones in pair refinement...\n");
-    fr_node_list_print(*phead);
-    flint_printf("\n");
-
     remove_ones(phead, ptail, *phead);
-
-    flint_printf("after removing ones in pair refinement...\n");
-    fr_node_list_print(*phead);
-    flint_printf("\n");
 }
-
 
 void
 pair_refine_si(fr_node_ptr *phead,
@@ -345,9 +334,6 @@ augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
             pair_refine(&L_prime, &L_prime_tail, m, e,
                         fr_node_mref(L_j), fr_node_eref(L_j));
 
-            /* FIXME this is for debugging ... */
-            fr_node_list_print(L_prime);
-
             /* (m, e) <- First(L') */
             fr_node_get_fmpz_fmpz(m, e, L_prime);
 
@@ -367,26 +353,12 @@ augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
     fr_node_init_fmpz_fmpz(neo, m, e);
 
     /* L_{j+1} <- Concat(L_{j+1}, Rest(L_j), (m, e)) */
-    fr_node_list_pop_front(&L_j, &L_j_tail); /* FIXME not sure about this... */
-
-    flint_printf("before first concatenation: ");
-    fr_node_list_print(L_jp1);
-
+    fr_node_list_pop_front(&L_j, &L_j_tail);
     fr_node_list_concat(&L_jp1, &L_jp1_tail, L_j, L_j_tail);
-
-    flint_printf("before second concatenation: ");
-    fr_node_list_print(L_jp1);
-
     fr_node_list_concat(&L_jp1, &L_jp1_tail, neo, neo);
-
-    flint_printf("after second concatenation: ");
-    fr_node_list_print(L_jp1);
 
     /* output list of pairs (n_i, e_i) in L_{j+1} with n_i != 1 */
     remove_ones(phead, ptail, L_jp1);
-
-    flint_printf("after removing ones in augment_refinement: ");
-    fr_node_list_print(*phead);
 
     fmpz_clear(m);
     fmpz_clear(e);
@@ -399,17 +371,19 @@ factor_refine(fmpz **ybase, fmpz **yexp, slong *ylen,
     fr_node_ptr L, L_tail, curr;
     slong i;
 
-
     /* compute the refinement as a linked list */
     L = NULL;
     L_tail = NULL;
     for (i = 0; i < xlen; i++)
     {
-        augment_refinement(&L, &L_tail, x+i, L, L_tail);
+        if (!fmpz_is_one(x+i))
+        {
+            augment_refinement(&L, &L_tail, x+i, L, L_tail);
+        }
     }
 
-    flint_printf("linked list before converting to vec: \n");
-    fr_node_list_print(L);
+    //flint_printf("linked list before converting to vec: \n");
+    //fr_node_list_print(L);
 
     /* convert the linked list to a more standard format */
     *ylen = fr_node_list_length(L);
@@ -428,9 +402,120 @@ factor_refine(fmpz **ybase, fmpz **yexp, slong *ylen,
     fr_node_list_clear(L);
 }
 
+void
+_fmpz_vec_randtest_pos(fmpz * f, flint_rand_t state,
+        slong len, mp_bitcnt_t bits)
+{
+    slong i;
+    _fmpz_vec_randtest_unsigned(f, state, len, bits-1);
+    for (i = 0; i < len; i++)
+    {
+        fmpz_add_ui(f+i, f+i, 1);
+    }
+}
+
+int test_factor_refinement()
+{
+    int i;
+    FLINT_TEST_INIT(state);
+
+    flint_printf("factor_refinement....");
+    fflush(stdout);
+
+    for (i = 0; i < 1000; i++)
+    {
+        fmpz *x, *ybase, *yexp;
+        slong xlen, ylen;
+
+        mp_bitcnt_t bits;
+
+        x = ybase = yexp = NULL;
+        xlen = ylen = 0;
+
+        bits = n_randint(state, 30) + 2;
+        xlen = n_randint(state, 30) + 1;
+
+        /* create the random input vector of positive integers */
+        x = _fmpz_vec_init(xlen);
+        _fmpz_vec_randtest_pos(x, state, xlen, bits);
+
+        /* show the test vector */
+        //flint_printf("length-prefixed test vector: ");
+        //_fmpz_vec_print(x, xlen);
+        //flint_printf("\n");
+
+        factor_refine(&ybase, &yexp, &ylen, x, xlen);
+
+        /* check that products are equal */
+        /*
+        {
+            fmpz_t a, b, p;
+            slong j, u;
+
+            fmpz_init_set_ui(a, 1);
+            for (j = 0; j < xlen; j++)
+            {
+                fmpz_mul(a, a, x+j);
+            }
+
+            fmpz_init_set_ui(b, 1);
+            fmpz_init(p);
+            for (j = 0; j < ylen; j++)
+            {
+                u = fmpz_get_ui(yexp+j);
+                fmpz_pow_ui(p, ybase+j, u);
+                fmpz_mul(b, b, p);
+            }
+
+            if (!fmpz_equal(a, b))
+            {
+                flint_printf("FAIL:\n");
+                fmpz_print(a); flint_printf(" ");
+                fmpz_print(b); flint_printf("\n");
+                abort();
+            }
+
+            fmpz_clear(a);
+            fmpz_clear(b);
+            fmpz_clear(p);
+        }
+        */
+
+        /* check that the base is coprime */
+        {
+            slong u, v;
+            fmpz_t g;
+            fmpz_init(g);
+            for (u = 0; u < ylen; u++)
+            {
+                for (v = 0; v < u; v++)
+                {
+                    fmpz_gcd(g, ybase+u, ybase+v);
+                    if (!fmpz_is_one(g))
+                    {
+                        flint_printf("FAIL:\n");
+                        fmpz_print(ybase+u); flint_printf(" ");
+                        fmpz_print(ybase+v); flint_printf("\n");
+                        abort();
+                    }
+                }
+            }
+            fmpz_clear(g);
+        }
+
+        _fmpz_vec_clear(x, xlen);
+        _fmpz_vec_clear(ybase, ylen);
+        _fmpz_vec_clear(yexp, ylen);
+    }
+
+    FLINT_TEST_CLEANUP(state);
+
+    flint_printf("PASS\n");
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
-
     /*
     fr_node_ptr head;
     pair_refine_si(&head, 3*4*5, 2, 5*3*8*11, 3);
@@ -439,6 +524,7 @@ int main(int argc, char *argv[])
     fr_node_list_clear(head);
     */
 
+    /*
     int success;
     
     fmpz *x, *ybase, *yexp;
@@ -471,4 +557,7 @@ int main(int argc, char *argv[])
     _fmpz_vec_clear(yexp, ylen);
 
     return 0;
+    */
+    
+    return test_factor_refinement();
 }
