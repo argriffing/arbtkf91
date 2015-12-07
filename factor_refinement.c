@@ -48,8 +48,6 @@ void pair_refine_unreduced(fr_node_ptr *phead,
 void remove_ones(fr_node_ptr *phead, fr_node_ptr *ptail, fr_node_ptr ohead);
 void pair_refine(fr_node_ptr *phead, fr_node_ptr *ptail,
         fmpz_t m1, fmpz_t e1, fmpz_t m2, fmpz_t e2);
-void pair_refine_si(fr_node_ptr *phead,
-        slong m1, slong e1, slong m2, slong e2);
 void augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
         const fmpz_t m_jp1,
         fr_node_ptr L_j, fr_node_ptr L_j_tail);
@@ -308,28 +306,6 @@ pair_refine(fr_node_ptr *phead, fr_node_ptr *ptail,
     pair_refine_unreduced(phead, m1, e1, m2, e2);
     remove_ones(phead, ptail, *phead);
 }
-
-void
-pair_refine_si(fr_node_ptr *phead,
-        slong m1, slong e1,
-        slong m2, slong e2)
-{
-    fmpz_t zm1, ze1, zm2, ze2;
-    fr_node_ptr tail;
-
-    fmpz_init_set_si(zm1, m1);
-    fmpz_init_set_si(ze1, e1);
-    fmpz_init_set_si(zm2, m2);
-    fmpz_init_set_si(ze2, e2);
-
-    pair_refine(phead, &tail, zm1, ze1, zm2, ze2);
-
-    fmpz_clear(zm1);
-    fmpz_clear(ze1);
-    fmpz_clear(zm2);
-    fmpz_clear(ze2);
-}
-
 
 void
 augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
