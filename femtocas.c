@@ -42,6 +42,7 @@ typedef struct
     expr_clear_fn clear;
     expr_print_fn print;
     expr_eval_fn eval;
+    void *userdata;
 } expr_struct;
 
 typedef expr_struct expr_t[1];
@@ -105,6 +106,7 @@ expr_init(expr_ptr x)
     x->clear = &_default_clear;
     x->print = &_default_print;
     x->eval = &_default_eval;
+    x->userdata = NULL;
 }
 
 void
@@ -121,6 +123,7 @@ expr_clear(expr_ptr x)
     x->clear = &_default_clear;
     x->print = &_default_print;
     x->eval = &_default_eval;
+    x->userdata = NULL;
 }
 
 void
@@ -684,7 +687,7 @@ beta_expr_eval(arb_t res, expr_data_ptr data, slong level)
 /* demonstrate usage of the beta expression */
 
 
-int main()
+int demo()
 {
     slong level;
     fmpq_t a, b, t;
@@ -772,4 +775,78 @@ int main()
     expr_clear(res);
 
     return 0;
+}
+
+void
+_get_dt(fmpq_t dt, const fmpq * pi, const fmpq_t t)
+{
+    ulong i, n;
+
+    /* number of states */
+    n = 4;
+
+    /* dt = t / (1 - pi[0]^2 + pi[1]^2 + ... + pi[n-1]^2) */
+    fmpq_one(dt);
+    for (i = 0; i < n; i++)
+    {
+        fmpq_submul(delta, pi[i], pi[i]);
+    }
+    fmpq_div(dt, t, dt);
+}
+
+int main()
+{
+    slong i, j;
+    slong level;
+
+    fmpq_t a, b, t;
+    fmpq_t dt, negdt;
+    fmpq pi[4];
+
+    fmpq_init(a);
+    fmpq_init(b);
+    fmpq_init(t);
+    fmpq_init(dt);
+    fmpq_init(negdt);
+    for (i = 0; i < 4; i++)
+    {
+        fmpq_init(pi+i);
+    }
+
+    fmpq_set_si(a, 1, 1);
+    fmpq_set_si(b, 2, 1);
+    fmpq_set_si(t, 1, 10);
+
+    fmpq_set_si(pi+0, 27, 100);
+    fmpq_set_si(pi+1, 24, 100);
+    fmpq_set_si(pi+2, 26, 100);
+    fmpq_set_si(pi+3, 23, 100);
+
+    _get_dt(dt, pi, t);
+    fmpq_neg(negdt, dt);
+
+    for (i = 0; i < 4; i++)
+    {
+        for (j = 0; j < 4; j++)
+        {
+            if (i == j)
+            {
+                ;
+            }
+            else
+            {
+                ;
+            }
+        }
+    }
+
+    fmpq_clear(a);
+    fmpq_clear(b);
+    fmpq_clear(t);
+    fmpq_clear(dt);
+    fmpq_clear(negdt);
+    for (i = 0; i < 4; i++)
+    {
+        fmpq_clear(pi+i);
+    }
 }
