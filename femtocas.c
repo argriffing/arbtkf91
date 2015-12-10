@@ -1,10 +1,8 @@
 #include "flint/flint.h"
 #include "flint/fmpq.h"
 #include "arb.h"
+#include "femtocas.h"
 
-
-/* cache at most this many evaluations */
-#define EXPR_CACHE_CAP 30
 
 typedef void *expr_data_ptr;
 
@@ -372,6 +370,25 @@ void _expr_exp_fmpq_eval(arb_t z, expr_data_ptr data, slong level)
     arb_exp(z, z, prec);
 }
 
+void expr_complement_fmpq(expr_ptr x, const fmpq_t a)
+{
+    fmpq_t b;
+    fmpq_init(b);
+    fmpq_one(b);
+    fmpq_sub(b, b, a);
+    expr_fmpq(x, b);
+    fmpq_clear(b);
+}
+
+void expr_neg_fmpq(expr_ptr x, const fmpq_t a)
+{
+    fmpq_t b;
+    fmpq_init(b);
+    fmpq_neg(b, a);
+    expr_fmpq(x, b);
+    fmpq_clear(b);
+}
+
 
 /* x */
 
@@ -443,6 +460,24 @@ void _expr_log1m_eval(arb_t z, expr_data_ptr data, slong level)
     expr_eval(z, d->a, level);
     arb_neg(z, z);
     arb_log1p(z, z, prec);
+}
+
+void _expr_complement_eval(arb_t z, expr_data_ptr data, slong level);
+void expr_complement(expr_ptr x, expr_ptr a)
+{
+    _expr_x_init(x, a);
+    x->eval = &_expr_complement_eval;
+}
+void _expr_complement_eval(arb_t z, expr_data_ptr data, slong level)
+{
+    slong prec = 1 << level;
+    _expr_x_ptr d = (_expr_x_ptr) data;
+    expr_eval(z, d->a, level);
+    arb_t one;
+    arb_init(one);
+    arb_one(one);
+    arb_sub(z, one, z, prec);
+    arb_clear(one);
 }
 
 

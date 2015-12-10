@@ -68,8 +68,8 @@ reg_node_clear(reg_node_t x)
 
 
 /*
- * This registry owns all of the registry nodes
- * and all of the registered expression objects in those nodes.
+ * This structure manages the memory of all of its registry nodes
+ * and all of the expression objects in those nodes.
  */
 typedef struct
 {
@@ -145,16 +145,112 @@ reg_new(reg_ptr x)
 }
 
 
+typedef struct
+{
+    fmpq qi[4];
+    fmpq_t negdt;
+    fmpq_t lambda_div_mu;
+    fmpq_t one_minus_lambda_div_mu;
+    fmpq_t beta_exponent;
+    fmpq_t neg_mu_tau;
+} rational_intermediates_struct;
+
+typedef rational_intermediates_struct rational_intermediates_t[1];
+
+void
+rational_intermediates_init(rational_intermediates_t q,
+        fmpq_ptr lambda, fmpq_ptr mu, fmpq_ptr tau, fmpq_ptr pi)
+{
+    slong i;
+
+    fmpq_t one;
+
+    fmpq_init(one);
+    fmpq_one(one);
+
+    /* initialize qi */
+    {
+        for (i = 0; i < 4; i++)
+        {
+            fmpq_init(q->qi+i);
+            fmpq_sub(q->qi+i, one, pi+i);
+        }
+    }
+
+    /* initialize negdt */
+    {
+        fmpq_t dt;
+        fmpq_init(dt);
+        fmpq_init(q->negdt);
+        fmpq_one(dt);
+        for (i = 0; i < 4; i++)
+        {
+            fmpq_submul(dt, pi+i, pi+i);
+        }
+        fmpq_div(dt, tau, dt);
+        fmpq_neg(q->negdt, dt);
+        fmpq_clear(dt);
+    }
+
+    /* initialize rational values related to gamma */
+    {
+        fmpq_init(q->lambda_div_mu);
+        fmpq_init(q->one_minus_lambda_div_mu);
+        fmpq_div(q->lambda_div_mu, lambda, mu);
+        fmpq_sub(q->one_minus_lambda_div_mu, one, q->lambda_div_mu);
+    }
+
+    /* initialize rational values related to beta */
+    {
+        fmpq_t lambda_minus_mu;
+        fmpq_init(lambda_minus_mu);
+        fmpq_sub(lambda_minus_mu, lambda, mu);
+        fmpq__init(q->beta_exponent);
+        fmpq_mul(q->beta_exponent, lambda_minus_mu, tau);
+        fmpq_clear(lambda_minus_mu);
+    }
+
+    /* -mu*tau */
+    {
+        fmpq_t mu_tau;
+        fmpq_init(mu_tau);
+        fmpq_mul(mu_tau, mu, tau);
+        fmpq_init(q->neg_mu_tau);
+        fmpq_neg(q->neg_mu_tau, mu_tau);
+        fmpq_clear(mu_tau);
+    }
+
+    fmpq_clear(one);
+}
+
+void
+rational_intermediates_clear(rational_intermediates_t q)
+{
+    slong i;
+    for (i = 0; i < 4; i++)
+    {
+        fmpq_clear(q->qi+i);
+    }
+    fmpq_clear(q->negdt);
+    fmpq_clear(q->lambda_div_mu);
+    fmpq_clear(q->one_minus_lambda_div_mu);
+    fmpq_clear(q->beta_exponent);
+    fmpq_clear(q->neg_mu_tau);
+}
+
+
 /*
- * This is just an aggregation of named expression pointers.
- * The structure does not own the pointers;
- * the pointers are owned by an expression registry.
+ * This is just an aggregate of named expression pointers.
+ * The structure does not manage the memory used by the expressions.
  */
 typedef struct
 {
     /* factors related to sequence length equilibrium frequency */
     expr_ptr one_minus_lambda_div_mu;
     expr_ptr lambda_div_mu;
+
+    /* factors related to sequence composition */
+    expr_ptr pi[4];
 
     /* factors related to the indel process involving beta */
     expr_ptr exp_neg_mu_tau;
@@ -163,9 +259,6 @@ typedef struct
     expr_ptr the_long_beta_expression; /* 1 - exp(-mu*t) - mu*beta */
     expr_ptr mu_beta;
 
-    /* factors related to sequence composition */
-    expr_ptr pi[4];
-
     /* factors related to point substitutions */
     expr_ptr match[4];
     expr_ptr mismatch[4];
@@ -173,6 +266,9 @@ typedef struct
 } tkf91_expressions_struct;
 
 typedef tkf91_expressions_struct * tkf91_expressions_ptr;
+typedef tkf91_expressions_struct tkf91_expressions_t[1];
+
+
 
 
 void
@@ -191,11 +287,116 @@ tkf91_expressions_init(
      * Track all of them in an expressions registry;
      * this will let the expressions be cleared later,
      * and it will associate each expression with an array index.
-     * Give some of the expressions special names which we will use
+     * Give some of the expressions special names to be used
      * later when the generators are defined.
      */
-    fmpq_t lambda_div_mu;
-    expr_fmpq(p->lambda_div_mu);
+    slong i, j;
+
+    rational_intermediates_t q;
+    rational_intermediates_init(q, lambda, mu, tau, pi);
+
+    /* factors related to sequence length equilibrium frequency */
+    {
+        p->lambda_div_mu = reg_new(reg);
+        expr_fmpq(p->lambda_div_mu, q->lambda_div_mu);
+
+        p->one_minus_lambda_div_mu = reg_new(reg);
+        expr_fmpq(p->one_minus_lambda_div_mu, q->one_minus_lambda_div_mu);
+    }
+
+    /* factors related to sequence composition */
+    {
+        expr_ptr alias;
+        for (i = 0; i < 4; i++)
+        {
+            alias = NULL;
+            for (j = 0; j < i; j++)
+            {
+                if (fmpq_equal(pi+i, pi+j))
+                {
+                    alias = p->pi+j;
+                }
+            }
+            if (alias)
+            {
+                p->pi+i = alias;
+            }
+            else
+            {
+                p->pi+i = reg_new(reg);
+                expr_fmpq(p->pi+i, pi+i);
+            }
+        }
+    }
+
+    rational_intermediates_clear(q);
+}
+
+
+int tkf_expressions()
+{
+    fmpq_t a, b, t;
+    fmpq_t at, bt;
+
+    fmpq_init(a);
+    fmpq_init(b);
+    fmpq_init(t);
+
+    fmpq_set_si(a, 1, 2);
+    fmpq_set_si(b, 3, 4);
+    fmpq_set_si(t, 5, 6);
+
+    fmpq_init(at);
+    fmpq_init(bt);
+
+    fmpq_mul(at, a, t);
+    fmpq_mul(bt, b, t);
+
+    expr_t ax, bx;
+    expr_t eat, ebt, aeat, bebt;
+    expr_t num, den;
+    expr_t res;
+
+    expr_fmpq(ax, a);
+    expr_fmpq(bx, b);
+    expr_exp_fmpq(ebt, bt);
+    expr_exp_fmpq(eat, at);
+    expr_mul(bebt, bx, ebt);
+    expr_mul(aeat, ax, eat);
+    expr_sub(num, ebt, eat);
+    expr_sub(den, bebt, aeat);
+    expr_div(res, num, den);
+
+    arb_t value;
+    slong level;
+
+    arb_init(value);
+
+    for (level = 0; level < 8; level++)
+    {
+        flint_printf("evaluating ");
+        expr_print(res);
+        flint_printf(" at level %wd:\n", level);
+        expr_eval(value, res, level);
+        arb_print(value);
+        flint_printf("\n\n");
+    }
+
+    arb_clear(value);
+    fmpq_clear(a);
+    fmpq_clear(b);
+    fmpq_clear(t);
+    expr_clear(ax);
+    expr_clear(bx);
+    expr_clear(eat);
+    expr_clear(ebt);
+    expr_clear(aeat);
+    expr_clear(bebt);
+    expr_clear(num);
+    expr_clear(den);
+    expr_clear(res);
+
+    return 0;
 }
 
 
