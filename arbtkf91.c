@@ -1,39 +1,3 @@
-/*
- */
-
-/* constants related to a serialization */
-#define IDX_TRANS 0
-#define IDX_PI 16
-#define IDX_LAMBDA 20
-#define IDX_MU 21
-#define IDX_BETA 22
-#define IDX_LAMBDA_MU 23
-#define IDX_LAMBDA_BETA 24
-
-
-/* TODO: just use fmpz vectors instead of this; the overhead is small */
-
-void
-_slong_vec_add(slong *c, const slong *a, const slong *b, ulong n)
-{
-    ulong i;
-    for (i = 0; i < n; i++)
-    {
-        c[i] = a[i] + b[i];
-    }
-}
-
-void
-_slong_vec_add_inplace(slong *c, const slong *a, ulong n)
-{
-    ulong i;
-    for (i = 0; i < n; i++)
-    {
-        c[i] += a[i];
-    }
-}
-
-
 
 
 
@@ -393,7 +357,7 @@ _get_dt(fmpq_t dt, const fmpq * pi, const fmpq_t t)
     fmpq_one(dt);
     for (i = 0; i < n; i++)
     {
-        fmpq_submul(delta, pi[i], pi[i]);
+        fmpq_submul(dt, pi+i, pi+i);
     }
     fmpq_div(dt, t, dt);
 }
@@ -651,4 +615,130 @@ main(int argc, char *argc[])
     free(B);
 
     return 0;
+}
+
+
+int demo()
+{
+    fmpq_t a, b, t;
+    fmpq_t at, bt;
+
+    fmpq_init(a);
+    fmpq_init(b);
+    fmpq_init(t);
+
+    fmpq_set_si(a, 1, 2);
+    fmpq_set_si(b, 3, 4);
+    fmpq_set_si(t, 5, 6);
+
+    fmpq_init(at);
+    fmpq_init(bt);
+
+    fmpq_mul(at, a, t);
+    fmpq_mul(bt, b, t);
+
+    expr_t ax, bx;
+    expr_t eat, ebt, aeat, bebt;
+    expr_t num, den;
+    expr_t res;
+
+    expr_fmpq(ax, a);
+    expr_fmpq(bx, b);
+    expr_exp_fmpq(ebt, bt);
+    expr_exp_fmpq(eat, at);
+    expr_mul(bebt, bx, ebt);
+    expr_mul(aeat, ax, eat);
+    expr_sub(num, ebt, eat);
+    expr_sub(den, bebt, aeat);
+    expr_div(res, num, den);
+
+    arb_t value;
+    slong level;
+
+    arb_init(value);
+
+    for (level = 0; level < 8; level++)
+    {
+        flint_printf("evaluating ");
+        expr_print(res);
+        flint_printf(" at level %wd:\n", level);
+        expr_eval(value, res, level);
+        arb_print(value);
+        flint_printf("\n\n");
+    }
+
+    arb_clear(value);
+    fmpq_clear(a);
+    fmpq_clear(b);
+    fmpq_clear(t);
+    expr_clear(ax);
+    expr_clear(bx);
+    expr_clear(eat);
+    expr_clear(ebt);
+    expr_clear(aeat);
+    expr_clear(bebt);
+    expr_clear(num);
+    expr_clear(den);
+    expr_clear(res);
+
+    return 0;
+}
+
+int moredemo()
+{
+    /* unfinished */
+
+    slong i, j;
+    slong level;
+
+    fmpq_t a, b, t;
+    fmpq_t dt, negdt;
+    fmpq pi[4];
+
+    fmpq_init(a);
+    fmpq_init(b);
+    fmpq_init(t);
+    fmpq_init(dt);
+    fmpq_init(negdt);
+    for (i = 0; i < 4; i++)
+    {
+        fmpq_init(pi+i);
+    }
+
+    fmpq_set_si(a, 1, 1);
+    fmpq_set_si(b, 2, 1);
+    fmpq_set_si(t, 1, 10);
+
+    fmpq_set_si(pi+0, 27, 100);
+    fmpq_set_si(pi+1, 24, 100);
+    fmpq_set_si(pi+2, 26, 100);
+    fmpq_set_si(pi+3, 23, 100);
+
+    _get_dt(dt, pi, t);
+    fmpq_neg(negdt, dt);
+
+    for (i = 0; i < 4; i++)
+    {
+        for (j = 0; j < 4; j++)
+        {
+            if (i == j)
+            {
+                ;
+            }
+            else
+            {
+                ;
+            }
+        }
+    }
+
+    fmpq_clear(a);
+    fmpq_clear(b);
+    fmpq_clear(t);
+    fmpq_clear(dt);
+    fmpq_clear(negdt);
+    for (i = 0; i < 4; i++)
+    {
+        fmpq_clear(pi+i);
+    }
 }
