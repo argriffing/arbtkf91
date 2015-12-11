@@ -4,29 +4,37 @@
 #include "femtocas.h"
 
 
-typedef void *expr_data_ptr;
+/* generic expression initialization */
 
-typedef void (*expr_clear_fn)(expr_data_ptr);
-typedef void (*expr_print_fn)(expr_data_ptr);
-typedef void (*expr_eval_fn)(arb_t, expr_data_ptr, slong);
+void _expr_init(expr_ptr x);
+void _default_clear(expr_data_ptr p);
+void _default_print(expr_data_ptr p);
+void _default_eval(arb_t res, expr_data_ptr p, slong level);
 
-typedef struct
-{
-    arb_struct cache[EXPR_CACHE_CAP];
-    slong cachesize;
-    expr_data_ptr data;
-    expr_clear_fn clear;
-    expr_print_fn print;
-    expr_eval_fn eval;
-    void *userdata;
-} expr_struct;
 
-typedef expr_struct expr_t[1];
-typedef expr_struct * expr_ptr;
+/* type-specific expression member functions */
+
+void _expr_i_init(expr_ptr x, const fmpz_t a);
+void _expr_i_clear(expr_data_ptr data);
+void _expr_i_print(expr_data_ptr data);
+
+void _expr_q_init(expr_ptr x, const fmpq_t a);
+void _expr_q_clear(expr_data_ptr data);
+void _expr_q_print(expr_data_ptr data);
+
+void _expr_x_init(expr_ptr x, expr_ptr a);
+void _expr_x_clear(expr_data_ptr data);
+void _expr_x_print(expr_data_ptr data);
+
+void _expr_xx_init(expr_ptr x, expr_ptr a, expr_ptr b);
+void _expr_xx_clear(expr_data_ptr data);
+void _expr_xx_print(expr_data_ptr data);
+
 
 void
 _default_clear(expr_data_ptr p)
 {
+    UNUSED(p);
     flint_printf("clear() not implemented\n");
     abort();
 }
@@ -34,6 +42,7 @@ _default_clear(expr_data_ptr p)
 void
 _default_print(expr_data_ptr p)
 {
+    UNUSED(p);
     flint_printf("print() not implemented\n");
     abort();
 }
@@ -41,12 +50,15 @@ _default_print(expr_data_ptr p)
 void
 _default_eval(arb_t res, expr_data_ptr p, slong level)
 {
+    UNUSED(res);
+    UNUSED(p);
+    UNUSED(level);
     flint_printf("eval() not implemented\n");
     abort();
 }
 
 void
-expr_init(expr_ptr x)
+_expr_init(expr_ptr x)
 {
     slong i;
     for (i = 0; i < EXPR_CACHE_CAP; i++)
@@ -126,15 +138,12 @@ typedef struct
 } _expr_i_struct;
 typedef _expr_i_struct * _expr_i_ptr;
 
-void _expr_i_clear(expr_data_ptr data);
-void _expr_i_print(expr_data_ptr data);
-
 void
 _expr_i_init(expr_ptr x, const fmpz_t a)
 {
     _expr_i_ptr d = flint_malloc(sizeof(_expr_i_struct));
     fmpz_init_set(&(d->a), a);
-    expr_init(x);
+    _expr_init(x);
     x->data = d;
     x->clear = &_expr_i_clear;
     x->print = &_expr_i_print;
@@ -167,16 +176,13 @@ typedef struct
 } _expr_q_struct;
 typedef _expr_q_struct * _expr_q_ptr;
 
-void _expr_q_clear(expr_data_ptr data);
-void _expr_q_print(expr_data_ptr data);
-
 void
 _expr_q_init(expr_ptr x, const fmpq_t a)
 {
     _expr_q_ptr d = flint_malloc(sizeof(_expr_q_struct));
     fmpq_init(&(d->a));
     fmpq_set(&(d->a), a);
-    expr_init(x);
+    _expr_init(x);
     x->data = d;
     x->clear = &_expr_q_clear;
     x->print = &_expr_q_print;
@@ -209,15 +215,12 @@ typedef struct
 } _expr_x_struct;
 typedef _expr_x_struct * _expr_x_ptr;
 
-void _expr_x_clear(expr_data_ptr data);
-void _expr_x_print(expr_data_ptr data);
-
 void
 _expr_x_init(expr_ptr x, expr_ptr a)
 {
     _expr_x_ptr d = flint_malloc(sizeof(_expr_x_struct));
     d->a = a;
-    expr_init(x);
+    _expr_init(x);
     x->data = d;
     x->clear = &_expr_x_clear;
     x->print = &_expr_x_print;
@@ -251,16 +254,13 @@ typedef struct
 } _expr_xx_struct;
 typedef _expr_xx_struct * _expr_xx_ptr;
 
-void _expr_xx_clear(expr_data_ptr data);
-void _expr_xx_print(expr_data_ptr data);
-
 void
 _expr_xx_init(expr_ptr x, expr_ptr a, expr_ptr b)
 {
     _expr_xx_ptr d = flint_malloc(sizeof(_expr_xx_struct));
     d->a = a;
     d->b = b;
-    expr_init(x);
+    _expr_init(x);
     x->data = d;
     x->clear = &_expr_xx_clear;
     x->print = &_expr_xx_print;
@@ -308,6 +308,7 @@ void expr_fmpz(expr_ptr x, const fmpz_t a)
 }
 void _expr_fmpz_eval(arb_t z, expr_data_ptr data, slong level)
 {
+    UNUSED(level);
     _expr_i_ptr d = (_expr_i_ptr) data;
     arb_set_fmpz(z, &(d->a));
 }

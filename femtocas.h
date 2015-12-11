@@ -27,8 +27,40 @@
 #include "flint/fmpz.h"
 #include "flint/fmpq.h"
 
+/*
+ * We want to maintain a consistent interface to allow using function pointers,
+ * but sometimes parameters will be unused. According to the internet,
+ * this #define is a relatively good way to mark the unused parameters.
+ */
+#define UNUSED(x) (void)(x)
+
 /* cache at most this many evaluations */
 #define EXPR_CACHE_CAP 30
+
+
+typedef void *expr_data_ptr;
+
+typedef void (*expr_clear_fn)(expr_data_ptr);
+typedef void (*expr_print_fn)(expr_data_ptr);
+typedef void (*expr_eval_fn)(arb_t, expr_data_ptr, slong);
+
+typedef struct
+{
+    arb_struct cache[EXPR_CACHE_CAP];
+    slong cachesize;
+    expr_data_ptr data;
+    expr_clear_fn clear;
+    expr_print_fn print;
+    expr_eval_fn eval;
+    void *userdata;
+} expr_struct;
+
+typedef expr_struct expr_t[1];
+typedef expr_struct * expr_ptr;
+
+void expr_clear(expr_ptr x);
+void expr_print(expr_ptr x);
+void expr_eval(arb_t res, expr_ptr x, slong level);
 
 
 #ifdef __cplusplus
