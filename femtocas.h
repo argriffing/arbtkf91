@@ -58,28 +58,25 @@ typedef struct
 typedef expr_struct expr_t[1];
 typedef expr_struct * expr_ptr;
 
-void expr_clear(expr_ptr x);
-void expr_print(expr_ptr x);
-void expr_eval(arb_t res, expr_ptr x, slong level);
-
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/* create the expression */
 
-/* i */
+/* unary(fmpz) */
 void expr_fmpz(expr_ptr x, const fmpz_t a);
 void expr_log_fmpz(expr_ptr x, const fmpz_t a);
 
-/* q */
+/* unary(fmpq) */
 void expr_fmpq(expr_ptr x, const fmpq_t a);
 void expr_log_fmpq(expr_ptr x, const fmpq_t a);
 void expr_exp_fmpq(expr_ptr x, const fmpq_t a);
 void expr_complement_fmpq(expr_ptr x, const fmpq_t a);
 void expr_neg_fmpq(expr_ptr x, const fmpq_t a);
 
-/* x */
+/* unary(expr) */
 void expr_exp(expr_ptr x, expr_ptr a);
 void expr_neg(expr_ptr x, expr_ptr a);
 void expr_log(expr_ptr x, expr_ptr a);
@@ -87,11 +84,22 @@ void expr_log1p(expr_ptr x, expr_ptr a);
 void expr_log1m(expr_ptr x, expr_ptr a);
 void expr_complement(expr_ptr x, expr_ptr a);
 
-/* xx */
+/* binary(expr, expr) */
 void expr_add(expr_ptr x, expr_ptr a, expr_ptr b);
 void expr_mul(expr_ptr x, expr_ptr a, expr_ptr b);
 void expr_sub(expr_ptr x, expr_ptr a, expr_ptr b);
 void expr_div(expr_ptr x, expr_ptr a, expr_ptr b);
+
+
+/* do things with the created expression */
+
+void expr_print(expr_ptr x);
+void expr_eval(arb_t res, expr_ptr x, slong level);
+
+
+/* finally, clear the memory of the expression */
+
+void expr_clear(expr_ptr x);
 
 
 #ifdef __cplusplus
