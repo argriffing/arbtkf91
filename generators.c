@@ -1,26 +1,21 @@
-typedef struct generator_reg_node_struct
-{
-    slong index;
-    fmpz * p;
-    struct generator_reg_node_struct * next;
-} generator_reg_node_struct;
-typedef generator_reg_node_struct * generator_reg_node_ptr;
-typedef generator_reg_node_struct generator_reg_node_t[1];
+#include "flint/fmpz_vec.h"
+#include "flint/fmpz_mat.h"
+#include "expressions.h"
+#include "generators.h"
 
-typedef struct
-{
-    generator_reg_node_ptr head;
-    generator_reg_node_ptr tail;
-    slong size; /* current number of generators */
-    slong expressions_len; /* fixed number of expressions */
-    int open_for_adding;
-} generator_reg_struct;
-typedef generator_reg_struct generator_reg_t[1];
-typedef generator_reg_struct * generator_reg_ptr;
+
+/*
+ * These functions are used only internally to this module.
+ */
+void generator_reg_node_init(generator_reg_node_t x, slong index,
+        slong expressions_len);
+void generator_reg_node_clear(generator_reg_node_t x,
+        slong expressions_len);
+
 
 void
 generator_reg_node_init(generator_reg_node_t x, slong index,
-        slong expressions_len);
+        slong expressions_len)
 {
     x->index = index;
     x->p = _fmpz_vec_init(expressions_len);
@@ -81,12 +76,12 @@ generator_reg_get_matrix(fmpz_mat_t mat, generator_reg_ptr x)
         fmpz_mat_ncols(mat) != generator_reg_expressions_len(x))
     {
         flint_printf("the dimensions of the generator matrix are wrong\n");
-        abort()
+        abort();
     }
 
     slong i, j;
     fmpz_mat_zero(mat);
-    generator_reg_ptr node;
+    generator_reg_node_ptr node;
     i = 0;
     for (node = x->head; node; node = node->next)
     {
@@ -109,7 +104,7 @@ generator_reg_clear(generator_reg_ptr x)
     }
 
     /* clear and delete all of the nodes in the registry */
-    generator_reg_ptr node, next;
+    generator_reg_node_ptr node, next;
     node = x->head;
     while(node)
     {
@@ -124,6 +119,13 @@ generator_reg_clear(generator_reg_ptr x)
     x->size = 0;
 }
 
+
+/* These are convenience functions. */
+void gen_open(generator_reg_t g, slong *pidx);
+void gen_add(generator_reg_t g, expr_ptr expression, slong exponent);
+void gen_close(generator_reg_t g);
+
+
 void
 gen_open(generator_reg_t g, slong *pidx)
 {
@@ -136,7 +138,7 @@ gen_open(generator_reg_t g, slong *pidx)
     (*pidx) = g->size;
     size_t node_size = sizeof(generator_reg_node_struct);
     generator_reg_node_ptr node = flint_malloc(node_size);
-    generator_reg_node_init(node, g->size, expr, g->expressions_len);
+    generator_reg_node_init(node, g->size, g->expressions_len);
     if (g->size)
     {
         g->tail->next = node;
@@ -164,7 +166,7 @@ gen_add(generator_reg_t g, expr_ptr expression, slong exponent)
      * in the registry of expressions.
      * Then get the expression index associated with that node.
      */
-    reg_struct_ptr expression_registry_node = expression->userdata;
+    reg_node_ptr expression_registry_node = expression->userdata;
     slong idx = expression_registry_node->index;
 
     /*
@@ -192,56 +194,57 @@ gen_close(generator_reg_t g)
 }
 
 
+/*
+ * Convenience functions for building generators.
+ * These are to be used only internally to this module.
+ */
 
-/* convenience functions for building generators */
+void gen_add_p0_bar(generator_reg_t g, tkf91_expressions_ptr p, slong k);
+void gen_add_gamma_0(generator_reg_t g, tkf91_expressions_ptr p, slong k);
+void gen_add_gamma_1(generator_reg_t g, tkf91_expressions_ptr p, slong k);
+void gen_add_zeta_1(generator_reg_t g, tkf91_expressions_ptr p, slong k);
+void gen_add_zeta_2(generator_reg_t g, tkf91_expressions_ptr p, slong k);
+void gen_add_p1(generator_reg_t g, tkf91_expressions_ptr p, slong k);
+void gen_add_p1_bar(generator_reg_t g, tkf91_expressions_ptr p, slong k);
 
-int gen_add_p0_bar(generator_reg_t g, basis_expressions_ptr p, slong k) {
+void gen_add_p0_bar(generator_reg_t g, tkf91_expressions_ptr p, slong k) {
     gen_add(g, p->mu_beta, k);
 }
 
-int gen_add_gamma_0(generator_reg_t g, basis_expressions_ptr p, slong k) {
+void gen_add_gamma_0(generator_reg_t g, tkf91_expressions_ptr p, slong k) {
     gen_add(g, p->one_minus_lambda_div_mu, k);
 }
 
-int gen_add_gamma_1(generator_reg_t g, basis_expressions_ptr p, slong k) {
+void gen_add_gamma_1(generator_reg_t g, tkf91_expressions_ptr p, slong k) {
     gen_add(g, p->one_minus_lambda_div_mu, k);
     gen_add(g, p->lambda_div_mu, k);
 }
 
-int gen_add_zeta_1(generator_reg_t g, basis_expressions_ptr p, slong k) {
+void gen_add_zeta_1(generator_reg_t g, tkf91_expressions_ptr p, slong k) {
     gen_add(g, p->one_minus_lambda_beta, k);
 }
 
-int gen_add_zeta_2(generator_reg_t g, basis_expressions_ptr p, slong k) {
+void gen_add_zeta_2(generator_reg_t g, tkf91_expressions_ptr p, slong k) {
     gen_add(g, p->one_minus_lambda_beta, k);
     gen_add(g, p->lambda_beta, k);
 }
 
-int gen_add_p1(generator_reg_t g, basis_expressions_ptr p, slong k) {
+void gen_add_p1(generator_reg_t g, tkf91_expressions_ptr p, slong k) {
     gen_add(g, p->exp_neg_mu_tau, k);
     gen_add(g, p->one_minus_lambda_beta, k);
 }
 
-int gen_add_p1_bar(generator_reg_t g, basis_expressions_ptr p, slong k) {
+void gen_add_p1_bar(generator_reg_t g, tkf91_expressions_ptr p, slong k) {
     gen_add(g, p->the_long_beta_expression, k);
     gen_add(g, p->one_minus_lambda_beta, k);
 }
 
 
-typedef struct
-{
-    int m1_00;
-    int m0_10;
-    int m0_i0_incr[4];
-    int m2_01;
-    int m2_0j_incr[4];
-    int c0_incr[4];
-    int c1_match_incr[4];
-    int c1_mismatch_incr[4];
-    int c2_incr[4];
-} named_generators_struct;
 
-typedef named_generators_struct * named_generators_ptr;
+
+
+/* This convenience function is used only internally to this module. */
+int tenacious_strict_gt(expr_t a, expr_t b);
 
 int
 tenacious_strict_gt(expr_t a, expr_t b)
@@ -249,6 +252,7 @@ tenacious_strict_gt(expr_t a, expr_t b)
     arb_t x, y;
     int disjoint;
     int result;
+    slong level;
 
     /* check identity of pointers */
     if (a == b)
@@ -258,6 +262,7 @@ tenacious_strict_gt(expr_t a, expr_t b)
 
     /* evaluate at increasing levels of precision until there is no overlap */
     disjoint = 0;
+    result = 0;
     for (level = 0; level < EXPR_CACHE_CAP && !disjoint; level++)
     {
         arb_init(x);
@@ -281,11 +286,14 @@ tenacious_strict_gt(expr_t a, expr_t b)
     return result;
 }
 
-int create_generators(
-        named_generators_ptr x,
+
+void
+named_generators_init(
+        named_generators_t x,
         generator_reg_t g,
         tkf91_expressions_t p,
-        slong *A, nrows)
+        slong *A, slong Alen,
+        slong *B, slong Blen)
 {
     /*
      * The linear integer combinations defining the generators themselves
@@ -296,7 +304,12 @@ int create_generators(
      * and an expression related to the birth/death indel parameters.
      */
     slong i, j;
-    slong match_flag;
+
+    if (!Alen || !Blen)
+    {
+        flint_printf("expected both sequences to have length at least 1\n");
+        abort();
+    }
 
     /* M1(0, 0) = gamma_0 * zeta_1 */
     gen_open(g, &(x->m1_00));
@@ -309,7 +322,7 @@ int create_generators(
     gen_open(g, &(x->m0_10));
     gen_add_gamma_1(g, p, 1);
     gen_add_zeta_1(g, p, 1);
-    gen_add(g, p->pi+A[0], 1);
+    gen_add(g, p->pi[A[0]], 1);
     gen_add_p0_bar(g, p, 1);
     gen_close(g);
 
@@ -318,7 +331,7 @@ int create_generators(
     for (i = 0; i < 4; i++)
     {
         gen_open(g, x->m0_i0_incr+i);
-        gen_add(g, p->pi+i, 1);
+        gen_add(g, p->pi[i], 1);
         gen_add_p0_bar(g, p, 1);
         gen_close(g);
     }
@@ -328,7 +341,7 @@ int create_generators(
     gen_open(g, &(x->m2_01));
     gen_add_gamma_0(g, p, 1);
     gen_add_zeta_2(g, p, 1);
-    gen_add(g, p->pi+B[0], 1);
+    gen_add(g, p->pi[B[0]], 1);
     gen_close(g);
 
     /* M2(0, j>1) = pi_{B_i} * \bar{x} M2(0, i-1) */
@@ -336,7 +349,7 @@ int create_generators(
     for (j = 0; j < 4; j++)
     {
         gen_open(g, x->m2_0j_incr+j);
-        gen_add(g, p->pi+j, 1);
+        gen_add(g, p->pi[j], 1);
         gen_close(g);
     }
 
@@ -344,8 +357,8 @@ int create_generators(
     for (i = 0; i < 4; i++)
     {
         gen_open(g, x->c0_incr+i);
-        gen_add(g, p->lamda_div_mu, 1);
-        gen_add(g, p->pi+i, 1);
+        gen_add(g, p->lambda_div_mu, 1);
+        gen_add(g, p->pi[i], 1);
         gen_add_p0_bar(g, p, 1);
         gen_close(g);
     }
@@ -366,19 +379,19 @@ int create_generators(
          * vs
          * pi_{bj} * \bar{p1}
          */
-        expr_mul(tmp_rhs, p->pi+j, tmp_p1_bar);
+        expr_mul(tmp_rhs, p->pi[j], tmp_p1_bar);
 
         /* generator for matching states */
         gen_open(g, x->c1_match_incr+j);
-        expr_mul(tmp_lhs, p->match+j, tmp_p1);
-        if (tenacious_strict_gt(lhs, rhs))
+        expr_mul(tmp_lhs, p->match[j], tmp_p1);
+        if (tenacious_strict_gt(tmp_lhs, tmp_rhs))
         {
-            gen_add(g, p->match+j, 1);
+            gen_add(g, p->match[j], 1);
             gen_add_p1(g, p, 1);
         }
         else
         {
-            gen_add(g, p->pi+j, 1);
+            gen_add(g, p->pi[j], 1);
             gen_add_p1_bar(g, p, 1);
         }
         expr_clear(tmp_lhs);
@@ -386,15 +399,15 @@ int create_generators(
 
         /* generator for mismatched states */
         gen_open(g, x->c1_mismatch_incr+j);
-        expr_mul(tmp_lhs, p->mismatch+j, tmp_p1);
-        if (tenacious_strict_gt(lhs, rhs))
+        expr_mul(tmp_lhs, p->mismatch[j], tmp_p1);
+        if (tenacious_strict_gt(tmp_lhs, tmp_rhs))
         {
-            gen_add(g, p->mismatch+j, 1);
+            gen_add(g, p->mismatch[j], 1);
             gen_add_p1(g, p, 1);
         }
         else
         {
-            gen_add(g, p->pi+j, 1);
+            gen_add(g, p->pi[j], 1);
             gen_add_p1_bar(g, p, 1);
         }
         expr_clear(tmp_lhs);
@@ -410,10 +423,14 @@ int create_generators(
     for (i = 0; i < 4; i++)
     {
         gen_open(g, x->c2_incr+i);
-        gen_add(g, p->pi+i, 1);
-        gen_add(g, p->lamda_beta, 1);
+        gen_add(g, p->pi[i], 1);
+        gen_add(g, p->lambda_beta, 1);
         gen_close(g);
     }
 }
 
-
+void
+named_generators_clear(named_generators_t x)
+{
+    UNUSED(x);
+}

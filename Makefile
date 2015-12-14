@@ -14,13 +14,15 @@ CFLAGS+= -g
 
 TEST_EXECUTABLES=bin/t-factor_refinement \
 		 bin/t-femtocas \
-		 bin/t-expressions
+		 bin/t-expressions \
+		 bin/t-generators
 
 CHECKS=check_factor_refinement \
        check_femtocas \
-       check_expressions
+       check_expressions \
+       check_generators
 
-all: factor_refinement.o femtocas.o expressions.o
+all: factor_refinement.o femtocas.o expressions.o generators.o
 
 # force the test scripts to be built by listing them as requirements
 tests: $(TEST_EXECUTABLES)
@@ -72,11 +74,29 @@ bin/t-expressions: tests/t-expressions.c expressions.o
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
 
 
+# generators
+
+check_generators: bin/t-generators
+	$(ARB_LD_LIBRARY) valgrind bin/t-generators
+
+generators.o:
+	$(CC) generators.c -c $(ARB_INCLUDES) $(CFLAGS) \
+		femtocas.o expressions.o \
+		-lflint -lgmp -larb
+
+bin/t-generators: tests/t-generators.c generators.o
+	$(CC) tests/t-generators.c generators.o femtocas.o expressions.o \
+		-o bin/t-generators \
+		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
+
+
 clean:
 	rm -f *.o
 	rm -f factor_refinement.o
 	rm -f femtocas.o
 	rm -f expressions.o
+	rm -f generators.o
 	rm -f bin/t-factor_refinement
 	rm -f bin/t-femtocas
 	rm -f bin/t-expressions
+	rm -f bin/t-generators
