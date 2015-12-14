@@ -1,5 +1,6 @@
 #include "flint/flint.h"
 #include "flint/fmpq.h"
+#include "femtocas.h"
 #include "expressions.h"
 
 int main()
@@ -34,6 +35,24 @@ int main()
 
         reg_init(reg);
         tkf91_expressions_init(p, reg, lambda, mu, tau, pi);
+
+        /* evaluate all of the registered expressions */
+        {
+            slong level = 4;
+            arb_t x;
+            arb_init(x);
+            reg_node_ptr node;
+            for (node = reg->head; node->next; node = node->next)
+            {
+                expr_ptr expr = node->p;
+                expr_eval(x, expr, level);
+                /* expr_print(expr); */
+                /* flint_printf(" : "); */
+                /* arb_print(x); */
+                /* flint_printf("\n"); */
+            }
+            arb_clear(x);
+        }
 
         reg_clear(reg);
         tkf91_expressions_clear(p);
