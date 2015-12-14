@@ -22,7 +22,7 @@ int main()
         fmpq_init(mu);
         fmpq_init(tau);
 
-        /* lambda, mu, t = 1, 1/2, 1/10 */
+        /* lambda, mu, tau = 1, 1/2, 1/10 */
         fmpq_set_si(lambda, 1, 1);
         fmpq_set_si(mu, 1, 2);
         fmpq_set_si(tau, 1, 10);
@@ -42,7 +42,7 @@ int main()
             arb_t x;
             arb_init(x);
             reg_node_ptr node;
-            for (node = reg->head; node->next; node = node->next)
+            for (node = reg->head; node; node = node->next)
             {
                 expr_ptr expr = node->p;
                 expr_eval(x, expr, level);
