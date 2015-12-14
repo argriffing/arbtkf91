@@ -38,13 +38,26 @@
 #define EXPR_CACHE_CAP 30
 
 
-typedef void *expr_data_ptr;
+/*
+ * Forward declaration of expr_struct_tag to allow declaration of expr_ptr.
+ * Technically this section could be combined with the next section,
+ * but keeping them separate maintains some design flexibility.
+ * This section will always stay in the header file, whereas the section
+ * that defines the expr_struct could possibly be moved into the C file.
+ */
+struct expr_struct_tag;
+typedef struct expr_struct_tag * expr_ptr;
 
+/*
+ * We will define the expr_struct in the header file as well.
+ * The idea is to let users create these on the stack,
+ * rather than requiring that they be created on the heap.
+ */
+typedef void *expr_data_ptr;
 typedef void (*expr_clear_fn)(expr_data_ptr);
 typedef void (*expr_print_fn)(expr_data_ptr);
 typedef void (*expr_eval_fn)(arb_t, expr_data_ptr, slong);
-
-typedef struct
+typedef struct expr_struct_tag
 {
     arb_struct cache[EXPR_CACHE_CAP];
     slong cachesize;
@@ -54,14 +67,13 @@ typedef struct
     expr_eval_fn eval;
     void *userdata;
 } expr_struct;
-
 typedef expr_struct expr_t[1];
-typedef expr_struct * expr_ptr;
 
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 /* create the expression */
 

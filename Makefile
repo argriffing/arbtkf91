@@ -1,5 +1,6 @@
 ARB_INCLUDES=-I. -I../arb -I/usr/local/include/flint
-ARB_LD_LIBRARY=LD_LIBRARY_PATH=/usr/local/bin:../arb/build
+ARB_LIBS=-L../arb
+ARB_LD_LIBRARY=LD_LIBRARY_PATH=/usr/local/bin:../arb
 
 CC=gcc
 DEFS=
@@ -12,7 +13,7 @@ CFLAGS+= $(WARNINGS) -O3 $(DEFS) $(GLOBAL_DEFS) -march=native
 all: factor_refinement.o femtocas.o
 
 # force the test scripts to be built by listing them as requirements
-tests: tests/t-factor_refinement tests/t-femtocas
+tests: bin/t-factor_refinement bin/t-femtocas
 
 # run the test scripts
 check: check_factor_refinement check_femtocas
@@ -26,7 +27,7 @@ check_factor_refinement: bin/t-factor_refinement
 factor_refinement.o:
 	$(CC) factor_refinement.c -c $(CFLAGS) -lflint -lgmp
 
-tests/t-factor_refinement: tests/t-factor_refinement.c factor_refinement.o
+bin/t-factor_refinement: tests/t-factor_refinement.c factor_refinement.o
 	$(CC) tests/t-factor_refinement.c factor_refinement.o \
 		-o bin/t-factor_refinement \
 		-I. $(CFLAGS) -lflint -lgmp
@@ -38,12 +39,12 @@ check_femtocas: bin/t-femtocas
 	$(ARB_LD_LIBRARY) bin/t-femtocas
 
 femtocas.o:
-	$(CC) femtocas.c -c $(ARB_INCLUDES) $(CFLAGS) -lflint -lgmp
+	$(CC) femtocas.c -c $(ARB_INCLUDES) $(CFLAGS) -lflint -lgmp -larb
 
-tests/t-femtocas: tests/t-femtocas.c femtocas.o
+bin/t-femtocas: tests/t-femtocas.c femtocas.o
 	$(CC) tests/t-femtocas.c femtocas.o \
 		-o bin/t-femtocas \
-		$(ARB_INCLUDES) $(CFLAGS) -lflint -lgmp
+		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
 
 
 clean:
