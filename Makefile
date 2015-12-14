@@ -9,6 +9,9 @@ WARNINGS=-Wall  -Wunused-parameter -Wredundant-decls  -Wreturn-type  -Wswitch-de
 
 CFLAGS+= $(WARNINGS) -O3 $(DEFS) $(GLOBAL_DEFS) -march=native
 
+# add a flag for valgrind
+CFLAGS+= -g
+
 
 all: factor_refinement.o femtocas.o
 
@@ -22,7 +25,7 @@ check: check_factor_refinement check_femtocas
 # factor refinement
 
 check_factor_refinement: bin/t-factor_refinement
-	bin/t-factor_refinement
+	valgrind bin/t-factor_refinement
 
 factor_refinement.o:
 	$(CC) factor_refinement.c -c $(CFLAGS) -lflint -lgmp
@@ -36,7 +39,7 @@ bin/t-factor_refinement: tests/t-factor_refinement.c factor_refinement.o
 # femtocas
 
 check_femtocas: bin/t-femtocas
-	$(ARB_LD_LIBRARY) bin/t-femtocas
+	$(ARB_LD_LIBRARY) valgrind bin/t-femtocas
 
 femtocas.o:
 	$(CC) femtocas.c -c $(ARB_INCLUDES) $(CFLAGS) -lflint -lgmp -larb
