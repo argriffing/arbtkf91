@@ -12,14 +12,21 @@ CFLAGS+= $(WARNINGS) -O3 $(DEFS) $(GLOBAL_DEFS) -march=native
 # add a flag for valgrind
 CFLAGS+= -g
 
+TEST_EXECUTABLES=bin/t-factor_refinement \
+		 bin/t-femtocas \
+		 bin/t-expressions
 
-all: factor_refinement.o femtocas.o
+CHECKS=check_factor_refinement \
+       check_femtocas \
+       check_expressions
+
+all: factor_refinement.o femtocas.o expressions.o
 
 # force the test scripts to be built by listing them as requirements
-tests: bin/t-factor_refinement bin/t-femtocas
+tests: $(TEST_EXECUTABLES)
 
 # run the test scripts
-check: check_factor_refinement check_femtocas
+check: $(CHECKS)
 
 
 # factor refinement
@@ -50,9 +57,26 @@ bin/t-femtocas: tests/t-femtocas.c femtocas.o
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
 
 
+# expressions
+
+check_expressions: bin/t-expressions
+	$(ARB_LD_LIBRARY) valgrind bin/t-expressions
+
+expressions.o:
+	$(CC) expressions.c -c $(ARB_INCLUDES) $(CFLAGS) femtocas.o \
+		-lflint -lgmp -larb
+
+bin/t-expressions: tests/t-expressions.c expressions.o
+	$(CC) tests/t-expressions.c expressions.o femtocas.o \
+		-o bin/t-expressions \
+		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
+
+
 clean:
 	rm -f *.o
 	rm -f factor_refinement.o
 	rm -f femtocas.o
+	rm -f expressions.o
 	rm -f bin/t-factor_refinement
 	rm -f bin/t-femtocas
+	rm -f bin/t-expressions

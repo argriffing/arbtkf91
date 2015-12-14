@@ -26,6 +26,7 @@
 #include "flint/flint.h"
 #include "flint/fmpz.h"
 #include "flint/fmpq.h"
+#include "arb.h"
 
 /*
  * We want to maintain a consistent interface to allow using function pointers,
