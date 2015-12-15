@@ -50,7 +50,7 @@ bin/t-factor_refinement: tests/t-factor_refinement.c factor_refinement.o
 check_femtocas: bin/t-femtocas
 	$(ARB_LD_LIBRARY) valgrind bin/t-femtocas
 
-femtocas.o:
+femtocas.o: femtocas.c
 	$(CC) femtocas.c -c $(ARB_INCLUDES) $(CFLAGS) -lflint -lgmp -larb
 
 bin/t-femtocas: tests/t-femtocas.c femtocas.o
@@ -64,7 +64,7 @@ bin/t-femtocas: tests/t-femtocas.c femtocas.o
 check_expressions: bin/t-expressions
 	$(ARB_LD_LIBRARY) valgrind bin/t-expressions
 
-expressions.o:
+expressions.o: expressions.c
 	$(CC) expressions.c -c $(ARB_INCLUDES) $(CFLAGS) femtocas.o \
 		-lflint -lgmp -larb
 
@@ -79,7 +79,7 @@ bin/t-expressions: tests/t-expressions.c expressions.o
 check_generators: bin/t-generators
 	$(ARB_LD_LIBRARY) valgrind bin/t-generators
 
-generators.o:
+generators.o: generators.c
 	$(CC) generators.c -c $(ARB_INCLUDES) $(CFLAGS) \
 		femtocas.o expressions.o \
 		-lflint -lgmp -larb
@@ -90,12 +90,42 @@ bin/t-generators: tests/t-generators.c generators.o
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
 
 
+# run an example
+
+example1: bin/arbtkf91
+	$(ARB_LD_LIBRARY) bin/arbtkf91 \
+		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
+		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
+		--lambda-num 1 --lambda-den 1 \
+		--mu-num 2 --mu-den 1 \
+		--tau-num 1 --tau-den 10 \
+		--pa-num 1 --pa-den 4 \
+		--pc-num 1 --pc-den 4 \
+		--pg-num 1 --pg-den 4 \
+		--pt-num 1 --pt-den 4
+
+example2: bin/arbtkf91
+	$(ARB_LD_LIBRARY) bin/arbtkf91 \
+		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
+		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
+		--lambda-num 1 --lambda-den 1 \
+		--mu-num 2 --mu-den 1 \
+		--tau-num 1 --tau-den 10 \
+		--pa-num 27 --pa-den 100 \
+		--pc-num 24 --pc-den 100 \
+		--pg-num 26 --pg-den 100 \
+		--pt-num 23 --pt-den 100
+
+bin/arbtkf91: arbtkf91.c
+	$(CC) arbtkf91.c femtocas.o expressions.o generators.o \
+		-o bin/arbtkf91 \
+		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
+
+
+
 clean:
 	rm -f *.o
-	rm -f factor_refinement.o
-	rm -f femtocas.o
-	rm -f expressions.o
-	rm -f generators.o
+	rm -f bin/example
 	rm -f bin/t-factor_refinement
 	rm -f bin/t-femtocas
 	rm -f bin/t-expressions

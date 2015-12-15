@@ -1,10 +1,4 @@
 /*
- * -I/usr/local/include/flint -lflint
- */
-
-/* this is kind of ridiculous... */
-/* but parsing sucks so I want to be super explicit */
-/*
 --sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA
 --sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA
 --lambda-num 1 --lambda-den 1 --mu-num 2 --mu-den 1 --tau-num 1 --tau-den 10 --pa-num 1 --pa-den 4 --pc-num 1 --pc-den 4 --pg-num 1 --pg-den 4 --pt-num 1 --pt-den 4
