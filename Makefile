@@ -93,7 +93,7 @@ bin/t-generators: tests/t-generators.c generators.o
 # run an example
 
 example1: bin/arbtkf91
-	$(ARB_LD_LIBRARY) bin/arbtkf91 \
+	$(ARB_LD_LIBRARY) valgrind bin/arbtkf91 \
 		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
 		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
 		--lambda-num 1 --lambda-den 1 \
@@ -105,7 +105,7 @@ example1: bin/arbtkf91
 		--pt-num 1 --pt-den 4
 
 example2: bin/arbtkf91
-	$(ARB_LD_LIBRARY) bin/arbtkf91 \
+	$(ARB_LD_LIBRARY) valgrind bin/arbtkf91 \
 		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
 		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
 		--lambda-num 1 --lambda-den 1 \
