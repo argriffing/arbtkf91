@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 
 #include "flint/flint.h"
 #include "flint/fmpq.h"
@@ -299,9 +300,9 @@ void tkf91_dynamic_programming(named_double_generators_t g,
         else
         {
             istart = nrows - 1;
-            jstart = k;
+            jstart = k - (nrows - 1);
         }
-        lstart = nrows - istart;
+        lstart = nrows - 1 + jstart - istart;
 
         /* iterate over entries of the diagonal */
         i = istart;
@@ -311,6 +312,20 @@ void tkf91_dynamic_programming(named_double_generators_t g,
         slong nta, ntb;
         while (0 <= i && i < nrows && 0 <= j && j < ncols)
         {
+            /* check some invariants */
+            if (k != i + j)
+            {
+                flint_printf("wavefront indexing problem ");
+                flint_printf("i=%wd j=%wd k=%wd\n", i, j, k);
+                abort();
+            }
+            if (l != nrows - 1 + j - i)
+            {
+                flint_printf("wavefront indexing problem ");
+                flint_printf("i=%wd j=%wd l=%wd\n", i, j, l);
+                abort();
+            }
+
             cell = wavefront_mat_entry(wavefront, k, l);
             if (i == 0 && j == 0)
             {
@@ -369,7 +384,10 @@ void tkf91_dynamic_programming(named_double_generators_t g,
                 }
             }
             flint_printf("%wd %wd %wd %wd ", i, j, k, l);
-            flint_printf("%lf %lf %lf\n", cell->m0, cell->m1, cell->m2);
+            flint_printf("%g %g %g\n",
+                    exp(cell->m0),
+                    exp(cell->m1),
+                    exp(cell->m2));
             l += 2;
             i--;
             j++;
@@ -404,7 +422,7 @@ run(const char *strA, const char *strB, const user_params_t params)
     _fill_sequence_vector(A, strA, szA);
 
     szB = strlen(strB);
-    B = flint_malloc(szA * sizeof(slong));
+    B = flint_malloc(szB * sizeof(slong));
     _fill_sequence_vector(B, strB, szB);
 
     reg_init(reg);
@@ -438,12 +456,15 @@ run(const char *strA, const char *strB, const user_params_t params)
         arb_mat_set_fmpz_mat(G, mat);
 
         /* compute the expression logs */
+        arb_t x;
+        arb_init(x);
         arb_mat_init(expression_logs, expression_count, 1);
         for (i = 0; i < expression_count; i++)
         {
-            expr_eval(arb_mat_entry(expression_logs, i, 0),
-                    expressions_table[i], level);
+            expr_eval(x, expressions_table[i], level);
+            arb_log(arb_mat_entry(expression_logs, i, 0), x, prec);
         }
+        arb_clear(x);
 
         /* compute the generator logs */
         arb_mat_init(generator_logs, generator_count, 1);
@@ -552,5 +573,6 @@ main(int argc, char *argv[])
 
     user_params_clear(p);
 
+    flint_cleanup();
     return 0;
 }

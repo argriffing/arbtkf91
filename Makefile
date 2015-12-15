@@ -2,6 +2,8 @@ ARB_INCLUDES=-I. -I../arb -I/usr/local/include/flint
 ARB_LIBS=-L../arb
 ARB_LD_LIBRARY=LD_LIBRARY_PATH=/usr/local/bin:../arb
 
+VALGRIND=valgrind --leak-check=full --show-leak-kinds=all
+
 CC=gcc
 DEFS=
 GLOBAL_DEFS=
@@ -93,9 +95,9 @@ bin/t-generators: tests/t-generators.c generators.o
 # run an example
 
 example1: bin/arbtkf91
-	$(ARB_LD_LIBRARY) valgrind bin/arbtkf91 \
-		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
-		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
+	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
+		--sequence-1 ACGATA \
+		--sequence-2 AGTGGTA \
 		--lambda-num 1 --lambda-den 1 \
 		--mu-num 2 --mu-den 1 \
 		--tau-num 1 --tau-den 10 \
@@ -105,7 +107,7 @@ example1: bin/arbtkf91
 		--pt-num 1 --pt-den 4
 
 example2: bin/arbtkf91
-	$(ARB_LD_LIBRARY) valgrind bin/arbtkf91 \
+	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
 		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
 		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
 		--lambda-num 1 --lambda-den 1 \
@@ -119,7 +121,7 @@ example2: bin/arbtkf91
 bin/arbtkf91: arbtkf91.c
 	$(CC) arbtkf91.c femtocas.o expressions.o generators.o \
 		-o bin/arbtkf91 \
-		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
+		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb -lm
 
 
 
