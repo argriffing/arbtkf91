@@ -97,9 +97,9 @@ int main()
                     generator_reg_generators_len(genreg),
                     generator_reg_expressions_len(genreg));
             generator_reg_get_matrix(mat, genreg);
-            fmpz_mat_print_pretty(mat);
+            /* fmpz_mat_print_pretty(mat); */
+            /* flint_printf("\n\n"); */
             fmpz_mat_clear(mat);
-            flint_printf("\n\n");
         }
 
         reg_clear(reg);

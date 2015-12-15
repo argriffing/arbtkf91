@@ -77,6 +77,7 @@ void reg_node_clear(reg_node_t x);
 void reg_init(reg_ptr x);
 void reg_clear(reg_ptr x);
 expr_ptr reg_new(reg_ptr x);
+expr_ptr * reg_vec(reg_ptr x);
 
 
 void tkf91_expressions_init(

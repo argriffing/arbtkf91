@@ -80,6 +80,21 @@ reg_new(reg_ptr x)
     return expr;
 }
 
+expr_ptr *
+reg_vec(reg_ptr x)
+{
+    slong i;
+    expr_ptr * vec = flint_malloc(sizeof(expr_ptr) * x->size);
+    reg_node_ptr node;
+    i = 0;
+    for (node = x->head; node; node = node->next)
+    {
+        vec[i] = node->p;
+        i++;
+    }
+    return vec;
+}
+
 
 /* the rational intermediates struct should be used only within the module. */
 typedef struct
