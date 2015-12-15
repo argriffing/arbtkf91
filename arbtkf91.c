@@ -6,10 +6,25 @@
 #include "flint/fmpq.h"
 #include "flint/fmpz.h"
 #include "flint/fmpz_mat.h"
+
+#include "arb.h"
+#include "arb_mat.h"
+
 #include "femtocas.h"
 #include "expressions.h"
 #include "generators.h"
 
+/*
+ * Breadcrumbs for the traceback stage of dynamic programming may indicate
+ * that multiple paths have identical scores.
+ * To show that multiple traceback continuations from a partial solution
+ * are equally valid, use a bitwise combination of these flags.
+ */
+#define CRUMB_TOP  0b00000001
+#define CRUMB_DIAG 0b00000010
+#define CRUMB_LEFT 0b00000100
+
+typedef unsigned char breadcrumb_t;
 
 typedef struct
 {
@@ -64,6 +79,56 @@ user_params_print(const user_params_t p)
 
 
 
+typedef struct
+{
+    double m1_00;
+    double m0_10;
+    double m0_i0_incr[4];
+    double m2_01;
+    double m2_0j_incr[4];
+    double c0_incr[4];
+    double c1_match_incr[4];
+    double c1_mismatch_incr[4];
+    double c2_incr[4];
+} named_double_generators_struct;
+typedef named_double_generators_struct named_double_generators_t[1];
+
+double _doublify(slong i, arb_mat_t m);
+void doublify_named_generators(
+        named_double_generators_t h,
+        named_generators_t g,
+        arb_mat_t m);
+
+/* helper function for converting the generator array to double precision */
+/* m should be a column vector */
+double
+_doublify(slong i, arb_mat_t m)
+{
+    arb_ptr p = arb_mat_entry(m, i, 0);
+    return arf_get_d(arb_midref(p), ARF_RND_NEAR);
+}
+
+/* m should be a column vector of per-generator values */
+void
+doublify_named_generators(
+        named_double_generators_t h,
+        named_generators_t g,
+        arb_mat_t m)
+{
+    slong i;
+    h->m1_00 = _doublify(g->m1_00, m);
+    h->m0_10 = _doublify(g->m0_10, m);
+    h->m2_01 = _doublify(g->m2_01, m);
+    for (i = 0; i < 4; i++)
+    {
+        h->m0_i0_incr[i] = _doublify(g->m0_i0_incr[i], m);
+        h->m2_0j_incr[i] = _doublify(g->m2_0j_incr[i], m);
+        h->c0_incr[i] = _doublify(g->c0_incr[i], m);
+        h->c1_match_incr[i] = _doublify(g->c1_match_incr[i], m);
+        h->c1_mismatch_incr[i] = _doublify(g->c1_mismatch_incr[i], m);
+        h->c2_incr[i] = _doublify(g->c2_incr[i], m);
+    }
+}
 
 
 /*
@@ -91,60 +156,320 @@ _fill_sequence_vector(slong *v, const char *str, slong n)
 }
 
 
+/*
+ * This placeholder uses only a double precision log likelihood value
+ * for each entry in the table.
+ */
+typedef struct
+{
+    double m0;
+    double m1;
+    double m2;
+} wavefront_value_struct;
+typedef wavefront_value_struct * wavefront_value_ptr;
 
-int run(const char *strA, const char *strB, const user_params_t params);
 
-int
+/*
+ * Assume that the access pattern needs only three physical rows.
+ */
+typedef struct
+{
+    wavefront_value_ptr data;
+    slong n;
+} wavefront_mat_struct;
+typedef wavefront_mat_struct wavefront_mat_t[1];
+
+void wavefront_mat_init(wavefront_mat_t mat, slong n);
+void wavefront_mat_clear(wavefront_mat_t mat);
+wavefront_value_ptr wavefront_mat_entry(wavefront_mat_t mat, slong k, slong l);
+
+void
+wavefront_mat_init(wavefront_mat_t mat, slong n)
+{
+    mat->data = malloc(sizeof(wavefront_value_struct) * 3 * n);
+    mat->n = n;
+}
+
+void
+wavefront_mat_clear(wavefront_mat_t mat)
+{
+    free(mat->data);
+}
+
+wavefront_value_ptr
+wavefront_mat_entry(wavefront_mat_t mat, slong k, slong l)
+{
+    return mat->data + (k % 3)*mat->n + l;
+}
+
+
+double max2(double a, double b);
+double max3(double a, double b, double c);
+
+double
+max2(double a, double b)
+{
+    return a > b ? a : b;
+}
+
+double
+max3(double a, double b, double c)
+{
+    return max2(a, max2(b, c));
+}
+
+
+
+void tkf91_dynamic_programming(named_double_generators_t g,
+        slong *A, slong szA,
+        slong *B, slong szB);
+
+void tkf91_dynamic_programming(named_double_generators_t g,
+        slong *A, slong szA,
+        slong *B, slong szB)
+{
+    /*
+     * Make the dynamic programming table.
+     *
+     * Inputs:
+     *  - a structure whose member variables store generator indices
+     *  - a list that maps expression indices to expression objects
+     *  - a matrix G such that G_{ij} indicates the integer exponent of
+     *    expression j in generator i
+     *  - the two sequences to be aligned, as integer arrays
+     *  - the two sequence lengths
+     *
+     * The dynamic programming can use a trick that
+     * packs three diagonals into a table with two rows,
+     * using an idea like the following diagram.
+     * Notice that if you are iterating through rows of that diagram
+     * using an algorithm that needs to track the most recent three rows,
+     * the sparsity of the entries in that diagram allow you to use
+     * a physical buffer of only two rows.
+     *
+     *    |    |  0 |  1 |  2 |  3 |  4 |  5
+     *  --|----|----|----|----|----|----|---
+     *  0 |    |    |    | 00 |    |    |          
+     *  --|----|----|----|----|----|----|---
+     *  1 |    |    | 10 |    | 01 |    |   
+     *  --|----|----|----|----|----|----|---
+     *  2 |    | 20 |    | 11 |    | 02 |   
+     *  --|----|----|----|----|----|----|---
+     *  3 |    |    | 21 |    | 12 |    | 03
+     *  --|----|----|----|----|----|----|---
+     *  4 |    |    |    | 22 |    | 13 |   
+     *  --|----|----|----|----|----|----|---
+     *  5 |    |    |    |    | 23 |    |   
+     *
+     */
+
+    /*
+     * Define the matrix to be used for the traceback.
+     * The number of rows is one greater than the length of the first sequence,
+     * and the number of columns is one greater than the length of the second
+     * sequence.
+     */
+    slong nrows = szA + 1;
+    slong ncols = szB + 1;
+    breadcrumb_t * crumb_matrix = calloc(nrows * ncols, sizeof(breadcrumb_t));
+
+    /* define the wavefront matrix */
+    wavefront_mat_t wavefront;
+    wavefront_mat_init(wavefront, nrows + ncols - 1);
+
+    /*
+     * Let M_{ij} be the matrix created for traceback.
+     * Let R_{kl} be the 'logical' wavefront matrix.
+     * Then
+     *  k = i + j
+     *  l = nrows - 1 + j - i
+     */
+
+
+    /* iterate over diagonals of the dynamic programming matrix */
+    slong i, j, k, l;
+    slong istart, jstart, lstart;
+    for (k = 0; k < nrows + ncols - 1; k++)
+    {
+        if (k < nrows)
+        {
+            istart = k;
+            jstart = 0;
+        }
+        else
+        {
+            istart = nrows - 1;
+            jstart = k;
+        }
+        lstart = nrows - istart;
+
+        /* iterate over entries of the diagonal */
+        i = istart;
+        j = jstart;
+        l = lstart;
+        wavefront_value_ptr cell, other, p0, p1, p2;
+        slong nta, ntb;
+        while (0 <= i && i < nrows && 0 <= j && j < ncols)
+        {
+            cell = wavefront_mat_entry(wavefront, k, l);
+            if (i == 0 && j == 0)
+            {
+                cell->m0 = -INFINITY;
+                cell->m1 = g->m1_00;
+                cell->m2 = -INFINITY;
+            }
+            else if (i == 1 && j == 0)
+            {
+                cell->m0 = g->m0_10;
+                cell->m1 = -INFINITY;
+                cell->m2 = -INFINITY;
+            }
+            else if (i == 0 && j == 1)
+            {
+                cell->m0 = -INFINITY;
+                cell->m1 = -INFINITY;
+                cell->m2 = g->m2_01;
+            }
+            else
+            {
+                if (i == 0)
+                {
+                    ntb = B[j - 1];
+                    other = wavefront_mat_entry(wavefront, k-1, l-1);
+                    cell->m0 = -INFINITY;
+                    cell->m1 = -INFINITY;
+                    cell->m2 = other->m2 + g->m2_0j_incr[ntb];
+                }
+                else if (j == 0)
+                {
+                    nta = A[i - 1];
+                    other = wavefront_mat_entry(wavefront, k-1, l+1);
+                    cell->m0 = other->m0 + g->m0_i0_incr[nta];
+                    cell->m1 = -INFINITY;
+                    cell->m2 = -INFINITY;
+                }
+                else
+                {
+                    nta = A[i - 1];
+                    ntb = B[j - 1];
+                    p0 = wavefront_mat_entry(wavefront, k-1, l+1);
+                    p1 = wavefront_mat_entry(wavefront, k-2, l-0);
+                    p2 = wavefront_mat_entry(wavefront, k-1, l-1);
+                    cell->m0 = max3(p0->m0, p0->m1, p0->m2) + g->c0_incr[nta];
+                    cell->m1 = max3(p1->m0, p1->m1, p1->m2);
+                    if (nta == ntb)
+                    {
+                        cell->m1 += g->c1_match_incr[ntb];
+                    }
+                    else
+                    {
+                        cell->m1 += g->c1_mismatch_incr[ntb];
+                    }
+                    cell->m2 = max2(p2->m1, p2->m2) + g->c2_incr[ntb];
+                }
+            }
+            flint_printf("%wd %wd %wd %wd ", i, j, k, l);
+            flint_printf("%lf %lf %lf\n", cell->m0, cell->m1, cell->m2);
+            l += 2;
+            i--;
+            j++;
+        }
+    }
+
+    /* clear the tables */
+    wavefront_mat_clear(wavefront);
+    free(crumb_matrix);
+}
+
+
+
+void run(const char *strA, const char *strB, const user_params_t params);
+
+void
 run(const char *strA, const char *strB, const user_params_t params)
 {
     slong *A;
     slong *B;
+    expr_ptr * expressions_table;
 
     size_t szA, szB;
-
-    szA = strlen(strA);
-    A = (slong *) malloc(szA * sizeof(slong));
-    _fill_sequence_vector(A, strA, szA);
-
-    szB = strlen(strB);
-    B = (slong *) malloc(szA * sizeof(slong));
-    _fill_sequence_vector(B, strB, szB);
-
     reg_t reg;
     tkf91_expressions_t p;
     generator_reg_t genreg;
-    named_generators_t named_generators;
+    named_generators_t g;
+    fmpz_mat_t mat;
+
+    szA = strlen(strA);
+    A = flint_malloc(szA * sizeof(slong));
+    _fill_sequence_vector(A, strA, szA);
+
+    szB = strlen(strB);
+    B = flint_malloc(szA * sizeof(slong));
+    _fill_sequence_vector(B, strB, szB);
 
     reg_init(reg);
     tkf91_expressions_init(p, reg,
             params->lambda, params->mu, params->tau, params->pi);
     generator_reg_init(genreg, reg->size);
-    named_generators_init(named_generators, genreg, p, A, szA, B, szB);
+    named_generators_init(g, genreg, p, A, szA, B, szB);
 
-    /* report the matrix of coefficients */
+    fmpz_mat_init(mat,
+            generator_reg_generators_len(genreg),
+            generator_reg_expressions_len(genreg));
+    generator_reg_get_matrix(mat, genreg);
+
+    expressions_table = reg_vec(reg);
+
+    /* for now use a fixed precision for the dynamic programming */
     {
-        fmpz_mat_t mat;
-        fmpz_mat_init(mat,
-                generator_reg_generators_len(genreg),
-                generator_reg_expressions_len(genreg));
-        generator_reg_get_matrix(mat, genreg);
-        fmpz_mat_print_pretty(mat);
-        fmpz_mat_clear(mat);
-        flint_printf("\n\n");
+        slong level = 8;
+        slong prec = 1 << level;
+
+        arb_mat_t G;
+        arb_mat_t expression_logs;
+        arb_mat_t generator_logs;
+        slong i;
+        slong generator_count = fmpz_mat_nrows(mat);
+        slong expression_count = fmpz_mat_ncols(mat);
+        named_double_generators_t h;
+
+        /* initialize the arbitrary precision exponent matrix */
+        arb_mat_init(G, generator_count, expression_count);
+        arb_mat_set_fmpz_mat(G, mat);
+
+        /* compute the expression logs */
+        arb_mat_init(expression_logs, expression_count, 1);
+        for (i = 0; i < expression_count; i++)
+        {
+            expr_eval(arb_mat_entry(expression_logs, i, 0),
+                    expressions_table[i], level);
+        }
+
+        /* compute the generator logs */
+        arb_mat_init(generator_logs, generator_count, 1);
+        arb_mat_mul(generator_logs, G, expression_logs, prec);
+
+        /* fill a structure with corresponding double precision values */
+        doublify_named_generators(h, g, generator_logs);
+
+        /* do the thing */
+        tkf91_dynamic_programming(h, A, szA, B, szB);
+
+        arb_mat_clear(G);
+        arb_mat_clear(expression_logs);
+        arb_mat_clear(generator_logs);
     }
 
     reg_clear(reg);
     tkf91_expressions_clear(p);
     generator_reg_clear(genreg);
-    named_generators_clear(named_generators);
+    named_generators_clear(g);
+    fmpz_mat_clear(mat);
 
-    free(A);
-    free(B);
-
-    return 0;
+    flint_free(expressions_table);
+    flint_free(A);
+    flint_free(B);
 }
-
-
 
 
 
@@ -223,9 +548,9 @@ main(int argc, char *argv[])
     user_params_print(p);
     flint_printf("\n");
 
-    int result = run(Astr, Bstr, p);
+    run(Astr, Bstr, p);
 
     user_params_clear(p);
 
-    return result;
+    return 0;
 }
