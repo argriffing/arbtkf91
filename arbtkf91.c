@@ -16,18 +16,6 @@
 #include "generators.h"
 #include "wavefront_double.h"
 
-/*
- * Breadcrumbs for the traceback stage of dynamic programming may indicate
- * that multiple paths have identical scores.
- * To show that multiple traceback continuations from a partial solution
- * are equally valid, use a bitwise combination of these flags.
- */
-#define CRUMB_TOP  0b00000001
-#define CRUMB_DIAG 0b00000010
-#define CRUMB_LEFT 0b00000100
-
-typedef unsigned char breadcrumb_t;
-
 typedef struct
 {
     fmpq_t lambda;
@@ -176,6 +164,122 @@ max3(double a, double b, double c)
 
 
 
+
+/* the matrix for the traceback stage of dynamic programming */
+
+/*
+ * Breadcrumbs for the traceback stage of dynamic programming may indicate
+ * that multiple paths have identical scores.
+ * To show that multiple traceback continuations from a partial solution
+ * are equally valid, use a bitwise combination of these flags.
+ */
+#define CRUMB_TOP  0b00000001
+#define CRUMB_DIAG 0b00000010
+#define CRUMB_LEFT 0b00000100
+
+typedef unsigned char breadcrumb_t;
+typedef breadcrumb_t * breadcrumb_ptr;
+
+typedef struct
+{
+    breadcrumb_t *data;
+    slong nrows;
+    slong ncols;
+} breadcrumb_mat_struct;
+typedef breadcrumb_mat_struct breadcrumb_mat_t[1];
+
+void breadcrumb_mat_init(breadcrumb_mat_t mat, slong nrows, slong ncols);
+void breadcrumb_mat_clear(breadcrumb_mat_t mat);
+breadcrumb_ptr breadcrumb_mat_entry(breadcrumb_mat_t mat, slong i, slong j);
+void breadcrumb_mat_get_alignment(char **psa, char **psb,
+        breadcrumb_mat_t mat, const slong *A, const slong *B);
+
+void
+breadcrumb_mat_init(breadcrumb_mat_t mat, slong nrows, slong ncols)
+{
+    mat->data = calloc(nrows * ncols, sizeof(breadcrumb_t));
+    mat->nrows = nrows;
+    mat->ncols = ncols;
+}
+
+void
+breadcrumb_mat_clear(breadcrumb_mat_t mat)
+{
+    free(mat->data);
+}
+
+breadcrumb_ptr
+breadcrumb_mat_entry(breadcrumb_mat_t mat, slong i, slong j)
+{
+    if (i < 0 || i >= mat->nrows || j < 0 || j >= mat->ncols)
+    {
+        flint_printf("breadcrumb matrix indexing error\n");
+        flint_printf("i=%wd j=%wd\n", i, j);
+        flint_printf("nrows=%wd ncols=%wd\n", mat->nrows, mat->ncols);
+        abort();
+    }
+    return mat->data + i * mat->ncols + j;
+}
+
+void
+breadcrumb_mat_get_alignment(char **psa, char **psb,
+        breadcrumb_mat_t mat, const slong *A, const slong *B)
+{
+    /* do the traceback */
+    slong i, j;
+    char ACGT[4] = "ACGT";
+    slong n = mat->nrows + mat->ncols;
+    char *sa = calloc(n, sizeof(char));
+    char *sb = calloc(n, sizeof(char));
+    slong len = 0;
+    i = mat->nrows - 1;
+    j = mat->ncols - 1;
+    breadcrumb_t crumb;
+    while (i > 0 || j > 0)
+    {
+        crumb = *breadcrumb_mat_entry(mat, i, j);
+        if (crumb & CRUMB_TOP)
+        {
+            sa[len] = ACGT[A[i-1]];
+            sb[len] = '-';
+            i--;
+        }
+        else if (crumb & CRUMB_DIAG)
+        {
+            sa[len] = ACGT[A[i-1]];
+            sb[len] = ACGT[B[j-1]];
+            i--;
+            j--;
+        }
+        else if (crumb & CRUMB_LEFT)
+        {
+            sa[len] = '-';
+            sb[len] = ACGT[B[j-1]];
+            j--;
+        }
+        else
+        {
+            flint_printf("lost the thread ");
+            flint_printf("in the dynamic programing traceback\n");
+            abort();
+        }
+        len++;
+    }
+    char tmp;
+    for (i = 0; i < len/2; i++)
+    {
+        j = len - 1 - i;
+        tmp = sa[i]; sa[i] = sa[j]; sa[j] = tmp;
+        tmp = sb[i]; sb[i] = sb[j]; sb[j] = tmp;
+    }
+    *psa = sa;
+    *psb = sb;
+}
+
+
+
+
+
 void tkf91_dynamic_programming(named_double_generators_t g,
         slong *A, slong szA,
         slong *B, slong szB);
@@ -227,7 +331,9 @@ void tkf91_dynamic_programming(named_double_generators_t g,
      */
     slong nrows = szA + 1;
     slong ncols = szB + 1;
-    breadcrumb_t * crumb_matrix = calloc(nrows * ncols, sizeof(breadcrumb_t));
+    breadcrumb_mat_t crumb_mat;
+
+    breadcrumb_mat_init(crumb_mat, nrows, ncols);
 
     /* define the wavefront matrix */
     wave_mat_t wave;
@@ -337,22 +443,15 @@ void tkf91_dynamic_programming(named_double_generators_t g,
             /* fill the table for traceback */
             double best;
             best = max3(cell->m0, cell->m1, cell->m2);
-            slong idx = i * ncols + j;
-            if (idx < 0 || nrows*ncols <= idx)
-            {
-                flint_printf("error filling traceback table\n");
-                flint_printf("i=%wd j=%wd\n", i, j);
-                flint_printf("nrows=%wd ncols=%wd\n", nrows, ncols);
-                abort();
-            }
+            breadcrumb_ptr pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
             if (cell->m0 == best) {
-                crumb_matrix[idx] |= CRUMB_TOP;
+                *pcrumb |= CRUMB_TOP;
             }
             if (cell->m1 == best) {
-                crumb_matrix[idx] |= CRUMB_DIAG;
+                *pcrumb |= CRUMB_DIAG;
             }
             if (cell->m2 == best) {
-                crumb_matrix[idx] |= CRUMB_LEFT;
+                *pcrumb |= CRUMB_LEFT;
             }
 
             /*
@@ -424,52 +523,8 @@ void tkf91_dynamic_programming(named_double_generators_t g,
     flint_printf("score: %g\n", exp(max3(cell->m0, cell->m1, cell->m2)));
 
     /* do the traceback */
-    char ACGT[4] = "ACGT";
-    char *sa = calloc(nrows + ncols, sizeof(char));
-    char *sb = calloc(nrows + ncols, sizeof(char));
-    slong idx;
-    slong len = 0;
-    i = nrows-1;
-    j = ncols-1;
-    breadcrumb_t crumb;
-    while (i > 0 || j > 0)
-    {
-        idx = i * ncols + j;
-        crumb = crumb_matrix[idx];
-        if (crumb & CRUMB_TOP)
-        {
-            sa[len] = ACGT[A[i-1]];
-            sb[len] = '-';
-            i--;
-        }
-        else if (crumb & CRUMB_DIAG)
-        {
-            sa[len] = ACGT[A[i-1]];
-            sb[len] = ACGT[B[j-1]];
-            i--;
-            j--;
-        }
-        else if (crumb & CRUMB_LEFT)
-        {
-            sa[len] = '-';
-            sb[len] = ACGT[B[j-1]];
-            j--;
-        }
-        else
-        {
-            flint_printf("lost the thread ");
-            flint_printf("in the dynamic programing traceback\n");
-            abort();
-        }
-        len++;
-    }
-    char tmp;
-    for (i = 0; i < len/2; i++)
-    {
-        j = len - 1 - i;
-        tmp = sa[i]; sa[i] = sa[j]; sa[j] = tmp;
-        tmp = sb[i]; sb[i] = sb[j]; sb[j] = tmp;
-    }
+    char *sa, *sb;
+    breadcrumb_mat_get_alignment(&sa, &sb, crumb_mat, A, B);
     flint_printf("%s\n", sa);
     flint_printf("%s\n", sb);
     flint_printf("\n");
@@ -478,7 +533,7 @@ void tkf91_dynamic_programming(named_double_generators_t g,
 
     /* clear the tables */
     wave_mat_clear(wave);
-    free(crumb_matrix);
+    breadcrumb_mat_clear(crumb_mat);
 }
 
 
