@@ -95,8 +95,27 @@ bin/t-generators: tests/t-generators.c generators.o
 # double precision wavefront implementation
 
 wavefront_double.o: wavefront_double.c
-	$(CC) wavefront_double.c -c $(ARB_INCLUDES) $(CFLAGS) \
-		-lflint -lgmp -larb
+	$(CC) wavefront_double.c -c $(CFLAGS) \
+		-lflint -lgmp
+
+
+# integer vector wavefront implementation
+
+wavefront_hermite.o: wavefront_hermite.c
+	$(CC) wavefront_hermite.c -c $(CFLAGS) \
+		-lflint -lgmp
+
+
+# this is the command line binary executable
+
+bin/arbtkf91: arbtkf91.c \
+	femtocas.o expressions.o generators.o \
+	wavefront_double.o wavefront_hermite.o
+	$(CC) arbtkf91.c \
+		femtocas.o expressions.o generators.o \
+		wavefront_double.o wavefront_hermite.o \
+		-o bin/arbtkf91 \
+		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb -lm
 
 
 # run an example
@@ -148,13 +167,6 @@ example2b: bin/arbtkf91
 		--pc-num 24 --pc-den 100 \
 		--pg-num 26 --pg-den 100 \
 		--pt-num 23 --pt-den 100
-
-bin/arbtkf91: arbtkf91.c \
-	femtocas.o expressions.o generators.o wavefront_double.o
-	$(CC) arbtkf91.c \
-		femtocas.o expressions.o generators.o wavefront_double.o \
-		-o bin/arbtkf91 \
-		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb -lm
 
 
 
