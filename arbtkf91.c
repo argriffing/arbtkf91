@@ -15,6 +15,7 @@
 #include "expressions.h"
 #include "generators.h"
 #include "wavefront_double.h"
+#include "wavefront_hermite.h"
 
 typedef struct
 {
@@ -69,6 +70,71 @@ user_params_print(const user_params_t p)
 
 
 
+
+/*
+ * Hermitification of named generators.
+ * The members of this structure will point to rows of an fmpz matrix.
+ * If my ideas are right, the fmpz matrix will be the inverse of the
+ * transform matrix associated with the hermite normal form transformation
+ * of the generator matrix.
+ * Each of the vectors will have length equal to the rank of the Hermite 
+ * normal form, but the 'hermitification' procedures do not need to
+ * know or care about this length.
+ */
+typedef struct
+{
+    fmpz * m1_00;
+    fmpz * m0_10;
+    fmpz * m0_i0_incr[4];
+    fmpz * m2_01;
+    fmpz * m2_0j_incr[4];
+    fmpz * c0_incr[4];
+    fmpz * c1_incr[16];
+    fmpz * c2_incr[4];
+} named_hermite_generators_struct;
+typedef named_hermite_generators_struct named_hermite_generators_t[1];
+
+fmpz * _hermitify(slong i, fmpz_mat_t M);
+void hermitify_named_generators(
+        named_hermite_generators_t h,
+        named_generators_t g,
+        fmpz_mat_t M);
+
+fmpz *
+_hermitify(slong i, fmpz_mat_t M)
+{
+    return M->rows[i];
+}
+
+void
+hermitify_named_generators(
+        named_hermite_generators_t h,
+        named_generators_t g,
+        fmpz_mat_t M)
+{
+    slong i, j;
+    h->m1_00 = _hermitify(g->m1_00, M);
+    h->m0_10 = _hermitify(g->m0_10, M);
+    h->m2_01 = _hermitify(g->m2_01, M);
+    for (i = 0; i < 4; i++)
+    {
+        for (j = 0; j < 4; j++)
+        {
+            h->m0_i0_incr[i] = _hermitify(g->m0_i0_incr[i], M);
+            h->m2_0j_incr[i] = _hermitify(g->m2_0j_incr[i], M);
+            h->c0_incr[i] = _hermitify(g->c0_incr[i], M);
+            h->c1_incr[i*4+j] = _hermitify(g->c1_incr[i*4+j], M);
+            h->c2_incr[i] = _hermitify(g->c2_incr[i], M);
+        }
+    }
+}
+
+
+
+/*
+ * "doublification" of named generators
+ */
+
 typedef struct
 {
     double m1_00;
@@ -120,6 +186,9 @@ doublify_named_generators(
         }
     }
 }
+
+
+
 
 
 /*
@@ -280,11 +349,11 @@ breadcrumb_mat_get_alignment(char **psa, char **psb,
 
 
 
-void tkf91_dynamic_programming(named_double_generators_t g,
+void tkf91_dynamic_programming_double(named_double_generators_t g,
         slong *A, slong szA,
         slong *B, slong szB);
 
-void tkf91_dynamic_programming(named_double_generators_t g,
+void tkf91_dynamic_programming_double(named_double_generators_t g,
         slong *A, slong szA,
         slong *B, slong szB)
 {
@@ -642,11 +711,170 @@ tkf91_double_precision(
     doublify_named_generators(h, g, generator_logs);
 
     /* do the thing */
-    tkf91_dynamic_programming(h, A, szA, B, szB);
+    tkf91_dynamic_programming_double(h, A, szA, B, szB);
 
     arb_mat_clear(G);
     arb_mat_clear(expression_logs);
     arb_mat_clear(generator_logs);
+}
+
+
+void
+tkf91_hermite(
+        fmpz_mat_t mat, expr_ptr * expressions_table,
+        named_generators_t g,
+        slong *A, size_t szA,
+        slong *B, size_t szB);
+
+void
+tkf91_hermite(
+        fmpz_mat_t mat, expr_ptr * expressions_table,
+        named_generators_t g,
+        slong *A, size_t szA,
+        slong *B, size_t szB)
+{
+    /* Inputs:
+     *   mat : the generator matrix -- mat_ij where i is a generator index
+     *         and j is an expression index.
+     *   expressions_table : map from expression index to expression object
+     *   g : a struct with named generator indices
+     */
+
+    /* Compute a Hermite decomposition of the generator matrix. */
+    /* U * mat = H */
+    fmpz_mat_t H, U;
+    fmpz_mat_init(H, fmpz_mat_ncols(mat), fmpz_mat_ncols(mat));
+    fmpz_mat_init(U, fmpz_mat_nrows(mat), fmpz_mat_nrows(mat));
+    fmpz_mat_hnf_transform(H, U, mat);
+
+    /*
+     * The number of nonzero rows of H should determine the rank of mat.
+     * In H, rows with nonzero entries should precede rows without 
+     * nonzero entries
+     */
+    slong i;
+    slong rank = 0;
+    for (i = 0; i < fmpz_mat_nrows(H); i++)
+    {
+        if (!fmpz_mat_is_zero_row(H, i))
+        {
+            if (i != rank)
+            {
+                flint_printf("expected each row in H ");
+                flint_printf("containing a nonzero entry ");
+                flint_printf("to precede each row containing only zeros\n");
+                abort();
+            }
+            rank++;
+        }
+    }
+    flint_printf("matrix rank ");
+    flint_printf("as revealed by the Hermite normal form: %wd\n", rank);
+
+    /*
+     * Invert the transform matrix U.
+     * This should be possible because U should be unimodular
+     * and therefore nonsingular.
+     * The inverse should have entries that are integers,
+     * and its determinant should be 1.
+     *
+     * We only care about the first r columns of this inverse,
+     * where r is the rank of the Hermite form H.
+     */
+    fmpz_mat_t V;
+    int result;
+    fmpz_t den;
+    fmpz_mat_init(V, fmpz_mat_nrows(U), fmpz_mat_ncols(U));
+    fmpz_init(den);
+    result = fmpz_mat_inv(V, den, U);
+    if (!result)
+    {
+        flint_printf("expected U to be nonsingular\n");
+        abort();
+    }
+    if (!fmpz_is_one(den))
+    {
+        flint_printf("expected U to be unimodular\n");
+        abort();
+    }
+    fmpz_clear(den);
+
+    /*
+     * 'hermitify' a structure with named generators,
+     * by pointing the member variables to rows of V.
+     */
+    named_hermite_generators_t h;
+    hermitify_named_generators(h, g, V);
+
+    /*
+     * For now, use an arbitrary precision.
+     * In later versions of this program,
+     * we could decide to adjust it dynamically if it is detected
+     * to be insufficient.
+     */
+    slong level = 8;
+    slong prec = 1 << level;
+
+    /*
+     * Initialize an arbitrary precision matrix.
+     * This will be part of the calculation H*log(y)
+     * which gives the score of each quasi-generator.
+     */
+    arb_mat_t arbH;
+    arb_mat_init(arbH, fmpz_mat_nrows(H), fmpz_mat_ncols(H));
+    arb_mat_set_fmpz_mat(arbH, H);
+
+    /*
+     * Compute the expression logs.
+     * This is like a log(y) column vector.
+     */
+    arb_mat_t expression_logs;
+    arb_t x;
+    arb_init(x);
+    arb_mat_init(expression_logs, fmpz_mat_ncols(mat), 1);
+    for (i = 0; i < fmpz_mat_ncols(mat); i++)
+    {
+        expr_eval(x, expressions_table[i], level);
+        arb_log(arb_mat_entry(expression_logs, i, 0), x, prec);
+    }
+    arb_clear(x);
+
+    /*
+     * Compute the quasi-generator logs H*log(y).
+     */
+    arb_mat_t quasi_generator_logs;
+    arb_mat_init(quasi_generator_logs, fmpz_mat_nrows(mat), 1);
+    arb_mat_mul(quasi_generator_logs, arbH, expression_logs, prec);
+
+    /*
+     * Create an arb row vector by taking the first r elements
+     * from the quasi_generator_logs column vector,
+     * where r is the matrix rank of the generator matrix.
+     */
+    arb_ptr v;
+    v = _arb_vec_init(rank);
+    for (i = 0; i < rank; i++)
+    {
+        arb_set(v+i, arb_mat_entry(quasi_generator_logs, i, 0));
+    }
+
+    /*
+     * Clear temporary variables.
+     * Keep V because member variables of h point to its rows.
+     * Keep v because it is used directly in the next stage.
+     */
+    fmpz_mat_clear(H);
+    fmpz_mat_clear(U);
+    arb_mat_clear(arbH);
+    arb_mat_clear(expression_logs);
+    arb_mat_clear(quasi_generator_logs);
+
+    /* do the thing */
+    tkf91_dynamic_programming_hermite(h, v, rank, A, szA, B, szB);
+
+    /* Clear the remaining variables. */
+    fmpz_mat_clear(V);
+    _arb_vec_clear(v, rank);
 }
 
 
@@ -686,16 +914,12 @@ run(const char *strA, const char *strB, const user_params_t params)
             generator_reg_expressions_len(genreg));
     generator_reg_get_matrix(mat, genreg);
 
-    flint_printf("generator matrix:\n");
-    fmpz_mat_print_pretty(mat);
-    flint_printf("\n");
-
-    /* report some transformation of the generator matrix */
-    mess_with_generator_matrix(mat);
-
     expressions_table = reg_vec(reg);
 
+    /*
     tkf91_double_precision(mat, expressions_table, g, A, szA, B, szB);
+    */
+    tkf91_hermite(mat, expressions_table, g, A, szA, B, szB);
 
     reg_clear(reg);
     tkf91_expressions_clear(p);
