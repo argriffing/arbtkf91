@@ -88,8 +88,7 @@ typedef struct
     double m2_01;
     double m2_0j_incr[4];
     double c0_incr[4];
-    double c1_match_incr[4];
-    double c1_mismatch_incr[4];
+    double c1_incr[16];
     double c2_incr[4];
 } named_double_generators_struct;
 typedef named_double_generators_struct named_double_generators_t[1];
@@ -116,18 +115,20 @@ doublify_named_generators(
         named_generators_t g,
         arb_mat_t m)
 {
-    slong i;
+    slong i, j;
     h->m1_00 = _doublify(g->m1_00, m);
     h->m0_10 = _doublify(g->m0_10, m);
     h->m2_01 = _doublify(g->m2_01, m);
     for (i = 0; i < 4; i++)
     {
-        h->m0_i0_incr[i] = _doublify(g->m0_i0_incr[i], m);
-        h->m2_0j_incr[i] = _doublify(g->m2_0j_incr[i], m);
-        h->c0_incr[i] = _doublify(g->c0_incr[i], m);
-        h->c1_match_incr[i] = _doublify(g->c1_match_incr[i], m);
-        h->c1_mismatch_incr[i] = _doublify(g->c1_mismatch_incr[i], m);
-        h->c2_incr[i] = _doublify(g->c2_incr[i], m);
+        for (j = 0; j < 4; j++)
+        {
+            h->m0_i0_incr[i] = _doublify(g->m0_i0_incr[i], m);
+            h->m2_0j_incr[i] = _doublify(g->m2_0j_incr[i], m);
+            h->c0_incr[i] = _doublify(g->c0_incr[i], m);
+            h->c1_incr[i*4+j] = _doublify(g->c1_incr[i*4+j], m);
+            h->c2_incr[i] = _doublify(g->c2_incr[i], m);
+        }
     }
 }
 
@@ -175,6 +176,7 @@ typedef struct
 {
     wave_value_ptr data;
     slong n;
+    slong modulus;
 } wave_mat_struct;
 typedef wave_mat_struct wave_mat_t[1];
 
@@ -188,8 +190,14 @@ wave_value_ptr wave_mat_entry_left(wave_mat_t mat, slong k, slong l);
 void
 wave_mat_init(wave_mat_t mat, slong n)
 {
-    mat->data = malloc(sizeof(wave_value_struct) * 3 * n);
+    /*
+     * The modulus should be at least 3.
+     * If you want the probability matrices, then the modulus
+     * should be n.
+     */
+    mat->modulus = n;
     mat->n = n;
+    mat->data = malloc(sizeof(wave_value_struct) * mat->modulus * n);
 }
 
 void
@@ -201,25 +209,31 @@ wave_mat_clear(wave_mat_t mat)
 wave_value_ptr
 wave_mat_entry(wave_mat_t mat, slong k, slong l)
 {
-    return mat->data + (k % 3)*mat->n + l;
+    slong idx = (k % mat->modulus)*mat->n + l;
+    if (idx < 0 || idx > mat->n * mat->n)
+    {
+        flint_printf("error indexing the wavefront matrix\n");
+        abort();
+    }
+    return mat->data + idx;
 }
 
 wave_value_ptr
 wave_mat_entry_top(wave_mat_t mat, slong k, slong l)
 {
-    return mat->data + ((k - 1) % 3)*mat->n + l + 1;
+    return wave_mat_entry(mat, k-1, l+1);
 }
 
 wave_value_ptr
 wave_mat_entry_diag(wave_mat_t mat, slong k, slong l)
 {
-    return mat->data + ((k - 2) % 3)*mat->n + l;
+    return wave_mat_entry(mat, k-2, l);
 }
 
 wave_value_ptr
 wave_mat_entry_left(wave_mat_t mat, slong k, slong l)
 {
-    return mat->data + ((k - 1) % 3)*mat->n + l - 1;
+    return wave_mat_entry(mat, k-1, l-1);
 }
 
 
@@ -308,6 +322,7 @@ void tkf91_dynamic_programming(named_double_generators_t g,
 
 
     /* iterate over diagonals of the dynamic programming matrix */
+    wave_value_ptr cell, p0, p1, p2;
     slong i, j, k, l;
     slong istart, jstart, lstart;
     for (k = 0; k < nrows + ncols - 1; k++)
@@ -328,7 +343,6 @@ void tkf91_dynamic_programming(named_double_generators_t g,
         i = istart;
         j = jstart;
         l = lstart;
-        wave_value_ptr cell, p0, p1, p2;
         slong nta, ntb;
         while (0 <= i && i < nrows && 0 <= j && j < ncols)
         {
@@ -392,14 +406,7 @@ void tkf91_dynamic_programming(named_double_generators_t g,
                     p2 = wave_mat_entry_left(wave, k, l);
                     cell->m0 = max3(p0->m0, p0->m1, p0->m2) + g->c0_incr[nta];
                     cell->m1 = max3(p1->m0, p1->m1, p1->m2);
-                    if (nta == ntb)
-                    {
-                        cell->m1 += g->c1_match_incr[ntb];
-                    }
-                    else
-                    {
-                        cell->m1 += g->c1_mismatch_incr[ntb];
-                    }
+                    cell->m1 += g->c1_incr[nta*4 + ntb];
                     cell->m2 = max2(p2->m1, p2->m2) + g->c2_incr[ntb];
                 }
             }
@@ -438,6 +445,60 @@ void tkf91_dynamic_programming(named_double_generators_t g,
             j++;
         }
     }
+
+    /* report the probability matrices */
+
+    /*
+    flint_printf("m0:\n");
+    for (i = 0; i < nrows; i++)
+    {
+        for (j = 0; j < ncols; j++)
+        {
+            k = i + j;
+            l = nrows - 1 + j - i;
+            cell = wave_mat_entry(wave, k, l);
+            flint_printf("%.15lf ", exp(cell->m0));
+        }
+        flint_printf("\n");
+    }
+    flint_printf("\n");
+
+    flint_printf("m1:\n");
+    for (i = 0; i < nrows; i++)
+    {
+        for (j = 0; j < ncols; j++)
+        {
+            k = i + j;
+            l = nrows - 1 + j - i;
+            cell = wave_mat_entry(wave, k, l);
+            flint_printf("%.15lf ", exp(cell->m1));
+        }
+        flint_printf("\n");
+    }
+    flint_printf("\n");
+
+    flint_printf("m2:\n");
+    for (i = 0; i < nrows; i++)
+    {
+        for (j = 0; j < ncols; j++)
+        {
+            k = i + j;
+            l = nrows - 1 + j - i;
+            cell = wave_mat_entry(wave, k, l);
+            flint_printf("%.15lf ", exp(cell->m2));
+        }
+        flint_printf("\n");
+    }
+    flint_printf("\n");
+    */
+
+    /* report the score */
+    i = nrows - 1;
+    j = ncols - 1;
+    k = i + j;
+    l = nrows - 1 + j - i;
+    cell = wave_mat_entry(wave, k, l);
+    flint_printf("score: %g\n", exp(max3(cell->m0, cell->m1, cell->m2)));
 
     /* do the traceback */
     char ACGT[4] = "ACGT";
@@ -533,6 +594,10 @@ run(const char *strA, const char *strB, const user_params_t params)
             generator_reg_generators_len(genreg),
             generator_reg_expressions_len(genreg));
     generator_reg_get_matrix(mat, genreg);
+
+    flint_printf("generator matrix:\n");
+    fmpz_mat_print_pretty(mat);
+    flint_printf("\n");
 
     expressions_table = reg_vec(reg);
 

@@ -282,6 +282,12 @@ tenacious_strict_gt(expr_t a, expr_t b)
         flint_printf("tenacious strict comparison failed\n");
         abort();
     }
+    /*
+    else
+    {
+        flint_printf("detected inequality at level %wd\n", level);
+    }
+    */
 
     return result;
 }
@@ -326,11 +332,13 @@ named_generators_init(
     gen_add_p0_bar(g, p, 1);
     gen_close(g);
 
-    /* M0(i>1, 0) = pi_{A_i} * \bar{x} M0(i-1, 0) */
+    /* M0(i>1, 0) = pi_{A_i} * (...) * M0(i-1, 0) */
     /* There are four of these generators, one for each nucleotide. */
     for (i = 0; i < 4; i++)
     {
         gen_open(g, x->m0_i0_incr+i);
+        gen_add(g, p->lambda_div_mu, 1); /* contribution from gamma */
+        gen_add(g, p->lambda_beta, 1); /* contribution from zeta */
         gen_add(g, p->pi[i], 1);
         gen_add_p0_bar(g, p, 1);
         gen_close(g);
@@ -344,11 +352,12 @@ named_generators_init(
     gen_add(g, p->pi[B[0]], 1);
     gen_close(g);
 
-    /* M2(0, j>1) = pi_{B_i} * \bar{x} M2(0, i-1) */
+    /* M2(0, j>1) = pi_{B_i} * (...) * M2(0, i-1) */
     /* There are four of these generators, one for each nucleotide. */
     for (j = 0; j < 4; j++)
     {
         gen_open(g, x->m2_0j_incr+j);
+        gen_add(g, p->lambda_beta, 1); /* contribution from zeta */
         gen_add(g, p->pi[j], 1);
         gen_close(g);
     }
@@ -369,50 +378,59 @@ named_generators_init(
     expr_t tmp_p1, tmp_p1_bar;
 
     expr_mul(tmp_p1, p->exp_neg_mu_tau, p->one_minus_lambda_beta);
-    expr_mul(tmp_p1_bar, p->exp_neg_mu_tau, p->one_minus_lambda_beta);
+    expr_mul(tmp_p1_bar, p->the_long_beta_expression, p->one_minus_lambda_beta);
 
     for (j = 0; j < 4; j++)
     {
-        /*
-         * compare
-         * P_{ai->bj} * p1
-         * vs
-         * pi_{bj} * \bar{p1}
-         */
         expr_mul(tmp_rhs, p->pi[j], tmp_p1_bar);
 
-        /* generator for matching states */
-        gen_open(g, x->c1_match_incr+j);
-        expr_mul(tmp_lhs, p->match[j], tmp_p1);
-        if (tenacious_strict_gt(tmp_lhs, tmp_rhs))
+        for (i = 0; i < 4; i++)
         {
-            gen_add(g, p->match[j], 1);
-            gen_add_p1(g, p, 1);
-        }
-        else
-        {
-            gen_add(g, p->pi[j], 1);
-            gen_add_p1_bar(g, p, 1);
-        }
-        expr_clear(tmp_lhs);
-        gen_close(g);
+            gen_open(g, x->c1_incr+i*4+j);
 
-        /* generator for mismatched states */
-        gen_open(g, x->c1_mismatch_incr+j);
-        expr_mul(tmp_lhs, p->mismatch[j], tmp_p1);
-        if (tenacious_strict_gt(tmp_lhs, tmp_rhs))
-        {
-            gen_add(g, p->mismatch[j], 1);
-            gen_add_p1(g, p, 1);
-        }
-        else
-        {
-            gen_add(g, p->pi[j], 1);
-            gen_add_p1_bar(g, p, 1);
-        }
-        expr_clear(tmp_lhs);
-        gen_close(g);
+            gen_add(g, p->lambda_div_mu, 1);
+            gen_add(g, p->pi[i], 1);
 
+            /*
+             * compare
+             * P_{ai->bj} * p1
+             * vs
+             * pi_{bj} * \bar{p1}
+             */
+
+            if (i == j)
+            {
+                /* generator for matching states */
+                expr_mul(tmp_lhs, p->match[j], tmp_p1);
+                if (tenacious_strict_gt(tmp_lhs, tmp_rhs))
+                {
+                    gen_add(g, p->match[j], 1);
+                    gen_add_p1(g, p, 1);
+                }
+                else
+                {
+                    gen_add(g, p->pi[j], 1);
+                    gen_add_p1_bar(g, p, 1);
+                }
+            }
+            else
+            {
+                /* generator for mismatched states */
+                expr_mul(tmp_lhs, p->mismatch[j], tmp_p1);
+                if (tenacious_strict_gt(tmp_lhs, tmp_rhs))
+                {
+                    gen_add(g, p->mismatch[j], 1);
+                    gen_add_p1(g, p, 1);
+                }
+                else
+                {
+                    gen_add(g, p->pi[j], 1);
+                    gen_add_p1_bar(g, p, 1);
+                }
+            }
+            expr_clear(tmp_lhs);
+            gen_close(g);
+        }
         expr_clear(tmp_rhs);
     }
 

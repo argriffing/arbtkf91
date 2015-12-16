@@ -37,8 +37,7 @@ typedef struct
     slong m2_01;
     slong m2_0j_incr[4];
     slong c0_incr[4];
-    slong c1_match_incr[4];
-    slong c1_mismatch_incr[4];
+    slong c1_incr[16];
     slong c2_incr[4];
 } named_generators_struct;
 typedef named_generators_struct named_generators_t[1];

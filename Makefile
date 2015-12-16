@@ -131,7 +131,7 @@ example3: bin/arbtkf91
 		--pg-num 1 --pg-den 4 \
 		--pt-num 1 --pt-den 4
 
-bin/arbtkf91: arbtkf91.c
+bin/arbtkf91: arbtkf91.c femtocas.o expressions.o generators.o
 	$(CC) arbtkf91.c femtocas.o expressions.o generators.o \
 		-o bin/arbtkf91 \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb -lm
