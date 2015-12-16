@@ -92,6 +92,13 @@ bin/t-generators: tests/t-generators.c generators.o
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
 
 
+# double precision wavefront implementation
+
+wavefront_double.o: wavefront_double.c
+	$(CC) wavefront_double.c -c $(ARB_INCLUDES) $(CFLAGS) \
+		-lflint -lgmp -larb
+
+
 # run an example
 
 example1a: bin/arbtkf91
@@ -142,8 +149,10 @@ example2b: bin/arbtkf91
 		--pg-num 26 --pg-den 100 \
 		--pt-num 23 --pt-den 100
 
-bin/arbtkf91: arbtkf91.c femtocas.o expressions.o generators.o
-	$(CC) arbtkf91.c femtocas.o expressions.o generators.o \
+bin/arbtkf91: arbtkf91.c \
+	femtocas.o expressions.o generators.o wavefront_double.o
+	$(CC) arbtkf91.c \
+		femtocas.o expressions.o generators.o wavefront_double.o \
 		-o bin/arbtkf91 \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb -lm
 

@@ -14,6 +14,7 @@
 #include "femtocas.h"
 #include "expressions.h"
 #include "generators.h"
+#include "wavefront_double.h"
 
 /*
  * Breadcrumbs for the traceback stage of dynamic programming may indicate
@@ -158,86 +159,6 @@ _fill_sequence_vector(slong *v, const char *str, slong n)
 }
 
 
-/*
- * This placeholder uses only a double precision log likelihood value
- * for each entry in the table.
- */
-typedef struct
-{
-    double m0;
-    double m1;
-    double m2;
-} wave_value_struct;
-typedef wave_value_struct * wave_value_ptr;
-
-
-/* Assume that the access pattern needs only three physical rows. */
-typedef struct
-{
-    wave_value_ptr data;
-    slong n;
-    slong modulus;
-} wave_mat_struct;
-typedef wave_mat_struct wave_mat_t[1];
-
-void wave_mat_init(wave_mat_t mat, slong n);
-void wave_mat_clear(wave_mat_t mat);
-wave_value_ptr wave_mat_entry(wave_mat_t mat, slong k, slong l);
-wave_value_ptr wave_mat_entry_top(wave_mat_t mat, slong k, slong l);
-wave_value_ptr wave_mat_entry_diag(wave_mat_t mat, slong k, slong l);
-wave_value_ptr wave_mat_entry_left(wave_mat_t mat, slong k, slong l);
-
-void
-wave_mat_init(wave_mat_t mat, slong n)
-{
-    /*
-     * The modulus should be at least 3.
-     * If you want the probability matrices, then the modulus
-     * should be n.
-     */
-    mat->modulus = n;
-    mat->n = n;
-    mat->data = malloc(sizeof(wave_value_struct) * mat->modulus * n);
-}
-
-void
-wave_mat_clear(wave_mat_t mat)
-{
-    free(mat->data);
-}
-
-wave_value_ptr
-wave_mat_entry(wave_mat_t mat, slong k, slong l)
-{
-    slong idx = (k % mat->modulus)*mat->n + l;
-    if (idx < 0 || idx > mat->n * mat->n)
-    {
-        flint_printf("error indexing the wavefront matrix\n");
-        abort();
-    }
-    return mat->data + idx;
-}
-
-wave_value_ptr
-wave_mat_entry_top(wave_mat_t mat, slong k, slong l)
-{
-    return wave_mat_entry(mat, k-1, l+1);
-}
-
-wave_value_ptr
-wave_mat_entry_diag(wave_mat_t mat, slong k, slong l)
-{
-    return wave_mat_entry(mat, k-2, l);
-}
-
-wave_value_ptr
-wave_mat_entry_left(wave_mat_t mat, slong k, slong l)
-{
-    return wave_mat_entry(mat, k-1, l-1);
-}
-
-
-
 double max2(double a, double b);
 double max3(double a, double b, double c);
 
@@ -310,7 +231,9 @@ void tkf91_dynamic_programming(named_double_generators_t g,
 
     /* define the wavefront matrix */
     wave_mat_t wave;
-    wave_mat_init(wave, nrows + ncols - 1);
+    slong modulus = nrows + ncols - 1;
+    /* slong modulus = 3; */
+    wave_mat_init(wave, nrows + ncols - 1, modulus);
 
     /*
      * Let M_{ij} be the matrix created for traceback.
@@ -560,6 +483,57 @@ void tkf91_dynamic_programming(named_double_generators_t g,
 
 
 
+void mess_with_generator_matrix(fmpz_mat_t A);
+
+void
+mess_with_generator_matrix(fmpz_mat_t A)
+{
+    fmpz_t den;
+    fmpz_mat_t B, U, V, H, R;
+
+    fmpz_init(den);
+
+    fmpz_mat_init(B, fmpz_mat_ncols(A), fmpz_mat_nrows(A));
+    fmpz_mat_init(U, fmpz_mat_nrows(B), fmpz_mat_nrows(B));
+    fmpz_mat_init(V, fmpz_mat_nrows(B), fmpz_mat_nrows(B));
+    fmpz_mat_init(H, fmpz_mat_nrows(B), fmpz_mat_ncols(B));
+    fmpz_mat_init(R, fmpz_mat_nrows(A), fmpz_mat_nrows(A));
+
+    fmpz_mat_transpose(B, A);
+
+    /* hermite transform of B */
+    fmpz_mat_hnf_transform(H, U, B);
+    flint_printf("U * B = H\n");
+    flint_printf("U:\n"); fmpz_mat_print_pretty(U);
+    flint_printf("B:\n"); fmpz_mat_print_pretty(B);
+    flint_printf("H:\n"); fmpz_mat_print_pretty(H);
+    flint_printf("\n\n");
+
+    /* inverse of U */
+    fmpz_mat_inv(V, den, U);
+    flint_printf("B = d*U^-1 * (1/d)H\n");
+    flint_printf("B:\n"); fmpz_mat_print_pretty(B); flint_printf("\n");
+    flint_printf("d: "); fmpz_print(den); flint_printf("\n");
+    flint_printf("d * U^-1:\n"); fmpz_mat_print_pretty(V);
+    flint_printf("H:\n"); fmpz_mat_print_pretty(H);
+    flint_printf("\n\n");
+
+    /* R */
+    fmpz_mat_mul(R, A, V);
+    flint_printf("A * (d*U^-1):\n");
+    fmpz_mat_print_pretty(R);
+    flint_printf("\n\n");
+
+    fmpz_clear(den);
+
+    fmpz_mat_clear(B);
+    fmpz_mat_clear(U);
+    fmpz_mat_clear(V);
+    fmpz_mat_clear(H);
+    fmpz_mat_clear(R);
+}
+
+
 void run(const char *strA, const char *strB, const user_params_t params);
 
 void
@@ -598,6 +572,10 @@ run(const char *strA, const char *strB, const user_params_t params)
     flint_printf("generator matrix:\n");
     fmpz_mat_print_pretty(mat);
     flint_printf("\n");
+
+    /* report some transformation of the generator matrix */
+    mess_with_generator_matrix(mat);
+
 
     expressions_table = reg_vec(reg);
 
