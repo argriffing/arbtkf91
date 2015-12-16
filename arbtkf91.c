@@ -166,42 +166,62 @@ typedef struct
     double m0;
     double m1;
     double m2;
-} wavefront_value_struct;
-typedef wavefront_value_struct * wavefront_value_ptr;
+} wave_value_struct;
+typedef wave_value_struct * wave_value_ptr;
 
 
-/*
- * Assume that the access pattern needs only three physical rows.
- */
+/* Assume that the access pattern needs only three physical rows. */
 typedef struct
 {
-    wavefront_value_ptr data;
+    wave_value_ptr data;
     slong n;
-} wavefront_mat_struct;
-typedef wavefront_mat_struct wavefront_mat_t[1];
+} wave_mat_struct;
+typedef wave_mat_struct wave_mat_t[1];
 
-void wavefront_mat_init(wavefront_mat_t mat, slong n);
-void wavefront_mat_clear(wavefront_mat_t mat);
-wavefront_value_ptr wavefront_mat_entry(wavefront_mat_t mat, slong k, slong l);
+void wave_mat_init(wave_mat_t mat, slong n);
+void wave_mat_clear(wave_mat_t mat);
+wave_value_ptr wave_mat_entry(wave_mat_t mat, slong k, slong l);
+wave_value_ptr wave_mat_entry_top(wave_mat_t mat, slong k, slong l);
+wave_value_ptr wave_mat_entry_diag(wave_mat_t mat, slong k, slong l);
+wave_value_ptr wave_mat_entry_left(wave_mat_t mat, slong k, slong l);
 
 void
-wavefront_mat_init(wavefront_mat_t mat, slong n)
+wave_mat_init(wave_mat_t mat, slong n)
 {
-    mat->data = malloc(sizeof(wavefront_value_struct) * 3 * n);
+    mat->data = malloc(sizeof(wave_value_struct) * 3 * n);
     mat->n = n;
 }
 
 void
-wavefront_mat_clear(wavefront_mat_t mat)
+wave_mat_clear(wave_mat_t mat)
 {
     free(mat->data);
 }
 
-wavefront_value_ptr
-wavefront_mat_entry(wavefront_mat_t mat, slong k, slong l)
+wave_value_ptr
+wave_mat_entry(wave_mat_t mat, slong k, slong l)
 {
     return mat->data + (k % 3)*mat->n + l;
 }
+
+wave_value_ptr
+wave_mat_entry_top(wave_mat_t mat, slong k, slong l)
+{
+    return mat->data + ((k - 1) % 3)*mat->n + l + 1;
+}
+
+wave_value_ptr
+wave_mat_entry_diag(wave_mat_t mat, slong k, slong l)
+{
+    return mat->data + ((k - 2) % 3)*mat->n + l;
+}
+
+wave_value_ptr
+wave_mat_entry_left(wave_mat_t mat, slong k, slong l)
+{
+    return mat->data + ((k - 1) % 3)*mat->n + l - 1;
+}
+
 
 
 double max2(double a, double b);
@@ -275,8 +295,8 @@ void tkf91_dynamic_programming(named_double_generators_t g,
     breadcrumb_t * crumb_matrix = calloc(nrows * ncols, sizeof(breadcrumb_t));
 
     /* define the wavefront matrix */
-    wavefront_mat_t wavefront;
-    wavefront_mat_init(wavefront, nrows + ncols - 1);
+    wave_mat_t wave;
+    wave_mat_init(wave, nrows + ncols - 1);
 
     /*
      * Let M_{ij} be the matrix created for traceback.
@@ -308,7 +328,7 @@ void tkf91_dynamic_programming(named_double_generators_t g,
         i = istart;
         j = jstart;
         l = lstart;
-        wavefront_value_ptr cell, other, p0, p1, p2;
+        wave_value_ptr cell, p0, p1, p2;
         slong nta, ntb;
         while (0 <= i && i < nrows && 0 <= j && j < ncols)
         {
@@ -326,7 +346,7 @@ void tkf91_dynamic_programming(named_double_generators_t g,
                 abort();
             }
 
-            cell = wavefront_mat_entry(wavefront, k, l);
+            cell = wave_mat_entry(wave, k, l);
             if (i == 0 && j == 0)
             {
                 cell->m0 = -INFINITY;
@@ -350,16 +370,16 @@ void tkf91_dynamic_programming(named_double_generators_t g,
                 if (i == 0)
                 {
                     ntb = B[j - 1];
-                    other = wavefront_mat_entry(wavefront, k-1, l-1);
+                    p2 = wave_mat_entry_left(wave, k, l);
                     cell->m0 = -INFINITY;
                     cell->m1 = -INFINITY;
-                    cell->m2 = other->m2 + g->m2_0j_incr[ntb];
+                    cell->m2 = p2->m2 + g->m2_0j_incr[ntb];
                 }
                 else if (j == 0)
                 {
                     nta = A[i - 1];
-                    other = wavefront_mat_entry(wavefront, k-1, l+1);
-                    cell->m0 = other->m0 + g->m0_i0_incr[nta];
+                    p0 = wave_mat_entry_top(wave, k, l);
+                    cell->m0 = p0->m0 + g->m0_i0_incr[nta];
                     cell->m1 = -INFINITY;
                     cell->m2 = -INFINITY;
                 }
@@ -367,9 +387,9 @@ void tkf91_dynamic_programming(named_double_generators_t g,
                 {
                     nta = A[i - 1];
                     ntb = B[j - 1];
-                    p0 = wavefront_mat_entry(wavefront, k-1, l+1);
-                    p1 = wavefront_mat_entry(wavefront, k-2, l-0);
-                    p2 = wavefront_mat_entry(wavefront, k-1, l-1);
+                    p0 = wave_mat_entry_top(wave, k, l);
+                    p1 = wave_mat_entry_diag(wave, k, l);
+                    p2 = wave_mat_entry_left(wave, k, l);
                     cell->m0 = max3(p0->m0, p0->m1, p0->m2) + g->c0_incr[nta];
                     cell->m1 = max3(p1->m0, p1->m1, p1->m2);
                     if (nta == ntb)
@@ -473,7 +493,7 @@ void tkf91_dynamic_programming(named_double_generators_t g,
     free(sb);
 
     /* clear the tables */
-    wavefront_mat_clear(wavefront);
+    wave_mat_clear(wave);
     free(crumb_matrix);
 }
 
