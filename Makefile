@@ -94,7 +94,7 @@ bin/t-generators: tests/t-generators.c generators.o
 
 # run an example
 
-example1: bin/arbtkf91
+example1a: bin/arbtkf91
 	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
 		--sequence-1 ACGATA \
 		--sequence-2 AGTGGTA \
@@ -106,7 +106,31 @@ example1: bin/arbtkf91
 		--pg-num 1 --pg-den 4 \
 		--pt-num 1 --pt-den 4
 
-example2: bin/arbtkf91
+example1b: bin/arbtkf91
+	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
+		--sequence-1 ACGATA \
+		--sequence-2 AGTGGTA \
+		--lambda-num 1 --lambda-den 1 \
+		--mu-num 2 --mu-den 1 \
+		--tau-num 1 --tau-den 10 \
+		--pa-num 27 --pa-den 100 \
+		--pc-num 24 --pc-den 100 \
+		--pg-num 26 --pg-den 100 \
+		--pt-num 23 --pt-den 100
+
+example2a: bin/arbtkf91
+	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
+		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
+		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
+		--lambda-num 1 --lambda-den 1 \
+		--mu-num 2 --mu-den 1 \
+		--tau-num 1 --tau-den 10 \
+		--pa-num 1 --pa-den 4 \
+		--pc-num 1 --pc-den 4 \
+		--pg-num 1 --pg-den 4 \
+		--pt-num 1 --pt-den 4
+
+example2b: bin/arbtkf91
 	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
 		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
 		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
@@ -117,19 +141,6 @@ example2: bin/arbtkf91
 		--pc-num 24 --pc-den 100 \
 		--pg-num 26 --pg-den 100 \
 		--pt-num 23 --pt-den 100
-
-example3: bin/arbtkf91
-	#$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91
-	$(ARB_LD_LIBRARY) bin/arbtkf91 \
-		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
-		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
-		--lambda-num 1 --lambda-den 1 \
-		--mu-num 2 --mu-den 1 \
-		--tau-num 1 --tau-den 10 \
-		--pa-num 1 --pa-den 4 \
-		--pc-num 1 --pc-den 4 \
-		--pg-num 1 --pg-den 4 \
-		--pt-num 1 --pt-den 4
 
 bin/arbtkf91: arbtkf91.c femtocas.o expressions.o generators.o
 	$(CC) arbtkf91.c femtocas.o expressions.o generators.o \
