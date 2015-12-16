@@ -589,6 +589,68 @@ mess_with_generator_matrix(fmpz_mat_t A)
 }
 
 
+void
+tkf91_double_precision(
+        fmpz_mat_t mat, expr_ptr * expressions_table,
+        named_generators_t g,
+        slong *A, size_t szA,
+        slong *B, size_t szB);
+
+void
+tkf91_double_precision(
+        fmpz_mat_t mat, expr_ptr * expressions_table,
+        named_generators_t g,
+        slong *A, size_t szA,
+        slong *B, size_t szB)
+{
+    slong level = 8;
+    slong prec = 1 << level;
+
+    arb_mat_t G;
+    arb_mat_t expression_logs;
+    arb_mat_t generator_logs;
+    slong i;
+    slong generator_count = fmpz_mat_nrows(mat);
+    slong expression_count = fmpz_mat_ncols(mat);
+    named_double_generators_t h;
+
+    /* initialize the arbitrary precision exponent matrix */
+    arb_mat_init(G, generator_count, expression_count);
+    arb_mat_set_fmpz_mat(G, mat);
+
+    /* compute the expression logs */
+    arb_t x;
+    arb_init(x);
+    arb_mat_init(expression_logs, expression_count, 1);
+    for (i = 0; i < expression_count; i++)
+    {
+        expr_eval(x, expressions_table[i], level);
+        arb_log(arb_mat_entry(expression_logs, i, 0), x, prec);
+        /*
+        flint_printf("expression %wd : ", i);
+        arb_printd(x, 15);
+        flint_printf("\n");
+        */
+    }
+    arb_clear(x);
+
+    /* compute the generator logs */
+    arb_mat_init(generator_logs, generator_count, 1);
+    arb_mat_mul(generator_logs, G, expression_logs, prec);
+
+    /* fill a structure with corresponding double precision values */
+    doublify_named_generators(h, g, generator_logs);
+
+    /* do the thing */
+    tkf91_dynamic_programming(h, A, szA, B, szB);
+
+    arb_mat_clear(G);
+    arb_mat_clear(expression_logs);
+    arb_mat_clear(generator_logs);
+}
+
+
+
 void run(const char *strA, const char *strB, const user_params_t params);
 
 void
@@ -631,56 +693,9 @@ run(const char *strA, const char *strB, const user_params_t params)
     /* report some transformation of the generator matrix */
     mess_with_generator_matrix(mat);
 
-
     expressions_table = reg_vec(reg);
 
-    /* for now use a fixed precision for the dynamic programming */
-    {
-        slong level = 8;
-        slong prec = 1 << level;
-
-        arb_mat_t G;
-        arb_mat_t expression_logs;
-        arb_mat_t generator_logs;
-        slong i;
-        slong generator_count = fmpz_mat_nrows(mat);
-        slong expression_count = fmpz_mat_ncols(mat);
-        named_double_generators_t h;
-
-        /* initialize the arbitrary precision exponent matrix */
-        arb_mat_init(G, generator_count, expression_count);
-        arb_mat_set_fmpz_mat(G, mat);
-
-        /* compute the expression logs */
-        arb_t x;
-        arb_init(x);
-        arb_mat_init(expression_logs, expression_count, 1);
-        for (i = 0; i < expression_count; i++)
-        {
-            expr_eval(x, expressions_table[i], level);
-            arb_log(arb_mat_entry(expression_logs, i, 0), x, prec);
-            /*
-            flint_printf("expression %wd : ", i);
-            arb_printd(x, 15);
-            flint_printf("\n");
-            */
-        }
-        arb_clear(x);
-
-        /* compute the generator logs */
-        arb_mat_init(generator_logs, generator_count, 1);
-        arb_mat_mul(generator_logs, G, expression_logs, prec);
-
-        /* fill a structure with corresponding double precision values */
-        doublify_named_generators(h, g, generator_logs);
-
-        /* do the thing */
-        tkf91_dynamic_programming(h, A, szA, B, szB);
-
-        arb_mat_clear(G);
-        arb_mat_clear(expression_logs);
-        arb_mat_clear(generator_logs);
-    }
+    tkf91_double_precision(mat, expressions_table, g, A, szA, B, szB);
 
     reg_clear(reg);
     tkf91_expressions_clear(p);
