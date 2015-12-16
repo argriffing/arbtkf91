@@ -383,16 +383,94 @@ void tkf91_dynamic_programming(named_double_generators_t g,
                     cell->m2 = max2(p2->m1, p2->m2) + g->c2_incr[ntb];
                 }
             }
+
+            /* fill the table for traceback */
+            double best;
+            best = max3(cell->m0, cell->m1, cell->m2);
+            slong idx = i * ncols + j;
+            if (idx < 0 || nrows*ncols <= idx)
+            {
+                flint_printf("error filling traceback table\n");
+                flint_printf("i=%wd j=%wd\n", i, j);
+                flint_printf("nrows=%wd ncols=%wd\n", nrows, ncols);
+                abort();
+            }
+            if (cell->m0 == best) {
+                crumb_matrix[idx] |= CRUMB_TOP;
+            }
+            if (cell->m1 == best) {
+                crumb_matrix[idx] |= CRUMB_DIAG;
+            }
+            if (cell->m2 == best) {
+                crumb_matrix[idx] |= CRUMB_LEFT;
+            }
+
+            /*
             flint_printf("%wd %wd %wd %wd ", i, j, k, l);
             flint_printf("%g %g %g\n",
                     exp(cell->m0),
                     exp(cell->m1),
                     exp(cell->m2));
+            */
+
             l += 2;
             i--;
             j++;
         }
     }
+
+    /* do the traceback */
+    char ACGT[4] = "ACGT";
+    char *sa = calloc(nrows + ncols, sizeof(char));
+    char *sb = calloc(nrows + ncols, sizeof(char));
+    slong idx;
+    slong len = 0;
+    i = nrows-1;
+    j = ncols-1;
+    breadcrumb_t crumb;
+    while (i > 0 || j > 0)
+    {
+        idx = i * ncols + j;
+        crumb = crumb_matrix[idx];
+        if (crumb & CRUMB_TOP)
+        {
+            sa[len] = ACGT[A[i-1]];
+            sb[len] = '-';
+            i--;
+        }
+        else if (crumb & CRUMB_DIAG)
+        {
+            sa[len] = ACGT[A[i-1]];
+            sb[len] = ACGT[B[j-1]];
+            i--;
+            j--;
+        }
+        else if (crumb & CRUMB_LEFT)
+        {
+            sa[len] = '-';
+            sb[len] = ACGT[B[j-1]];
+            j--;
+        }
+        else
+        {
+            flint_printf("lost the thread ");
+            flint_printf("in the dynamic programing traceback\n");
+            abort();
+        }
+        len++;
+    }
+    char tmp;
+    for (i = 0; i < len/2; i++)
+    {
+        j = len - 1 - i;
+        tmp = sa[i]; sa[i] = sa[j]; sa[j] = tmp;
+        tmp = sb[i]; sb[i] = sb[j]; sb[j] = tmp;
+    }
+    flint_printf("%s\n", sa);
+    flint_printf("%s\n", sb);
+    flint_printf("\n");
+    free(sa);
+    free(sb);
 
     /* clear the tables */
     wavefront_mat_clear(wavefront);
@@ -463,6 +541,11 @@ run(const char *strA, const char *strB, const user_params_t params)
         {
             expr_eval(x, expressions_table[i], level);
             arb_log(arb_mat_entry(expression_logs, i, 0), x, prec);
+            /*
+            flint_printf("expression %wd : ", i);
+            arb_printd(x, 15);
+            flint_printf("\n");
+            */
         }
         arb_clear(x);
 
