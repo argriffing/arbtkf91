@@ -58,6 +58,7 @@ typedef struct
     /* factors related to point substitutions */
     expr_ptr match[4];
     expr_ptr mismatch[4];
+    expr_ptr one_minus_exp_negdt;
 
 } tkf91_expressions_struct;
 typedef tkf91_expressions_struct * tkf91_expressions_ptr;

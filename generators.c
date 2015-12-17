@@ -419,7 +419,9 @@ named_generators_init(
                 expr_mul(tmp_lhs, p->mismatch[j], tmp_p1);
                 if (tenacious_strict_gt(tmp_lhs, tmp_rhs))
                 {
-                    gen_add(g, p->mismatch[j], 1);
+                    /* gen_add(g, p->mismatch[j], 1); */
+                    gen_add(g, p->pi[j], 1);
+                    gen_add(g, p->one_minus_exp_negdt, 1);
                     gen_add_p1(g, p, 1);
                 }
                 else

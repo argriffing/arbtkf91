@@ -301,8 +301,8 @@ tkf91_expressions_init(
         expr_ptr exp_negdt = reg_new(reg);
         expr_exp_fmpq(exp_negdt, q->negdt);
 
-        expr_ptr one_minus_exp_negdt = reg_new(reg);
-        expr_complement(one_minus_exp_negdt, exp_negdt);
+        p->one_minus_exp_negdt = reg_new(reg);
+        expr_complement(p->one_minus_exp_negdt, exp_negdt);
 
         int alias_found;
         expr_ptr match_alias, mismatch_alias;
@@ -329,7 +329,7 @@ tkf91_expressions_init(
             else
             {
                 expr_ptr a = reg_new(reg);
-                expr_mul(a, p->pi[i], one_minus_exp_negdt);
+                expr_mul(a, p->pi[i], p->one_minus_exp_negdt);
 
                 p->match[i] = reg_new(reg);
                 expr_add(p->match[i], exp_negdt, a);
