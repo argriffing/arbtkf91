@@ -14,6 +14,7 @@
 #include "femtocas.h"
 #include "expressions.h"
 #include "generators.h"
+#include "tkf91_generators.h"
 #include "wavefront_double.h"
 #include "wavefront_hermite.h"
 
@@ -72,7 +73,7 @@ user_params_print(const user_params_t p)
 
 
 /*
- * Hermitification of named generators.
+ * Hermitification of tkf91 generators.
  * The members of this structure will point to rows of an fmpz matrix.
  * If my ideas are right, the fmpz matrix will be the inverse of the
  * transform matrix associated with the hermite normal form transformation
@@ -91,13 +92,13 @@ typedef struct
     fmpz * c0_incr[4];
     fmpz * c1_incr[16];
     fmpz * c2_incr[4];
-} named_hermite_generators_struct;
-typedef named_hermite_generators_struct named_hermite_generators_t[1];
+} tkf91_hermite_generators_struct;
+typedef tkf91_hermite_generators_struct tkf91_hermite_generators_t[1];
 
 fmpz * _hermitify(slong i, fmpz_mat_t M);
-void hermitify_named_generators(
-        named_hermite_generators_t h,
-        named_generators_t g,
+void hermitify_tkf91_generators(
+        tkf91_hermite_generators_t h,
+        tkf91_generators_t g,
         fmpz_mat_t M);
 
 fmpz *
@@ -107,9 +108,9 @@ _hermitify(slong i, fmpz_mat_t M)
 }
 
 void
-hermitify_named_generators(
-        named_hermite_generators_t h,
-        named_generators_t g,
+hermitify_tkf91_generators(
+        tkf91_hermite_generators_t h,
+        tkf91_generators_t g,
         fmpz_mat_t M)
 {
     slong i, j;
@@ -132,7 +133,7 @@ hermitify_named_generators(
 
 
 /*
- * "doublification" of named generators
+ * "doublification" of tkf91 generators
  */
 
 typedef struct
@@ -145,13 +146,13 @@ typedef struct
     double c0_incr[4];
     double c1_incr[16];
     double c2_incr[4];
-} named_double_generators_struct;
-typedef named_double_generators_struct named_double_generators_t[1];
+} tkf91_double_generators_struct;
+typedef tkf91_double_generators_struct tkf91_double_generators_t[1];
 
 double _doublify(slong i, arb_mat_t m);
-void doublify_named_generators(
-        named_double_generators_t h,
-        named_generators_t g,
+void doublify_tkf91_generators(
+        tkf91_double_generators_t h,
+        tkf91_generators_t g,
         arb_mat_t m);
 
 /* helper function for converting the generator array to double precision */
@@ -165,9 +166,9 @@ _doublify(slong i, arb_mat_t m)
 
 /* m should be a column vector of per-generator values */
 void
-doublify_named_generators(
-        named_double_generators_t h,
-        named_generators_t g,
+doublify_tkf91_generators(
+        tkf91_double_generators_t h,
+        tkf91_generators_t g,
         arb_mat_t m)
 {
     slong i, j;
@@ -355,11 +356,11 @@ breadcrumb_mat_get_alignment(char **psa, char **psb,
 
 
 
-void tkf91_dynamic_programming_double(named_double_generators_t g,
+void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
         slong *A, slong szA,
         slong *B, slong szB);
 
-void tkf91_dynamic_programming_double(named_double_generators_t g,
+void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
         slong *A, slong szA,
         slong *B, slong szB)
 {
@@ -617,14 +618,14 @@ void tkf91_dynamic_programming_double(named_double_generators_t g,
 void
 tkf91_double_precision(
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        named_generators_t g,
+        tkf91_generators_t g,
         slong *A, size_t szA,
         slong *B, size_t szB);
 
 void
 tkf91_double_precision(
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        named_generators_t g,
+        tkf91_generators_t g,
         slong *A, size_t szA,
         slong *B, size_t szB)
 {
@@ -638,7 +639,7 @@ tkf91_double_precision(
     slong i;
     slong generator_count = fmpz_mat_nrows(mat);
     slong expression_count = fmpz_mat_ncols(mat);
-    named_double_generators_t h;
+    tkf91_double_generators_t h;
 
     arb_init(x);
 
@@ -664,7 +665,7 @@ tkf91_double_precision(
     arb_mat_mul(generator_logs, G, expression_logs, prec);
 
     /* fill a structure with corresponding double precision values */
-    doublify_named_generators(h, g, generator_logs);
+    doublify_tkf91_generators(h, g, generator_logs);
 
     /* do the thing */
     tkf91_dynamic_programming_double(h, A, szA, B, szB);
@@ -838,12 +839,12 @@ _get_max3_checked(
     return best;
 }
 
-void tkf91_dynamic_programming_hermite(named_hermite_generators_t g,
+void tkf91_dynamic_programming_hermite(tkf91_hermite_generators_t g,
         arb_ptr v, slong rank, slong prec,
         slong *A, slong szA,
         slong *B, slong szB);
 
-void tkf91_dynamic_programming_hermite(named_hermite_generators_t g,
+void tkf91_dynamic_programming_hermite(tkf91_hermite_generators_t g,
         arb_ptr v, slong rank, slong prec,
         slong *A, slong szA,
         slong *B, slong szB)
@@ -1106,14 +1107,14 @@ void tkf91_dynamic_programming_hermite(named_hermite_generators_t g,
 void
 tkf91_hermite(
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        named_generators_t g,
+        tkf91_generators_t g,
         slong *A, size_t szA,
         slong *B, size_t szB);
 
 void
 tkf91_hermite(
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        named_generators_t g,
+        tkf91_generators_t g,
         slong *A, size_t szA,
         slong *B, size_t szB)
 {
@@ -1121,8 +1122,17 @@ tkf91_hermite(
      *   mat : the generator matrix -- mat_ij where i is a generator index
      *         and j is an expression index.
      *   expressions_table : map from expression index to expression object
-     *   g : a struct with named generator indices
+     *   g : a struct with tkf91 generator indices
      */
+
+    /*
+     * For now, use an arbitrary precision.
+     * In later versions of this program,
+     * we could decide to adjust it dynamically if it is detected
+     * to be insufficient.
+     */
+    slong level = 4;
+    slong prec = 1 << level;
 
     arb_t x;
     arb_init(x);
@@ -1201,20 +1211,11 @@ tkf91_hermite(
     fmpz_clear(den);
 
     /*
-     * 'hermitify' a structure with named generators,
+     * 'hermitify' a structure with tkf91 generators,
      * by pointing the member variables to rows of V.
      */
-    named_hermite_generators_t h;
-    hermitify_named_generators(h, g, V);
-
-    /*
-     * For now, use an arbitrary precision.
-     * In later versions of this program,
-     * we could decide to adjust it dynamically if it is detected
-     * to be insufficient.
-     */
-    slong level = 8;
-    slong prec = 1 << level;
+    tkf91_hermite_generators_t h;
+    hermitify_tkf91_generators(h, g, V);
 
     /*
      * Initialize an arbitrary precision matrix.
@@ -1338,7 +1339,7 @@ run(const char *strA, const char *strB, const user_params_t params)
     reg_t reg;
     tkf91_expressions_t p;
     generator_reg_t genreg;
-    named_generators_t g;
+    tkf91_generators_t g;
     fmpz_mat_t mat;
 
     szA = strlen(strA);
@@ -1353,7 +1354,7 @@ run(const char *strA, const char *strB, const user_params_t params)
     tkf91_expressions_init(p, reg,
             params->lambda, params->mu, params->tau, params->pi);
     generator_reg_init(genreg, reg->size);
-    named_generators_init(g, genreg, p, A, szA, B, szB);
+    tkf91_generators_init(g, genreg, p, A, szA, B, szB);
 
     fmpz_mat_init(mat,
             generator_reg_generators_len(genreg),
@@ -1370,7 +1371,7 @@ run(const char *strA, const char *strB, const user_params_t params)
     reg_clear(reg);
     tkf91_expressions_clear(p);
     generator_reg_clear(genreg);
-    named_generators_clear(g);
+    tkf91_generators_clear(g);
     fmpz_mat_clear(mat);
 
     flint_free(expressions_table);
