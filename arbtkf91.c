@@ -241,10 +241,16 @@ max3(double a, double b, double c)
  * that multiple paths have identical scores.
  * To show that multiple traceback continuations from a partial solution
  * are equally valid, use a bitwise combination of these flags.
+ *
+ * If multiple directions are equally valid and exact equality is
+ * detected symbolically, then the numerical ambiguity flag is not used.
+ * The numerical ambiguity flag is used only if numerical (not symbolic)
+ * ambiguity is detected.
  */
 #define CRUMB_TOP  0b00000001
 #define CRUMB_DIAG 0b00000010
 #define CRUMB_LEFT 0b00000100
+#define CRUMB_NUMERICAL_AMBIGUITY 0b00001000
 
 typedef unsigned char breadcrumb_t;
 typedef breadcrumb_t * breadcrumb_ptr;
@@ -419,7 +425,7 @@ void tkf91_dynamic_programming_double(named_double_generators_t g,
      */
 
 
-    /* iterate over diagonals of the dynamic programming matrix */
+    /* iterate over anti-diagonal bands of the dynamic programming matrix */
     wave_value_ptr cell, p0, p1, p2;
     slong i, j, k, l;
     slong istart, jstart, lstart;
@@ -607,56 +613,6 @@ void tkf91_dynamic_programming_double(named_double_generators_t g,
 
 
 
-void mess_with_generator_matrix(fmpz_mat_t A);
-
-void
-mess_with_generator_matrix(fmpz_mat_t A)
-{
-    fmpz_t den;
-    fmpz_mat_t B, U, V, H, R;
-
-    fmpz_init(den);
-
-    fmpz_mat_init(B, fmpz_mat_ncols(A), fmpz_mat_nrows(A));
-    fmpz_mat_init(U, fmpz_mat_nrows(B), fmpz_mat_nrows(B));
-    fmpz_mat_init(V, fmpz_mat_nrows(B), fmpz_mat_nrows(B));
-    fmpz_mat_init(H, fmpz_mat_nrows(B), fmpz_mat_ncols(B));
-    fmpz_mat_init(R, fmpz_mat_nrows(A), fmpz_mat_nrows(A));
-
-    fmpz_mat_transpose(B, A);
-
-    /* hermite transform of B */
-    fmpz_mat_hnf_transform(H, U, B);
-    flint_printf("U * B = H\n");
-    flint_printf("U:\n"); fmpz_mat_print_pretty(U);
-    flint_printf("B:\n"); fmpz_mat_print_pretty(B);
-    flint_printf("H:\n"); fmpz_mat_print_pretty(H);
-    flint_printf("\n\n");
-
-    /* inverse of U */
-    fmpz_mat_inv(V, den, U);
-    flint_printf("B = d*U^-1 * (1/d)H\n");
-    flint_printf("B:\n"); fmpz_mat_print_pretty(B); flint_printf("\n");
-    flint_printf("d: "); fmpz_print(den); flint_printf("\n");
-    flint_printf("d * U^-1:\n"); fmpz_mat_print_pretty(V);
-    flint_printf("H:\n"); fmpz_mat_print_pretty(H);
-    flint_printf("\n\n");
-
-    /* R */
-    fmpz_mat_mul(R, A, V);
-    flint_printf("A * (d*U^-1):\n");
-    fmpz_mat_print_pretty(R);
-    flint_printf("\n\n");
-
-    fmpz_clear(den);
-
-    fmpz_mat_clear(B);
-    fmpz_mat_clear(U);
-    fmpz_mat_clear(V);
-    fmpz_mat_clear(H);
-    fmpz_mat_clear(R);
-}
-
 
 void
 tkf91_double_precision(
@@ -719,6 +675,415 @@ tkf91_double_precision(
 }
 
 
+
+
+
+
+/*
+ * Dynamic programming with some symbolic and numeric cleverness.
+ * But undoubtedly much slower than the variant that uses double precision.
+ * See that less sophisticated variant for more details.
+ */
+
+void
+_arb_vec_dot_fmpz_vec(
+        arb_t res, arb_srcptr vec1, const fmpz * vec2, slong len2, slong prec);
+
+void
+_arb_vec_dot_fmpz_vec(
+        arb_t res, arb_srcptr vec1, const fmpz * vec2, slong len2, slong prec)
+{
+    slong i;
+    arb_zero(res);
+    for (i = 0; i < len2; i++)
+    {
+        arb_addmul_fmpz(res, vec1+i, vec2+i, prec);
+    }
+}
+
+
+void
+_hwave_element_add_vec(
+        hwave_element_t e, const fmpz * vec1, const fmpz * vec2, arb_srcptr v,
+        slong r, slong prec);
+
+void
+_hwave_element_set_vec(
+        hwave_element_t e, const fmpz * vec, arb_srcptr v,
+        slong r, slong prec);
+
+void
+_hwave_element_add_vec(
+        hwave_element_t e, const fmpz * vec1, const fmpz * vec2, arb_srcptr v,
+        slong r, slong prec)
+{
+    _fmpz_vec_add(e->vec, vec1, vec2, r);
+    _arb_vec_dot_fmpz_vec(e->value, v, e->vec, r, prec);
+    e->status = HWAVE_STATUS_UNAMBIGUOUS;
+}
+
+void
+_hwave_element_set_vec(
+        hwave_element_t e, const fmpz * vec, arb_srcptr v,
+        slong r, slong prec)
+{
+    /* Input:
+     *  e : one of the three elements of an hwave cell
+     *  vec : integer vector of r coefficients
+     *  v : arb vector of r real balls
+     *  r : the rank of the system
+     *  prec : precision for arb
+     */
+
+    /* copy the integer coefficients */
+    _fmpz_vec_set(e->vec, vec, r);
+
+    /* update the dot product */
+    _arb_vec_dot_fmpz_vec(e->value, v, vec, r, prec);
+
+    /*
+     * Mark that for this element the vector of integer coefficients
+     * is known unambiguously.
+     */
+    e->status = HWAVE_STATUS_UNAMBIGUOUS;
+}
+
+fmpz *
+_get_max3_checked_vec(
+        hwave_element_ptr e0,
+        hwave_element_ptr e1,
+        hwave_element_ptr e2,
+        slong len);
+
+fmpz *
+_get_max3_checked_vec(
+        hwave_element_ptr e0,
+        hwave_element_ptr e1,
+        hwave_element_ptr e2,
+        slong len)
+{
+    /*
+     * FIXME
+     * For now we abort if an ambiguity is detected numerically
+     * but not symbolically.
+     */
+    /* find the element with the greatest midpoint */
+    slong i;
+    hwave_element_ptr x[] = {e0, e1, e2};
+
+    /* for now require that all elements have unambiguous status */
+    for (i = 0; i < 3; i++)
+    {
+        if (x[i]->status == HWAVE_STATUS_AMBIGUOUS)
+        {
+            flint_printf("ambiguous status -- ");
+            flint_printf("handling this case is not yet implemented...\n");
+            abort();
+        }
+    }
+
+    /* get the element with greatest midpoint */
+    hwave_element_ptr best;
+    best = e0;
+    if (arf_cmp(arb_midref(best->value), arb_midref(e1->value)) < 0) {
+        best = e1;
+    }
+    if (arf_cmp(arb_midref(best->value), arb_midref(e2->value)) < 0) {
+        best = e2;
+    }
+
+    /*
+     * If any element's value overlaps the value of the element
+     * whose midpoint is greatest, then complain if the integer coefficient
+     * vectors are not equal.
+     */
+    for (i = 0; i < 3; i++)
+    {
+        if (arb_overlaps(best->value, x[i]->value))
+        {
+            if (!_fmpz_vec_equal(best->vec, x[i]->vec, len))
+            {
+                flint_printf("an ambiguity was detected numericaly ");
+                flint_printf("but not symbolically -- ");
+                flint_printf("dealing with this situation ");
+                flint_printf("is not yet implemented...\n");
+                abort();
+            }
+        }
+    }
+
+    return best->vec;
+}
+
+void tkf91_dynamic_programming_hermite(named_hermite_generators_t g,
+        arb_ptr v, slong rank, slong prec,
+        slong *A, slong szA,
+        slong *B, slong szB);
+
+void tkf91_dynamic_programming_hermite(named_hermite_generators_t g,
+        arb_ptr v, slong rank, slong prec,
+        slong *A, slong szA,
+        slong *B, slong szB)
+{
+    /*
+     * Define the matrix to be used for the traceback.
+     * The number of rows is one greater than the length of the first sequence,
+     * and the number of columns is one greater than the length of the second
+     * sequence.
+     */
+    slong nrows = szA + 1;
+    slong ncols = szB + 1;
+    breadcrumb_mat_t crumb_mat;
+    breadcrumb_mat_init(crumb_mat, nrows, ncols);
+
+    /* define the wavefront matrix */
+    hwave_mat_t wave;
+    slong modulus = 3;
+    hwave_mat_init(wave, nrows + ncols - 1, modulus, rank);
+
+    /* iterate over anti-diagonal bands of the dynamic programming matrix */
+    fmpz * bestvec;
+    hwave_cell_ptr cell, p0, p1, p2;
+    slong i, j, k, l;
+    slong istart, jstart, lstart;
+    for (k = 0; k < nrows + ncols - 1; k++)
+    {
+        if (k < nrows)
+        {
+            istart = k;
+            jstart = 0;
+        }
+        else
+        {
+            istart = nrows - 1;
+            jstart = k - (nrows - 1);
+        }
+        lstart = nrows - 1 + jstart - istart;
+
+        /* iterate over entries of the diagonal */
+        i = istart;
+        j = jstart;
+        l = lstart;
+        slong nta, ntb;
+        while (0 <= i && i < nrows && 0 <= j && j < ncols)
+        {
+            /* check some invariants */
+            if (k != i + j)
+            {
+                flint_printf("wavefront indexing problem ");
+                flint_printf("i=%wd j=%wd k=%wd\n", i, j, k);
+                abort();
+            }
+            if (l != nrows - 1 + j - i)
+            {
+                flint_printf("wavefront indexing problem ");
+                flint_printf("i=%wd j=%wd l=%wd\n", i, j, l);
+                abort();
+            }
+
+            cell = hwave_mat_entry(wave, k, l);
+            if (i == 0 && j == 0)
+            {
+                hwave_element_set_undefined(cell->m+0);
+                _hwave_element_set_vec(cell->m+1, g->m1_00, v, rank, prec);
+                hwave_element_set_undefined(cell->m+2);
+            }
+            else if (i == 1 && j == 0)
+            {
+                _hwave_element_set_vec(cell->m+0, g->m0_10, v, rank, prec);
+                hwave_element_set_undefined(cell->m+1);
+                hwave_element_set_undefined(cell->m+2);
+            }
+            else if (i == 0 && j == 1)
+            {
+                hwave_element_set_undefined(cell->m+0);
+                hwave_element_set_undefined(cell->m+1);
+                _hwave_element_set_vec(cell->m+2, g->m2_01, v, rank, prec);
+            }
+            else
+            {
+                if (i == 0)
+                {
+                    ntb = B[j - 1];
+                    p2 = hwave_mat_entry_left(wave, k, l);
+                    hwave_element_set_undefined(cell->m+0);
+                    hwave_element_set_undefined(cell->m+1);
+                    if (p2->m[2].status != HWAVE_STATUS_UNAMBIGUOUS)
+                    {
+                        flint_printf("found a not unambiguous status ");
+                        flint_printf("while filling the first row\n");
+                        abort();
+                    }
+                    _hwave_element_add_vec(
+                            cell->m+2,
+                            p2->m[2].vec,
+                            g->m2_0j_incr[ntb],
+                            v, rank, prec);
+                }
+                else if (j == 0)
+                {
+                    nta = A[i - 1];
+                    p0 = hwave_mat_entry_top(wave, k, l);
+                    if (p0->m[0].status != HWAVE_STATUS_UNAMBIGUOUS)
+                    {
+                        flint_printf("found a not unambiguous status ");
+                        flint_printf("while filling the first column\n");
+                        abort();
+                    }
+                    _hwave_element_add_vec(
+                            cell->m+0,
+                            p0->m[0].vec,
+                            g->m0_i0_incr[nta],
+                            v, rank, prec);
+                    hwave_element_set_undefined(cell->m+1);
+                    hwave_element_set_undefined(cell->m+2);
+                }
+                else
+                {
+                    nta = A[i - 1];
+                    ntb = B[j - 1];
+                    p0 = hwave_mat_entry_top(wave, k, l);
+                    p1 = hwave_mat_entry_diag(wave, k, l);
+                    p2 = hwave_mat_entry_left(wave, k, l);
+
+                    bestvec = _get_max3_checked_vec(
+                            p0->m+0, p0->m+1, p0->m+2, rank);
+                    _hwave_element_add_vec(
+                            cell->m+0,
+                            bestvec,
+                            g->c0_incr[nta],
+                            v, rank, prec);
+
+                    bestvec = _get_max3_checked_vec(
+                            p1->m+0, p1->m+1, p1->m+2, rank);
+                    _hwave_element_add_vec(
+                            cell->m+1,
+                            bestvec,
+                            g->c1_incr[nta*4 + ntb],
+                            v, rank, prec);
+
+                    /* use max3 to check only max2 by duplicating one -- */
+                    /* passing p2->m+1 twice is not a bug */
+                    /* TODO make a max2 convenience function for this... */
+                    bestvec = _get_max3_checked_vec(
+                            p2->m+1, p2->m+1, p2->m+2, rank);
+                    _hwave_element_add_vec(
+                            cell->m+2,
+                            bestvec,
+                            g->c2_incr[ntb],
+                            v, rank, prec);
+                }
+            }
+
+            /* fill the table for traceback */
+            /* FIXME use the breadcrumb ambiguity bit as appropriate */
+            breadcrumb_ptr pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
+            bestvec = _get_max3_checked_vec(
+                    cell->m+0, cell->m+1, cell->m+2, rank);
+            if (_fmpz_vec_equal(bestvec, cell->m[0].vec, rank))
+            {
+                *pcrumb |= CRUMB_TOP;
+            }
+            if (_fmpz_vec_equal(bestvec, cell->m[1].vec, rank))
+            {
+                *pcrumb |= CRUMB_DIAG;
+            }
+            if (_fmpz_vec_equal(bestvec, cell->m[2].vec, rank))
+            {
+                *pcrumb |= CRUMB_LEFT;
+            }
+
+            /*
+            flint_printf("%wd %wd %wd %wd ", i, j, k, l);
+            flint_printf("%g %g %g\n",
+                    exp(cell->m0),
+                    exp(cell->m1),
+                    exp(cell->m2));
+            */
+
+            l += 2;
+            i--;
+            j++;
+        }
+    }
+
+    /* report the probability matrices */
+
+    /*
+    flint_printf("m0:\n");
+    for (i = 0; i < nrows; i++)
+    {
+        for (j = 0; j < ncols; j++)
+        {
+            k = i + j;
+            l = nrows - 1 + j - i;
+            cell = hwave_mat_entry(wave, k, l);
+            flint_printf("%.15lf ", exp(cell->m0));
+        }
+        flint_printf("\n");
+    }
+    flint_printf("\n");
+
+    flint_printf("m1:\n");
+    for (i = 0; i < nrows; i++)
+    {
+        for (j = 0; j < ncols; j++)
+        {
+            k = i + j;
+            l = nrows - 1 + j - i;
+            cell = hwave_mat_entry(wave, k, l);
+            flint_printf("%.15lf ", exp(cell->m1));
+        }
+        flint_printf("\n");
+    }
+    flint_printf("\n");
+
+    flint_printf("m2:\n");
+    for (i = 0; i < nrows; i++)
+    {
+        for (j = 0; j < ncols; j++)
+        {
+            k = i + j;
+            l = nrows - 1 + j - i;
+            cell = hwave_mat_entry(wave, k, l);
+            flint_printf("%.15lf ", exp(cell->m2));
+        }
+        flint_printf("\n");
+    }
+    flint_printf("\n");
+    */
+
+    /* report the score */
+    i = nrows - 1;
+    j = ncols - 1;
+    k = i + j;
+    l = nrows - 1 + j - i;
+    cell = hwave_mat_entry(wave, k, l);
+    bestvec = _get_max3_checked_vec(cell->m+0, cell->m+1, cell->m+2, rank);
+    arb_t arbscore;
+    arb_init(arbscore);
+    _arb_vec_dot_fmpz_vec(arbscore, v, bestvec, rank, prec);
+    arb_exp(arbscore, arbscore, prec);
+    flint_printf("score: ");
+    arb_printd(arbscore, 15);
+    flint_printf("\n");
+    arb_clear(arbscore);
+
+    /* do the traceback */
+    char *sa, *sb;
+    breadcrumb_mat_get_alignment(&sa, &sb, crumb_mat, A, B);
+    flint_printf("%s\n", sa);
+    flint_printf("%s\n", sb);
+    flint_printf("\n");
+    free(sa);
+    free(sb);
+
+    /* clear the tables */
+    hwave_mat_clear(wave);
+    breadcrumb_mat_clear(crumb_mat);
+}
+
+
 void
 tkf91_hermite(
         fmpz_mat_t mat, expr_ptr * expressions_table,
@@ -743,7 +1108,7 @@ tkf91_hermite(
     /* Compute a Hermite decomposition of the generator matrix. */
     /* U * mat = H */
     fmpz_mat_t H, U;
-    fmpz_mat_init(H, fmpz_mat_ncols(mat), fmpz_mat_ncols(mat));
+    fmpz_mat_init(H, fmpz_mat_nrows(mat), fmpz_mat_ncols(mat));
     fmpz_mat_init(U, fmpz_mat_nrows(mat), fmpz_mat_nrows(mat));
     fmpz_mat_hnf_transform(H, U, mat);
 
@@ -794,8 +1159,22 @@ tkf91_hermite(
     }
     if (!fmpz_is_one(den))
     {
-        flint_printf("expected U to be unimodular\n");
-        abort();
+        fmpz_t negden;
+        fmpz_init(negden);
+        fmpz_neg(negden, den);
+        if (fmpz_is_one(negden))
+        {
+            fmpz_mat_neg(V, V);
+        }
+        else
+        {
+            flint_printf("expected U to be unimodular -- ");
+            flint_printf("denominator of inverse of U: ");
+            fmpz_print(den);
+            flint_printf("\n");
+            abort();
+        }
+        fmpz_clear(negden);
     }
     fmpz_clear(den);
 
@@ -853,9 +1232,12 @@ tkf91_hermite(
      */
     arb_ptr v;
     v = _arb_vec_init(rank);
+    flint_printf("quasi generator logarithms:\n");
     for (i = 0; i < rank; i++)
     {
         arb_set(v+i, arb_mat_entry(quasi_generator_logs, i, 0));
+        arb_printd(v+i, 15);
+        flint_printf("\n");
     }
 
     /*
@@ -870,7 +1252,7 @@ tkf91_hermite(
     arb_mat_clear(quasi_generator_logs);
 
     /* do the thing */
-    tkf91_dynamic_programming_hermite(h, v, rank, A, szA, B, szB);
+    tkf91_dynamic_programming_hermite(h, v, rank, prec, A, szA, B, szB);
 
     /* Clear the remaining variables. */
     fmpz_mat_clear(V);

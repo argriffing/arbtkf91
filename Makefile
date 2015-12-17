@@ -102,8 +102,8 @@ wavefront_double.o: wavefront_double.c
 # integer vector wavefront implementation
 
 wavefront_hermite.o: wavefront_hermite.c
-	$(CC) wavefront_hermite.c -c $(CFLAGS) \
-		-lflint -lgmp
+	$(CC) wavefront_hermite.c -c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+		-lflint -lgmp -larb
 
 
 # this is the command line binary executable

@@ -1,17 +1,37 @@
-#include "wavefront_hermite.h"
-
 #include "flint/flint.h"
 #include "flint/fmpz.h"
 #include "flint/fmpz_vec.h"
 
+#include "arb.h"
 
+#include "wavefront_hermite.h"
+
+
+void
+hwave_element_init(hwave_element_t p)
+{
+    arb_init(p->value);
+}
+
+void
+hwave_element_clear(hwave_element_t p)
+{
+    arb_clear(p->value);
+}
+
+void
+hwave_element_set_undefined(hwave_element_t p)
+{
+    arb_neg_inf(p->value);
+    p->status = HWAVE_STATUS_UNDEFINED;
+}
 
 void
 hwave_mat_init(hwave_mat_t mat, slong n, slong modulus, slong rank)
 {
     /* 
      * The rank is the number of fmpz that we need
-     * for each of m0, m1, m2 in each wavefront cell.
+     * for each of m[0], m[1], m[2] in each wavefront cell.
      */
 
     /*
@@ -39,21 +59,27 @@ hwave_mat_init(hwave_mat_t mat, slong n, slong modulus, slong rank)
 
     mat->modulus = modulus;
     mat->n = n;
-    mat->data = malloc(sizeof(hwave_value_struct) * modulus * n);
+    mat->data = malloc(sizeof(hwave_cell_struct) * modulus * n);
 
-    /* in each wavefront cell, point m0, m1, m2 to a piece of the fmpz brick */
+    /*
+     * In each wavefront cell, point the coefficient vectors
+     * of each of m[0], m[1], m[2] to a piece of the fmpz brick.
+     * Also initialize the arb_t value in each element in each cell.
+     */
     fmpz * base;
-    hwave_value_ptr cell;
-    slong k, l;
+    hwave_cell_ptr cell;
+    slong k, l, c;
     for (k = 0; k < modulus; k++)
     {
         for (l = 0; l < n; l++)
         {
             cell = hwave_mat_entry(mat, k, l);
             base = mat->all_the_fmpz + k * (n * 3 * rank) + l * (3 * rank);
-            cell->m0_vec = base + 0 * rank;
-            cell->m1_vec = base + 1 * rank;
-            cell->m2_vec = base + 2 * rank;
+            for (c = 0; c < 3; c++)
+            {
+                cell->m[c].vec = base + c * rank;
+                hwave_element_init(cell->m + c);
+            }
         }
     }
 }
@@ -61,11 +87,29 @@ hwave_mat_init(hwave_mat_t mat, slong n, slong modulus, slong rank)
 void
 hwave_mat_clear(hwave_mat_t mat)
 {
+    /* Clear the arb_t value in each element in each cell. */
+    slong k, l, c;
+    hwave_cell_ptr cell;
+    for (k = 0; k < mat->modulus; k++)
+    {
+        for (l = 0; l < mat->n; l++)
+        {
+            cell = hwave_mat_entry(mat, k, l);
+            for (c = 0; c < 3; c++)
+            {
+                hwave_element_clear(cell->m + c);
+            }
+        }
+    }
+
+    /* Clear the huge matrix of integer coefficients. */
     _fmpz_vec_clear(mat->all_the_fmpz, mat->number_of_fmpz);
+
+    /* Free the array of cells. */
     free(mat->data);
 }
 
-hwave_value_ptr
+hwave_cell_ptr
 hwave_mat_entry(hwave_mat_t mat, slong k, slong l)
 {
     slong idx = (k % mat->modulus)*mat->n + l;
@@ -77,19 +121,19 @@ hwave_mat_entry(hwave_mat_t mat, slong k, slong l)
     return mat->data + idx;
 }
 
-hwave_value_ptr
+hwave_cell_ptr
 hwave_mat_entry_top(hwave_mat_t mat, slong k, slong l)
 {
     return hwave_mat_entry(mat, k-1, l+1);
 }
 
-hwave_value_ptr
+hwave_cell_ptr
 hwave_mat_entry_diag(hwave_mat_t mat, slong k, slong l)
 {
     return hwave_mat_entry(mat, k-2, l);
 }
 
-hwave_value_ptr
+hwave_cell_ptr
 hwave_mat_entry_left(hwave_mat_t mat, slong k, slong l)
 {
     return hwave_mat_entry(mat, k-1, l-1);
