@@ -118,14 +118,14 @@ hermitify_named_generators(
     h->m2_01 = _hermitify(g->m2_01, M);
     for (i = 0; i < 4; i++)
     {
+        h->m0_i0_incr[i] = _hermitify(g->m0_i0_incr[i], M);
+        h->m2_0j_incr[i] = _hermitify(g->m2_0j_incr[i], M);
+        h->c0_incr[i] = _hermitify(g->c0_incr[i], M);
         for (j = 0; j < 4; j++)
         {
-            h->m0_i0_incr[i] = _hermitify(g->m0_i0_incr[i], M);
-            h->m2_0j_incr[i] = _hermitify(g->m2_0j_incr[i], M);
-            h->c0_incr[i] = _hermitify(g->c0_incr[i], M);
             h->c1_incr[i*4+j] = _hermitify(g->c1_incr[i*4+j], M);
-            h->c2_incr[i] = _hermitify(g->c2_incr[i], M);
         }
+        h->c2_incr[i] = _hermitify(g->c2_incr[i], M);
     }
 }
 
@@ -176,14 +176,14 @@ doublify_named_generators(
     h->m2_01 = _doublify(g->m2_01, m);
     for (i = 0; i < 4; i++)
     {
+        h->m0_i0_incr[i] = _doublify(g->m0_i0_incr[i], m);
+        h->m2_0j_incr[i] = _doublify(g->m2_0j_incr[i], m);
+        h->c0_incr[i] = _doublify(g->c0_incr[i], m);
         for (j = 0; j < 4; j++)
         {
-            h->m0_i0_incr[i] = _doublify(g->m0_i0_incr[i], m);
-            h->m2_0j_incr[i] = _doublify(g->m2_0j_incr[i], m);
-            h->c0_incr[i] = _doublify(g->c0_incr[i], m);
             h->c1_incr[i*4+j] = _doublify(g->c1_incr[i*4+j], m);
-            h->c2_incr[i] = _doublify(g->c2_incr[i], m);
         }
+        h->c2_incr[i] = _doublify(g->c2_incr[i], m);
     }
 }
 
@@ -631,6 +631,7 @@ tkf91_double_precision(
     slong level = 8;
     slong prec = 1 << level;
 
+    arb_t x;
     arb_mat_t G;
     arb_mat_t expression_logs;
     arb_mat_t generator_logs;
@@ -639,13 +640,13 @@ tkf91_double_precision(
     slong expression_count = fmpz_mat_ncols(mat);
     named_double_generators_t h;
 
+    arb_init(x);
+
     /* initialize the arbitrary precision exponent matrix */
     arb_mat_init(G, generator_count, expression_count);
     arb_mat_set_fmpz_mat(G, mat);
 
     /* compute the expression logs */
-    arb_t x;
-    arb_init(x);
     arb_mat_init(expression_logs, expression_count, 1);
     for (i = 0; i < expression_count; i++)
     {
@@ -657,7 +658,6 @@ tkf91_double_precision(
         flint_printf("\n");
         */
     }
-    arb_clear(x);
 
     /* compute the generator logs */
     arb_mat_init(generator_logs, generator_count, 1);
@@ -669,6 +669,7 @@ tkf91_double_precision(
     /* do the thing */
     tkf91_dynamic_programming_double(h, A, szA, B, szB);
 
+    arb_clear(x);
     arb_mat_clear(G);
     arb_mat_clear(expression_logs);
     arb_mat_clear(generator_logs);
@@ -717,9 +718,31 @@ _hwave_element_add_vec(
         hwave_element_t e, const fmpz * vec1, const fmpz * vec2, arb_srcptr v,
         slong r, slong prec)
 {
+    /*
+    flint_printf("adding coefficients\n");
+    flint_printf("  "); _fmpz_vec_print(vec1, r); flint_printf("\n");
+    flint_printf("+ "); _fmpz_vec_print(vec2, r); flint_printf("\n");
+    */
+
     _fmpz_vec_add(e->vec, vec1, vec2, r);
     _arb_vec_dot_fmpz_vec(e->value, v, e->vec, r, prec);
     e->status = HWAVE_STATUS_UNAMBIGUOUS;
+
+    /*
+    flint_printf("= "); _fmpz_vec_print(e->vec, r); flint_printf("\n\n");
+    arb_t a, b;
+    arb_init(a);
+    arb_init(b);
+    _arb_vec_dot_fmpz_vec(a, v, vec1, r, prec);
+    _arb_vec_dot_fmpz_vec(b, v, vec2, r, prec);
+    arb_printd(a, 15); flint_printf("\n");
+    arb_printd(b, 15); flint_printf("\n");
+    arb_clear(a);
+    arb_clear(b);
+    flint_printf("yielding function value ");
+    arb_printd(e->value, 15);
+    flint_printf("\n");
+    */
 }
 
 void
@@ -739,7 +762,7 @@ _hwave_element_set_vec(
     _fmpz_vec_set(e->vec, vec, r);
 
     /* update the dot product */
-    _arb_vec_dot_fmpz_vec(e->value, v, vec, r, prec);
+    _arb_vec_dot_fmpz_vec(e->value, v, e->vec, r, prec);
 
     /*
      * Mark that for this element the vector of integer coefficients
@@ -748,15 +771,15 @@ _hwave_element_set_vec(
     e->status = HWAVE_STATUS_UNAMBIGUOUS;
 }
 
-fmpz *
-_get_max3_checked_vec(
+hwave_element_ptr
+_get_max3_checked(
         hwave_element_ptr e0,
         hwave_element_ptr e1,
         hwave_element_ptr e2,
         slong len);
 
-fmpz *
-_get_max3_checked_vec(
+hwave_element_ptr
+_get_max3_checked(
         hwave_element_ptr e0,
         hwave_element_ptr e1,
         hwave_element_ptr e2,
@@ -782,7 +805,7 @@ _get_max3_checked_vec(
         }
     }
 
-    /* get the element with greatest midpoint */
+    /* determine the element with greatest midpoint */
     hwave_element_ptr best;
     best = e0;
     if (arf_cmp(arb_midref(best->value), arb_midref(e1->value)) < 0) {
@@ -812,7 +835,7 @@ _get_max3_checked_vec(
         }
     }
 
-    return best->vec;
+    return best;
 }
 
 void tkf91_dynamic_programming_hermite(named_hermite_generators_t g,
@@ -839,10 +862,11 @@ void tkf91_dynamic_programming_hermite(named_hermite_generators_t g,
     /* define the wavefront matrix */
     hwave_mat_t wave;
     slong modulus = 3;
+    /* slong modulus = nrows + ncols - 1; */
     hwave_mat_init(wave, nrows + ncols - 1, modulus, rank);
 
     /* iterate over anti-diagonal bands of the dynamic programming matrix */
-    fmpz * bestvec;
+    hwave_element_ptr best;
     hwave_cell_ptr cell, p0, p1, p2;
     slong i, j, k, l;
     slong istart, jstart, lstart;
@@ -946,49 +970,66 @@ void tkf91_dynamic_programming_hermite(named_hermite_generators_t g,
                     p1 = hwave_mat_entry_diag(wave, k, l);
                     p2 = hwave_mat_entry_left(wave, k, l);
 
-                    bestvec = _get_max3_checked_vec(
-                            p0->m+0, p0->m+1, p0->m+2, rank);
-                    _hwave_element_add_vec(
-                            cell->m+0,
-                            bestvec,
-                            g->c0_incr[nta],
-                            v, rank, prec);
+                    best = _get_max3_checked(p0->m+0, p0->m+1, p0->m+2, rank);
+                    if (best->status == HWAVE_STATUS_UNDEFINED)
+                    {
+                        hwave_element_set_undefined(cell->m+0);
+                    }
+                    else
+                    {
+                        _hwave_element_add_vec(
+                                cell->m+0,
+                                best->vec,
+                                g->c0_incr[nta],
+                                v, rank, prec);
+                    }
 
-                    bestvec = _get_max3_checked_vec(
-                            p1->m+0, p1->m+1, p1->m+2, rank);
-                    _hwave_element_add_vec(
-                            cell->m+1,
-                            bestvec,
-                            g->c1_incr[nta*4 + ntb],
-                            v, rank, prec);
+                    best = _get_max3_checked(p1->m+0, p1->m+1, p1->m+2, rank);
+                    if (best->status == HWAVE_STATUS_UNDEFINED)
+                    {
+                        hwave_element_set_undefined(cell->m+1);
+                    }
+                    else
+                    {
+                        _hwave_element_add_vec(
+                                cell->m+1,
+                                best->vec,
+                                g->c1_incr[nta*4 + ntb],
+                                v, rank, prec);
+                    }
 
                     /* use max3 to check only max2 by duplicating one -- */
                     /* passing p2->m+1 twice is not a bug */
                     /* TODO make a max2 convenience function for this... */
-                    bestvec = _get_max3_checked_vec(
-                            p2->m+1, p2->m+1, p2->m+2, rank);
-                    _hwave_element_add_vec(
-                            cell->m+2,
-                            bestvec,
-                            g->c2_incr[ntb],
-                            v, rank, prec);
+                    best = _get_max3_checked(p2->m+1, p2->m+1, p2->m+2, rank);
+                    if (best->status == HWAVE_STATUS_UNDEFINED)
+                    {
+                        hwave_element_set_undefined(cell->m+2);
+                    }
+                    else
+                    {
+                        _hwave_element_add_vec(
+                                cell->m+2,
+                                best->vec,
+                                g->c2_incr[ntb],
+                                v, rank, prec);
+                    }
                 }
             }
 
             /* fill the table for traceback */
             /* FIXME use the breadcrumb ambiguity bit as appropriate */
             breadcrumb_ptr pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
-            bestvec = _get_max3_checked_vec(
-                    cell->m+0, cell->m+1, cell->m+2, rank);
-            if (_fmpz_vec_equal(bestvec, cell->m[0].vec, rank))
+            best = _get_max3_checked(cell->m+0, cell->m+1, cell->m+2, rank);
+            if (_fmpz_vec_equal(best->vec, cell->m[0].vec, rank))
             {
                 *pcrumb |= CRUMB_TOP;
             }
-            if (_fmpz_vec_equal(bestvec, cell->m[1].vec, rank))
+            if (_fmpz_vec_equal(best->vec, cell->m[1].vec, rank))
             {
                 *pcrumb |= CRUMB_DIAG;
             }
-            if (_fmpz_vec_equal(bestvec, cell->m[2].vec, rank))
+            if (_fmpz_vec_equal(best->vec, cell->m[2].vec, rank))
             {
                 *pcrumb |= CRUMB_LEFT;
             }
@@ -1008,45 +1049,23 @@ void tkf91_dynamic_programming_hermite(named_hermite_generators_t g,
     }
 
     /* report the probability matrices */
-
     /*
-    flint_printf("m0:\n");
-    for (i = 0; i < nrows; i++)
+    slong c;
+    arf_ptr mid;
+    for (c = 0; c < 3; c++)
     {
-        for (j = 0; j < ncols; j++)
+        flint_printf("m%wd:\n", c);
+        for (i = 0; i < nrows; i++)
         {
-            k = i + j;
-            l = nrows - 1 + j - i;
-            cell = hwave_mat_entry(wave, k, l);
-            flint_printf("%.15lf ", exp(cell->m0));
-        }
-        flint_printf("\n");
-    }
-    flint_printf("\n");
-
-    flint_printf("m1:\n");
-    for (i = 0; i < nrows; i++)
-    {
-        for (j = 0; j < ncols; j++)
-        {
-            k = i + j;
-            l = nrows - 1 + j - i;
-            cell = hwave_mat_entry(wave, k, l);
-            flint_printf("%.15lf ", exp(cell->m1));
-        }
-        flint_printf("\n");
-    }
-    flint_printf("\n");
-
-    flint_printf("m2:\n");
-    for (i = 0; i < nrows; i++)
-    {
-        for (j = 0; j < ncols; j++)
-        {
-            k = i + j;
-            l = nrows - 1 + j - i;
-            cell = hwave_mat_entry(wave, k, l);
-            flint_printf("%.15lf ", exp(cell->m2));
+            for (j = 0; j < ncols; j++)
+            {
+                k = i + j;
+                l = nrows - 1 + j - i;
+                cell = hwave_mat_entry(wave, k, l);
+                mid = arb_midref(cell->m[c].value);
+                flint_printf("%.17lf ", exp(arf_get_d(mid, ARF_RND_NEAR)));
+            }
+            flint_printf("\n");
         }
         flint_printf("\n");
     }
@@ -1059,10 +1078,10 @@ void tkf91_dynamic_programming_hermite(named_hermite_generators_t g,
     k = i + j;
     l = nrows - 1 + j - i;
     cell = hwave_mat_entry(wave, k, l);
-    bestvec = _get_max3_checked_vec(cell->m+0, cell->m+1, cell->m+2, rank);
+    best = _get_max3_checked(cell->m+0, cell->m+1, cell->m+2, rank);
     arb_t arbscore;
     arb_init(arbscore);
-    _arb_vec_dot_fmpz_vec(arbscore, v, bestvec, rank, prec);
+    _arb_vec_dot_fmpz_vec(arbscore, v, best->vec, rank, prec);
     arb_exp(arbscore, arbscore, prec);
     flint_printf("score: ");
     arb_printd(arbscore, 15);
@@ -1104,6 +1123,9 @@ tkf91_hermite(
      *   expressions_table : map from expression index to expression object
      *   g : a struct with named generator indices
      */
+
+    arb_t x;
+    arb_init(x);
 
     /* Compute a Hermite decomposition of the generator matrix. */
     /* U * mat = H */
@@ -1208,15 +1230,12 @@ tkf91_hermite(
      * This is like a log(y) column vector.
      */
     arb_mat_t expression_logs;
-    arb_t x;
-    arb_init(x);
     arb_mat_init(expression_logs, fmpz_mat_ncols(mat), 1);
     for (i = 0; i < fmpz_mat_ncols(mat); i++)
     {
         expr_eval(x, expressions_table[i], level);
         arb_log(arb_mat_entry(expression_logs, i, 0), x, prec);
     }
-    arb_clear(x);
 
     /*
      * Compute the quasi-generator logs H*log(y).
@@ -1239,16 +1258,61 @@ tkf91_hermite(
         arb_printd(v+i, 15);
         flint_printf("\n");
     }
+    flint_printf("\n");
+
+    /*
+     * Begin checking some invariants.
+     * Require that the result of the calculation does not depend on the basis.
+     *
+     * Initialize an arbitrary precision matrix.
+     * This will be part of the calculation G*log(y)
+     * which gives the score of each generator.
+     */
+    arb_mat_t arbG;
+    arb_mat_init(arbG, fmpz_mat_nrows(mat), fmpz_mat_ncols(mat));
+    arb_mat_set_fmpz_mat(arbG, mat);
+
+    /*
+     * Compute the generator logs G*log(y).
+     */
+    arb_mat_t generator_logs;
+    arb_mat_init(generator_logs, fmpz_mat_nrows(mat), 1);
+    arb_mat_mul(generator_logs, arbG, expression_logs, prec);
+
+    flint_printf("log probability for each generator:\n");
+    arb_mat_printd(generator_logs, 15);
+    flint_printf("\n");
+
+    /*
+     * Compute dot products which should be equivalent.
+     */
+    flint_printf("a presumably equivalent calculation in a different basis\n");
+    for (i = 0; i < fmpz_mat_nrows(mat); i++)
+    {
+        _arb_vec_dot_fmpz_vec(x, v, V->rows[i], rank, prec);
+        /*
+        flint_printf("first %wd columns of row %wd of V : ", rank, i);
+        flint_printf("\n");
+        _fmpz_vec_print(V->rows[i], rank);
+        flint_printf("dot product : ");
+        */
+        arb_printd(x, 15);
+        flint_printf("\n");
+    }
+    flint_printf("\n");
 
     /*
      * Clear temporary variables.
      * Keep V because member variables of h point to its rows.
      * Keep v because it is used directly in the next stage.
      */
+    arb_clear(x);
     fmpz_mat_clear(H);
     fmpz_mat_clear(U);
     arb_mat_clear(arbH);
+    arb_mat_clear(arbG);
     arb_mat_clear(expression_logs);
+    arb_mat_clear(generator_logs);
     arb_mat_clear(quasi_generator_logs);
 
     /* do the thing */

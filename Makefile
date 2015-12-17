@@ -2,7 +2,8 @@ ARB_INCLUDES=-I. -I../arb -I/usr/local/include/flint
 ARB_LIBS=-L../arb
 ARB_LD_LIBRARY=LD_LIBRARY_PATH=/usr/local/bin:../arb
 
-VALGRIND=valgrind --leak-check=full --show-leak-kinds=all
+#VALGRIND=valgrind --leak-check=full --show-leak-kinds=all
+VALGRIND=
 
 CC=gcc
 DEFS=
