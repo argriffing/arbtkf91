@@ -87,8 +87,9 @@ generators.o: generators.c
 		femtocas.o expressions.o \
 		-lflint -lgmp -larb
 
-bin/t-generators: tests/t-generators.c generators.o
-	$(CC) tests/t-generators.c generators.o femtocas.o expressions.o \
+bin/t-generators: tests/t-generators.c generators.o tkf91_generators.o
+	$(CC) tests/t-generators.c \
+		generators.o femtocas.o expressions.o tkf91_generators.o \
 		-o bin/t-generators \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
 

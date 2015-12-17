@@ -120,11 +120,6 @@ generator_reg_clear(generator_reg_ptr x)
 }
 
 
-/* These are convenience functions. */
-void gen_open(generator_reg_t g, slong *pidx);
-void gen_add(generator_reg_t g, expr_ptr expression, slong exponent);
-void gen_close(generator_reg_t g);
-
 
 void
 gen_open(generator_reg_t g, slong *pidx)

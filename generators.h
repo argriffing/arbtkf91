@@ -1,7 +1,11 @@
 #ifndef GENERATORS_H
 #define GENERATORS_H
 
-#include"expressions.h"
+
+#include "flint/flint.h"
+#include "flint/fmpz.h"
+
+#include "expressions.h"
 
 
 typedef struct generator_reg_node_struct
@@ -37,6 +41,10 @@ slong generator_reg_generators_len(generator_reg_ptr x);
 
 void generator_reg_get_matrix(fmpz_mat_t mat, generator_reg_ptr x);
 void generator_reg_clear(generator_reg_ptr x);
+
+void gen_open(generator_reg_t g, slong *pidx);
+void gen_add(generator_reg_t g, expr_ptr expression, slong exponent);
+void gen_close(generator_reg_t g);
 
 #ifdef __cplusplus
 }

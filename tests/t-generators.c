@@ -4,9 +4,11 @@
 #include "flint/fmpq.h"
 #include "flint/fmpz.h"
 #include "flint/fmpz_mat.h"
+
 #include "femtocas.h"
 #include "expressions.h"
 #include "generators.h"
+#include "tkf91_generators.h"
 
 
 /*
@@ -67,7 +69,7 @@ int main()
         reg_t reg;
         tkf91_expressions_t p;
         generator_reg_t genreg;
-        named_generators_t named_generators;
+        tkf91_generators_t tkf91_generators;
 
         fmpq_init(lambda);
         fmpq_init(mu);
@@ -87,7 +89,7 @@ int main()
         reg_init(reg);
         tkf91_expressions_init(p, reg, lambda, mu, tau, pi);
         generator_reg_init(genreg, reg->size);
-        named_generators_init(named_generators, genreg, p, A, szA, B, szB);
+        tkf91_generators_init(tkf91_generators, genreg, p, A, szA, B, szB);
 
 
         /* report the matrix of coefficients */
@@ -105,7 +107,7 @@ int main()
         reg_clear(reg);
         tkf91_expressions_clear(p);
         generator_reg_clear(genreg);
-        named_generators_clear(named_generators);
+        tkf91_generators_clear(tkf91_generators);
 
         fmpq_clear(lambda);
         fmpq_clear(mu);
