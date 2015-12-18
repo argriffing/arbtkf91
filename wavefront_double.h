@@ -1,7 +1,8 @@
 #ifndef WAVEFRONT_DOUBLE_H
 #define WAVEFRONT_DOUBLE_H
 
-#include "flint.h"
+#include "flint/flint.h"
+
 
 /* double precision implementation of wavefront indexing */
 

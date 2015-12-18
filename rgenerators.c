@@ -3,6 +3,7 @@
 #include "flint/fmpq.h"
 #include "flint/fmpz_mat.h"
 
+#include "factor_refinement.h"
 #include "expressions.h"
 #include "rgenerators.h"
 
@@ -58,7 +59,7 @@ typedef struct
 {
     slong nbases;
     fmpz * base_integers;
-    expr_ptr base_expressions;
+    expr_ptr * base_expressions;
 } rgen_reg_refinement_struct;
 typedef rgen_reg_refinement_struct rgen_reg_refinement_t[1];
 typedef rgen_reg_refinement_struct * rgen_reg_refinement_ptr;
@@ -73,11 +74,11 @@ typedef struct rgen_reg_struct_tag
     rgen_reg_node_ptr head;
     rgen_reg_node_ptr tail;
     slong size;
-    rgen_refinement_ptr refinement;
+    rgen_reg_refinement_ptr refinement;
     reg_ptr reg;
 } rgen_reg_struct;
 
-void rgen_reg_assert_status(rgen_reg_t g, int status);
+void rgen_reg_assert_status(rgen_reg_ptr g, int status);
 
 
 
@@ -126,7 +127,7 @@ rgen_reg_node_add_fmpq(rgen_reg_node_ptr p, fmpq_t value, slong count)
     node = flint_malloc(sizeof(rgen_fmpq_node_struct));
     rgen_fmpq_node_init(node);
     fmpq_set(node->value, value);
-    node->count = count;
+    fmpz_set_si(node->count, count);
 
     if (p->p_fmpq_head)
     {
@@ -147,7 +148,7 @@ rgen_reg_node_add_expr(rgen_reg_node_ptr p, expr_ptr expr, slong count)
     node = flint_malloc(sizeof(rgen_expr_node_struct));
     rgen_expr_node_init(node);
     node->p = expr;
-    node->count = count;
+    fmpz_set_si(node->count, count);
 
     if (p->p_expr_head)
     {
@@ -175,25 +176,29 @@ void
 rgen_reg_node_clear(rgen_reg_node_t p)
 {
     /* clear and delete all of the fmpq nodes */
-    rgen_fmpq_node_ptr node, next;
-    node = p->p_fmpq_head
-    while(node)
     {
-        next = node->next;
-        rgen_fmpq_node_clear(node);
-        flint_free(node);
-        node = next;
+        rgen_fmpq_node_ptr node, next;
+        node = p->p_fmpq_head;
+        while(node)
+        {
+            next = node->next;
+            rgen_fmpq_node_clear(node);
+            flint_free(node);
+            node = next;
+        }
     }
 
     /* clear and delete all of the expr nodes */
-    rgen_expr_node_ptr node, next;
-    node = p->p_fmpq_head
-    while(node)
     {
-        next = node->next;
-        rgen_expr_node_clear(node);
-        flint_free(node);
-        node = next;
+        rgen_expr_node_ptr node, next;
+        node = p->p_expr_head;
+        while(node)
+        {
+            next = node->next;
+            rgen_expr_node_clear(node);
+            flint_free(node);
+            node = next;
+        }
     }
 
     p->p_fmpq_head = NULL;
@@ -204,14 +209,6 @@ rgen_reg_node_clear(rgen_reg_node_t p)
 }
 
 
-typedef struct
-{
-    slong nbases;
-    fmpz * base_integers;
-    expr_ptr base_expressions;
-} rgen_reg_refinement_struct;
-typedef rgen_reg_refinement_struct rgen_reg_refinement_t[1];
-typedef rgen_reg_refinement_struct * rgen_reg_refinement_ptr;
 
 void
 rgen_reg_refinement_init(rgen_reg_refinement_t p)
@@ -242,17 +239,22 @@ void rgen_reg_assert_status(rgen_reg_ptr g, int status)
     }
 }
 
-void rgen_reg_init(rgen_reg_ptr g)
+rgen_reg_ptr
+rgen_reg_new()
 {
+    rgen_reg_ptr g;
+    g = flint_malloc(sizeof(rgen_reg_struct));
     g->status = RGEN_STATUS_CLOSED;
     g->head = NULL;
     g->tail = NULL;
     g->size = 0;
     g->refinement = NULL;
     g->reg = NULL;
+    return g;
 }
 
-void rgen_reg_open(rgen_reg_ptr g, slong *pidx)
+
+void rgen_open(rgen_reg_ptr g, slong *pidx)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_CLOSED);
 
@@ -277,24 +279,25 @@ void rgen_reg_open(rgen_reg_ptr g, slong *pidx)
     g->status = RGEN_STATUS_OPEN;
 }
 
-void rgen_reg_add_expr(rgen_reg_ptr g, expr_ptr expr, slong count)
+void rgen_add_expr(rgen_reg_ptr g, expr_ptr expr, slong count)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_OPEN);
-    rgen_reg_node_add_expr(g->tail, expr);
+    rgen_reg_node_add_expr(g->tail, expr, count);
 }
 
-void rgen_reg_add_fmpq(rgen_reg_ptr g, fmpq_t value, slong count)
+void rgen_add_fmpq(rgen_reg_ptr g, fmpq_t value, slong count)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_OPEN);
-    rgen_reg_node_add_fmpq(g->tail, value);
+    rgen_reg_node_add_fmpq(g->tail, value, count);
 }
 
 void
-rgen_reg_close(rgen_reg_ptr g)
+rgen_close(rgen_reg_ptr g)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_OPEN);
     g->status = RGEN_STATUS_CLOSED;
 }
+
 
 void
 rgen_reg_finalize(rgen_reg_ptr g, reg_ptr reg)
@@ -307,7 +310,7 @@ rgen_reg_finalize(rgen_reg_ptr g, reg_ptr reg)
 
     int i;
     rgen_reg_node_ptr gnode;
-    rgen_reg_fmpq_node_ptr fnode;
+    rgen_fmpq_node_ptr fnode;
 
     /* Count all of the fmpq nodes within the generator registry. */
     int unrefined_count = 0;
@@ -358,6 +361,16 @@ rgen_reg_finalize(rgen_reg_ptr g, reg_ptr reg)
             unrefined_factors,
             unrefined_count);
 
+    flint_printf("before refinement:\n");
+    _fmpz_vec_print(unrefined_factors, unrefined_count);
+    flint_printf("\n");
+
+    flint_printf("after refinement:\n");
+    _fmpz_vec_print(
+            g->refinement->base_integers,
+            g->refinement->nbases);
+    flint_printf("\n");
+
     /*
      * Delete temporary and unused fmpz vectors
      * related to the factor refinement.
@@ -381,7 +394,7 @@ rgen_reg_finalize(rgen_reg_ptr g, reg_ptr reg)
         g->refinement->base_expressions[i] = expr;
     }
 
-    g->status != RGEN_STATUS_FINALIZED;
+    g->status = RGEN_STATUS_FINALIZED;
 }
 
 slong
@@ -416,6 +429,7 @@ rgen_reg_get_matrix(fmpz_mat_t mat, rgen_reg_ptr g)
     slong row, col;
     rgen_reg_node_ptr gnode;
     fmpz * entry;
+    reg_node_ptr r;
     
     /*
      * Add entries that correspond to expressions
@@ -425,9 +439,10 @@ rgen_reg_get_matrix(fmpz_mat_t mat, rgen_reg_ptr g)
     row = 0;
     for (gnode = g->head; gnode; gnode = gnode->next)
     {
-        for (enode = enode->p_expr_head; enode; enode = enode->next)
+        for (enode = gnode->p_expr_head; enode; enode = enode->next)
         {
-            col = enode->p->index;
+            r = enode->p->userdata;
+            col = r->index;
             entry = fmpz_mat_entry(mat, row, col);
             fmpz_add(entry, entry, enode->count);
         }
@@ -439,7 +454,7 @@ rgen_reg_get_matrix(fmpz_mat_t mat, rgen_reg_ptr g)
      * the expressions registry, the vector of refined factors,
      * and the vector giving the expressions corresponding to those factors.
      */
-    rgen_reg_fmpq_node_ptr fnode;
+    rgen_fmpq_node_ptr fnode;
     int i;
     fmpz_t x;
     fmpz_init(x);
@@ -450,14 +465,15 @@ rgen_reg_get_matrix(fmpz_mat_t mat, rgen_reg_ptr g)
         {
             /* numerator */
             fmpz_set(x, fmpq_numref(fnode->value));
-            for (i = 0; i < g->refined->nbases; i++)
+            for (i = 0; i < g->refinement->nbases; i++)
             {
-                while (fmpz_divisible(x, g->base_integers+i))
+                while (fmpz_divisible(x, g->refinement->base_integers+i))
                 {
-                    col = g->base_expressions[i]->index;
+                    r = g->refinement->base_expressions[i]->userdata;
+                    col = r->index;
                     entry = fmpz_mat_entry(mat, row, col);
                     fmpz_add(entry, entry, fnode->count);
-                    fmpz_divexact(x, x, g->base_integers+i);
+                    fmpz_divexact(x, x, g->refinement->base_integers+i);
                 }
             }
             if (!fmpz_is_one(x))
@@ -468,14 +484,15 @@ rgen_reg_get_matrix(fmpz_mat_t mat, rgen_reg_ptr g)
 
             /* denominator */
             fmpz_set(x, fmpq_denref(fnode->value));
-            for (i = 0; i < g->refined->nbases; i++)
+            for (i = 0; i < g->refinement->nbases; i++)
             {
-                while (fmpz_divisible(x, g->base_integers+i))
+                while (fmpz_divisible(x, g->refinement->base_integers+i))
                 {
-                    col = g->base_expressions[i]->index;
+                    r = g->refinement->base_expressions[i]->userdata;
+                    col = r->index;
                     entry = fmpz_mat_entry(mat, row, col);
                     fmpz_sub(entry, entry, fnode->count);
-                    fmpz_divexact(x, x, g->base_integers+i);
+                    fmpz_divexact(x, x, g->refinement->base_integers+i);
                 }
             }
             if (!fmpz_is_one(x))
@@ -508,4 +525,6 @@ rgen_reg_clear(rgen_reg_ptr g)
     /* clear the refinement */
     rgen_reg_refinement_clear(g->refinement);
     flint_free(g->refinement);
+
+    flint_free(g);
 }

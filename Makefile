@@ -94,9 +94,22 @@ bin/t-generators: tests/t-generators.c generators.o tkf91_generators.o
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
 
 
-# code for tkf91 generators
+# more generators stuff
 
-tkf91_generators.o: tkf91_generators.c
+rgenerators.o: rgenerators.c \
+	femtocas.o expressions.o generators.o
+	$(CC) rgenerators.c -c $(ARB_INCLUDES) $(CFLAGS) \
+		femtocas.o expressions.o generators.o \
+		-lflint -lgmp -larb
+
+tkf91_rgenerators.o: tkf91_rgenerators.c \
+	femtocas.o expressions.o generators.o rgenerators.o
+	$(CC) tkf91_rgenerators.c -c $(ARB_INCLUDES) $(CFLAGS) \
+		femtocas.o expressions.o rgenerators.o \
+		-lflint -lgmp -larb
+
+tkf91_generators.o: tkf91_generators.c \
+	femtocas.o expressions.o generators.o
 	$(CC) tkf91_generators.c -c $(ARB_INCLUDES) $(CFLAGS) \
 		femtocas.o expressions.o generators.o \
 		-lflint -lgmp -larb
@@ -119,10 +132,14 @@ wavefront_hermite.o: wavefront_hermite.c
 # this is the command line binary executable
 
 bin/arbtkf91: arbtkf91.c \
-	femtocas.o expressions.o generators.o tkf91_generators.o \
+	femtocas.o factor_refinement.o expressions.o tkf91_rationals.o \
+	generators.o tkf91_generators.o \
+	rgenerators.o tkf91_rgenerators.o \
 	wavefront_double.o wavefront_hermite.o
 	$(CC) arbtkf91.c \
-		femtocas.o expressions.o generators.o tkf91_generators.o \
+		femtocas.o factor_refinement.o expressions.o tkf91_rationals.o \
+		generators.o tkf91_generators.o \
+		rgenerators.o tkf91_rgenerators.o \
 		wavefront_double.o wavefront_hermite.o \
 		-o bin/arbtkf91 \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb -lm

@@ -1,6 +1,9 @@
 #include <stdlib.h>
-#include "flint.h"
+
+#include "flint/flint.h"
+
 #include "wavefront_double.h"
+
 
 void
 wave_mat_init(wave_mat_t mat, slong n, slong modulus)

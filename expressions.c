@@ -96,115 +96,10 @@ reg_vec(reg_ptr x)
 }
 
 
-/* the rational intermediates struct should be used only within the module. */
-typedef struct
-{
-    fmpq qi[4];
-    fmpq_t negdt;
-    fmpq_t lambda_div_mu;
-    fmpq_t one_minus_lambda_div_mu;
-    fmpq_t beta_exponent; /* (lambda - mu) * tau */
-    fmpq_t neg_mu_tau;
-} rational_intermediates_struct;
-
-typedef rational_intermediates_struct rational_intermediates_t[1];
-
-void rational_intermediates_clear(rational_intermediates_t q);
-void rational_intermediates_init(rational_intermediates_t q,
-        const fmpq *lambda, const fmpq *mu, const fmpq *tau, const fmpq *pi);
-
-
-void
-rational_intermediates_init(rational_intermediates_t q,
-        const fmpq *lambda, const fmpq *mu, const fmpq *tau, const fmpq *pi)
-{
-    slong i;
-
-    fmpq_t one;
-
-    fmpq_init(one);
-    fmpq_one(one);
-
-    /* initialize qi */
-    {
-        for (i = 0; i < 4; i++)
-        {
-            fmpq_init(q->qi+i);
-            fmpq_sub(q->qi+i, one, pi+i);
-        }
-    }
-
-    /* initialize negdt */
-    {
-        fmpq_t dt;
-        fmpq_init(dt);
-        fmpq_init(q->negdt);
-        fmpq_one(dt);
-        for (i = 0; i < 4; i++)
-        {
-            fmpq_submul(dt, pi+i, pi+i);
-        }
-        fmpq_div(dt, tau, dt);
-        fmpq_neg(q->negdt, dt);
-        fmpq_clear(dt);
-    }
-
-    /* initialize rational values related to tkf91 gamma */
-    {
-        fmpq_init(q->lambda_div_mu);
-        fmpq_init(q->one_minus_lambda_div_mu);
-        fmpq_div(q->lambda_div_mu, lambda, mu);
-        fmpq_sub(q->one_minus_lambda_div_mu, one, q->lambda_div_mu);
-    }
-
-    /* initialize rational values related to tkf91 beta */
-    {
-        fmpq_t lambda_minus_mu;
-        fmpq_init(lambda_minus_mu);
-        fmpq_sub(lambda_minus_mu, lambda, mu);
-        fmpq_init(q->beta_exponent);
-        fmpq_mul(q->beta_exponent, lambda_minus_mu, tau);
-        fmpq_clear(lambda_minus_mu);
-    }
-
-    /* -mu*tau */
-    {
-        fmpq_t mu_tau;
-        fmpq_init(mu_tau);
-        fmpq_mul(mu_tau, mu, tau);
-        fmpq_init(q->neg_mu_tau);
-        fmpq_neg(q->neg_mu_tau, mu_tau);
-        fmpq_clear(mu_tau);
-    }
-
-    fmpq_clear(one);
-}
-
-void
-rational_intermediates_clear(rational_intermediates_t q)
-{
-    slong i;
-    for (i = 0; i < 4; i++)
-    {
-        fmpq_clear(q->qi+i);
-    }
-    fmpq_clear(q->negdt);
-    fmpq_clear(q->lambda_div_mu);
-    fmpq_clear(q->one_minus_lambda_div_mu);
-    fmpq_clear(q->beta_exponent);
-    fmpq_clear(q->neg_mu_tau);
-}
-
-
-
-void
-tkf91_expressions_init(
-        tkf91_expressions_t p,
+void tkf91_expressions_init(
+        tkf91_expressions_ptr p,
         reg_t reg,
-        const fmpq * lambda,
-        const fmpq * mu,
-        const fmpq * tau,
-        const fmpq * pi)
+        const tkf91_rationals_t r)
 {
     /*
      * Create a bunch of static single assignment expressions.
@@ -216,16 +111,13 @@ tkf91_expressions_init(
      */
     slong i, j;
 
-    rational_intermediates_t q;
-    rational_intermediates_init(q, lambda, mu, tau, pi);
-
     /* factors related to sequence length equilibrium frequency */
     {
         p->lambda_div_mu = reg_new(reg);
-        expr_fmpq(p->lambda_div_mu, q->lambda_div_mu);
+        expr_fmpq(p->lambda_div_mu, r->lambda_div_mu);
 
         p->one_minus_lambda_div_mu = reg_new(reg);
-        expr_fmpq(p->one_minus_lambda_div_mu, q->one_minus_lambda_div_mu);
+        expr_fmpq(p->one_minus_lambda_div_mu, r->one_minus_lambda_div_mu);
     }
 
     /* factors related to sequence composition */
@@ -236,7 +128,7 @@ tkf91_expressions_init(
             alias = NULL;
             for (j = 0; j < i; j++)
             {
-                if (fmpq_equal(pi+i, pi+j))
+                if (fmpq_equal(r->pi+i, r->pi+j))
                 {
                     alias = p->pi[j];
                     break;
@@ -249,7 +141,7 @@ tkf91_expressions_init(
             else
             {
                 p->pi[i] = reg_new(reg);
-                expr_fmpq(p->pi[i], pi+i);
+                expr_fmpq(p->pi[i], r->pi+i);
             }
         }
     }
@@ -257,13 +149,13 @@ tkf91_expressions_init(
     /* factors related to the indel process involving beta */
     {
         expr_ptr x_mu = reg_new(reg);
-        expr_fmpq(x_mu, mu);
+        expr_fmpq(x_mu, r->mu);
 
         expr_ptr x_lambda = reg_new(reg);
-        expr_fmpq(x_lambda, lambda);
+        expr_fmpq(x_lambda, r->lambda);
 
         expr_ptr a = reg_new(reg);
-        expr_exp_fmpq(a, q->beta_exponent);
+        expr_exp_fmpq(a, r->beta_exponent);
 
         expr_ptr num = reg_new(reg);
         expr_complement(num, a);
@@ -275,7 +167,7 @@ tkf91_expressions_init(
         expr_sub(den, x_mu, b);
 
         p->exp_neg_mu_tau = reg_new(reg);
-        expr_exp_fmpq(p->exp_neg_mu_tau, q->neg_mu_tau);
+        expr_exp_fmpq(p->exp_neg_mu_tau, r->neg_mu_tau);
 
         expr_ptr beta = reg_new(reg);
         expr_div(beta, num, den);
@@ -299,7 +191,7 @@ tkf91_expressions_init(
     /* factors related to point substitutions */
     {
         expr_ptr exp_negdt = reg_new(reg);
-        expr_exp_fmpq(exp_negdt, q->negdt);
+        expr_exp_fmpq(exp_negdt, r->negdt);
 
         p->one_minus_exp_negdt = reg_new(reg);
         expr_complement(p->one_minus_exp_negdt, exp_negdt);
@@ -313,7 +205,7 @@ tkf91_expressions_init(
             mismatch_alias = NULL;
             for (j = 0; j < i; j++)
             {
-                if (fmpq_equal(pi+i, pi+j))
+                if (fmpq_equal(r->pi+i, r->pi+j))
                 {
                     match_alias = p->match[j];
                     mismatch_alias = p->mismatch[j];
@@ -338,8 +230,6 @@ tkf91_expressions_init(
             }
         }
     }
-
-    rational_intermediates_clear(q);
 }
 
 void
@@ -350,4 +240,53 @@ tkf91_expressions_clear(tkf91_expressions_t p)
      * for entries in a registry of expressions.
      */
     UNUSED(p);
+}
+
+
+
+
+int
+tenacious_strict_gt(expr_t a, expr_t b)
+{
+    arb_t x, y;
+    int disjoint;
+    int result;
+    slong level;
+
+    /* check identity of pointers */
+    if (a == b)
+    {
+        return 0;
+    }
+
+    /* evaluate at increasing levels of precision until there is no overlap */
+    disjoint = 0;
+    result = 0;
+    for (level = 0; level < EXPR_CACHE_CAP && !disjoint; level++)
+    {
+        arb_init(x);
+        arb_init(y);
+        expr_eval(x, a, level);
+        expr_eval(y, b, level);
+        if (!arb_overlaps(x, y))
+        {
+            disjoint = 1;
+            result = arb_gt(x, y);
+        }
+        arb_clear(x);
+        arb_clear(y);
+    }
+    if (!disjoint)
+    {
+        flint_printf("tenacious strict comparison failed\n");
+        abort();
+    }
+    /*
+    else
+    {
+        flint_printf("detected inequality at level %wd\n", level);
+    }
+    */
+
+    return result;
 }

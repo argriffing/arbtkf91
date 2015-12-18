@@ -12,11 +12,15 @@
 #include "arb_mat.h"
 
 #include "femtocas.h"
+#include "tkf91_rationals.h"
 #include "expressions.h"
 #include "generators.h"
+#include "rgenerators.h"
 #include "tkf91_generators.h"
+#include "tkf91_rgenerators.h"
 #include "wavefront_double.h"
 #include "wavefront_hermite.h"
+#include "tkf91_generator_indices.h"
 
 typedef struct
 {
@@ -98,7 +102,7 @@ typedef tkf91_hermite_generators_struct tkf91_hermite_generators_t[1];
 fmpz * _hermitify(slong i, fmpz_mat_t M);
 void hermitify_tkf91_generators(
         tkf91_hermite_generators_t h,
-        tkf91_generators_t g,
+        tkf91_generator_indices_t g,
         fmpz_mat_t M);
 
 fmpz *
@@ -110,7 +114,7 @@ _hermitify(slong i, fmpz_mat_t M)
 void
 hermitify_tkf91_generators(
         tkf91_hermite_generators_t h,
-        tkf91_generators_t g,
+        tkf91_generator_indices_t g,
         fmpz_mat_t M)
 {
     slong i, j;
@@ -152,7 +156,7 @@ typedef tkf91_double_generators_struct tkf91_double_generators_t[1];
 double _doublify(slong i, arb_mat_t m);
 void doublify_tkf91_generators(
         tkf91_double_generators_t h,
-        tkf91_generators_t g,
+        tkf91_generator_indices_t g,
         arb_mat_t m);
 
 /* helper function for converting the generator array to double precision */
@@ -168,7 +172,7 @@ _doublify(slong i, arb_mat_t m)
 void
 doublify_tkf91_generators(
         tkf91_double_generators_t h,
-        tkf91_generators_t g,
+        tkf91_generator_indices_t g,
         arb_mat_t m)
 {
     slong i, j;
@@ -618,14 +622,14 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
 void
 tkf91_double_precision(
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        tkf91_generators_t g,
+        tkf91_generator_indices_t g,
         slong *A, size_t szA,
         slong *B, size_t szB);
 
 void
 tkf91_double_precision(
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        tkf91_generators_t g,
+        tkf91_generator_indices_t g,
         slong *A, size_t szA,
         slong *B, size_t szB)
 {
@@ -1107,14 +1111,14 @@ void tkf91_dynamic_programming_hermite(tkf91_hermite_generators_t g,
 void
 tkf91_hermite(
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        tkf91_generators_t g,
+        tkf91_generator_indices_t g,
         slong *A, size_t szA,
         slong *B, size_t szB);
 
 void
 tkf91_hermite(
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        tkf91_generators_t g,
+        tkf91_generator_indices_t g,
         slong *A, size_t szA,
         slong *B, size_t szB)
 {
@@ -1131,7 +1135,7 @@ tkf91_hermite(
      * we could decide to adjust it dynamically if it is detected
      * to be insufficient.
      */
-    slong level = 4;
+    slong level = 6;
     slong prec = 1 << level;
 
     arb_t x;
@@ -1280,27 +1284,36 @@ tkf91_hermite(
     arb_mat_init(generator_logs, fmpz_mat_nrows(mat), 1);
     arb_mat_mul(generator_logs, arbG, expression_logs, prec);
 
+    /*
     flint_printf("log probability for each generator:\n");
     arb_mat_printd(generator_logs, 15);
     flint_printf("\n");
+    */
 
     /*
      * Compute dot products which should be equivalent.
      */
+    /*
     flint_printf("a presumably equivalent calculation in a different basis\n");
     for (i = 0; i < fmpz_mat_nrows(mat); i++)
     {
         _arb_vec_dot_fmpz_vec(x, v, V->rows[i], rank, prec);
-        /*
+
         flint_printf("first %wd columns of row %wd of V : ", rank, i);
         flint_printf("\n");
         _fmpz_vec_print(V->rows[i], rank);
         flint_printf("dot product : ");
-        */
+
         arb_printd(x, 15);
         flint_printf("\n");
     }
     flint_printf("\n");
+    */
+
+    /*
+    flint_printf("V:\n"); fmpz_mat_print_pretty(V); flint_printf("\n");
+    flint_printf("H:\n"); fmpz_mat_print_pretty(H); flint_printf("\n");
+    */
 
     /*
      * Clear temporary variables.
@@ -1337,9 +1350,9 @@ run(const char *strA, const char *strB, const user_params_t params)
 
     size_t szA, szB;
     reg_t reg;
+    tkf91_rationals_t r;
     tkf91_expressions_t p;
-    generator_reg_t genreg;
-    tkf91_generators_t g;
+    tkf91_generator_indices_t g;
     fmpz_mat_t mat;
 
     szA = strlen(strA);
@@ -1351,15 +1364,27 @@ run(const char *strA, const char *strB, const user_params_t params)
     _fill_sequence_vector(B, strB, szB);
 
     reg_init(reg);
-    tkf91_expressions_init(p, reg,
+    tkf91_rationals_init(r,
             params->lambda, params->mu, params->tau, params->pi);
+    tkf91_expressions_init(p, reg, r);
+
+    /*
+    generator_reg_t genreg;
     generator_reg_init(genreg, reg->size);
     tkf91_generators_init(g, genreg, p, A, szA, B, szB);
-
     fmpz_mat_init(mat,
             generator_reg_generators_len(genreg),
             generator_reg_expressions_len(genreg));
     generator_reg_get_matrix(mat, genreg);
+    generator_reg_clear(genreg);
+    */
+
+    rgen_reg_ptr rg = rgen_reg_new();
+    tkf91_rgenerators_init(g, rg, r, p, A, szA, B, szB);
+    rgen_reg_finalize(rg, reg);
+    fmpz_mat_init(mat, rgen_reg_nrows(rg), rgen_reg_ncols(rg));
+    rgen_reg_get_matrix(mat, rg);
+    rgen_reg_clear(rg);
 
     expressions_table = reg_vec(reg);
 
@@ -1369,9 +1394,8 @@ run(const char *strA, const char *strB, const user_params_t params)
     tkf91_hermite(mat, expressions_table, g, A, szA, B, szB);
 
     reg_clear(reg);
+    tkf91_rationals_clear(r);
     tkf91_expressions_clear(p);
-    generator_reg_clear(genreg);
-    tkf91_generators_clear(g);
     fmpz_mat_clear(mat);
 
     flint_free(expressions_table);

@@ -5,6 +5,7 @@
 #include "flint/fmpz.h"
 #include "flint/fmpq.h"
 #include "femtocas.h"
+#include "tkf91_rationals.h"
 
 
 /*
@@ -84,12 +85,11 @@ expr_ptr * reg_vec(reg_ptr x);
 void tkf91_expressions_init(
         tkf91_expressions_ptr p,
         reg_t reg,
-        const fmpq * lambda,
-        const fmpq * mu,
-        const fmpq * tau,
-        const fmpq * pi);
+        const tkf91_rationals_t r);
 
 void tkf91_expressions_clear(tkf91_expressions_t);
+
+int tenacious_strict_gt(expr_t a, expr_t b);
 
 
 #ifdef __cplusplus

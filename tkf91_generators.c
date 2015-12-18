@@ -3,6 +3,7 @@
 #include "expressions.h"
 #include "generators.h"
 #include "tkf91_generators.h"
+#include "tkf91_generator_indices.h"
 
 
 void gen_add_p0_bar(generator_reg_t g, tkf91_expressions_ptr p, slong k);
@@ -48,60 +49,9 @@ void gen_add_p1_bar(generator_reg_t g, tkf91_expressions_ptr p, slong k) {
 
 
 
-
-/* This convenience function is used only internally to this module. */
-int tenacious_strict_gt(expr_t a, expr_t b);
-
-int
-tenacious_strict_gt(expr_t a, expr_t b)
-{
-    arb_t x, y;
-    int disjoint;
-    int result;
-    slong level;
-
-    /* check identity of pointers */
-    if (a == b)
-    {
-        return 0;
-    }
-
-    /* evaluate at increasing levels of precision until there is no overlap */
-    disjoint = 0;
-    result = 0;
-    for (level = 0; level < EXPR_CACHE_CAP && !disjoint; level++)
-    {
-        arb_init(x);
-        arb_init(y);
-        expr_eval(x, a, level);
-        expr_eval(y, b, level);
-        if (!arb_overlaps(x, y))
-        {
-            disjoint = 1;
-            result = arb_gt(x, y);
-        }
-        arb_clear(x);
-        arb_clear(y);
-    }
-    if (!disjoint)
-    {
-        flint_printf("tenacious strict comparison failed\n");
-        abort();
-    }
-    /*
-    else
-    {
-        flint_printf("detected inequality at level %wd\n", level);
-    }
-    */
-
-    return result;
-}
-
-
 void
 tkf91_generators_init(
-        tkf91_generators_t x,
+        tkf91_generator_indices_t x,
         generator_reg_t g,
         tkf91_expressions_t p,
         slong *A, slong Alen,
@@ -256,7 +206,7 @@ tkf91_generators_init(
 }
 
 void
-tkf91_generators_clear(tkf91_generators_t x)
+tkf91_generators_clear(tkf91_generator_indices_t x)
 {
     UNUSED(x);
 }

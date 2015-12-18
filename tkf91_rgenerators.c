@@ -1,122 +1,83 @@
 #include "flint/fmpz_vec.h"
 #include "flint/fmpz_mat.h"
+
 #include "expressions.h"
 #include "generators.h"
+#include "rgenerators.h"
+#include "tkf91_generators.h"
 #include "tkf91_rgenerators.h"
+#include "tkf91_generator_indices.h"
 
 
-void rgen_add_p0_bar(rgen_reg_t g,
+void rgen_add_p0_bar(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k);
-void rgen_add_gamma_0(rgen_reg_t g,
+void rgen_add_gamma_0(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k);
-void rgen_add_gamma_1(rgen_reg_t g,
+void rgen_add_gamma_1(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k);
-void rgen_add_zeta_1(rgen_reg_t g,
+void rgen_add_zeta_1(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k);
-void rgen_add_zeta_2(rgen_reg_t g,
+void rgen_add_zeta_2(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k);
-void rgen_add_p1(rgen_reg_t g,
+void rgen_add_p1(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k);
-void rgen_add_p1_bar(rgen_reg_t g,
+void rgen_add_p1_bar(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k);
 
-void rgen_add_p0_bar(rgen_reg_t g,
+
+
+void rgen_add_p0_bar(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k) {
+    UNUSED(r);
     rgen_add_expr(g, p->mu_beta, k);
 }
 
-void rgen_add_gamma_0(rgen_reg_t g,
+void rgen_add_gamma_0(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k) {
+    UNUSED(p);
     rgen_add_fmpq(g, r->one_minus_lambda_div_mu, k);
 }
 
-void rgen_add_gamma_1(rgen_reg_t g,
+void rgen_add_gamma_1(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k) {
+    UNUSED(p);
     rgen_add_fmpq(g, r->one_minus_lambda_div_mu, k);
     rgen_add_fmpq(g, r->lambda_div_mu, k);
 }
 
-void rgen_add_zeta_1(rgen_reg_t g,
+void rgen_add_zeta_1(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k) {
+    UNUSED(r);
     rgen_add_expr(g, p->one_minus_lambda_beta, k);
 }
 
-void rgen_add_zeta_2(rgen_reg_t g,
+void rgen_add_zeta_2(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k) {
-    rgen_add_fmpq(g, r->one_minus_lambda_beta, k);
+    UNUSED(r);
+    rgen_add_expr(g, p->one_minus_lambda_beta, k);
     rgen_add_expr(g, p->lambda_beta, k);
 }
 
-void rgen_add_p1(rgen_reg_t g,
+void rgen_add_p1(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k) {
+    UNUSED(r);
     rgen_add_expr(g, p->exp_neg_mu_tau, k);
     rgen_add_expr(g, p->one_minus_lambda_beta, k);
 }
 
-void rgen_add_p1_bar(rgen_reg_t g,
+void rgen_add_p1_bar(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k) {
+    UNUSED(r);
     rgen_add_expr(g, p->the_long_beta_expression, k);
     rgen_add_expr(g, p->one_minus_lambda_beta, k);
 }
 
 
 
-
-/* This convenience function is used only internally to this module. */
-/* TODO move this function so it can be shared across rgen and gen. */
-int tenacious_strict_gt(expr_t a, expr_t b);
-
-int
-tenacious_strict_gt(expr_t a, expr_t b)
-{
-    arb_t x, y;
-    int disjoint;
-    int result;
-    slong level;
-
-    /* check identity of pointers */
-    if (a == b)
-    {
-        return 0;
-    }
-
-    /* evaluate at increasing levels of precision until there is no overlap */
-    disjoint = 0;
-    result = 0;
-    for (level = 0; level < EXPR_CACHE_CAP && !disjoint; level++)
-    {
-        arb_init(x);
-        arb_init(y);
-        expr_eval(x, a, level);
-        expr_eval(y, b, level);
-        if (!arb_overlaps(x, y))
-        {
-            disjoint = 1;
-            result = arb_gt(x, y);
-        }
-        arb_clear(x);
-        arb_clear(y);
-    }
-    if (!disjoint)
-    {
-        flint_printf("tenacious strict comparison failed\n");
-        abort();
-    }
-    /*
-    else
-    {
-        flint_printf("detected inequality at level %wd\n", level);
-    }
-    */
-
-    return result;
-}
-
-
 void
 tkf91_rgenerators_init(
-        tkf91_rgenerators_t x,
-        rgen_reg_t g,
+        tkf91_generator_indices_t x,
+        rgen_reg_ptr g,
         tkf91_rationals_t r,
         tkf91_expressions_t p,
         slong *A, slong Alen,
@@ -149,7 +110,7 @@ tkf91_rgenerators_init(
     rgen_open(g, &(x->m0_10));
     rgen_add_gamma_1(g, r, p, 1);
     rgen_add_zeta_1(g, r, p, 1);
-    rgen_add_fmpq(g, p->pi[A[0]], 1);
+    rgen_add_fmpq(g, r->pi+A[0], 1);
     rgen_add_p0_bar(g, r, p, 1);
     rgen_close(g);
 
@@ -160,7 +121,7 @@ tkf91_rgenerators_init(
         rgen_open(g, x->m0_i0_incr+i);
         rgen_add_fmpq(g, r->lambda_div_mu, 1); /* contribution from gamma */
         rgen_add_expr(g, p->lambda_beta, 1); /* contribution from zeta */
-        rgen_add_fmpq(g, r->pi[i], 1);
+        rgen_add_fmpq(g, r->pi+i, 1);
         rgen_add_p0_bar(g, r, p, 1);
         rgen_close(g);
     }
@@ -170,7 +131,7 @@ tkf91_rgenerators_init(
     rgen_open(g, &(x->m2_01));
     rgen_add_gamma_0(g, r, p, 1);
     rgen_add_zeta_2(g, r, p, 1);
-    rgen_add_fmpq(g, r->pi[B[0]], 1);
+    rgen_add_fmpq(g, r->pi+B[0], 1);
     rgen_close(g);
 
     /* M2(0, j>1) = pi_{B_i} * (...) * M2(0, i-1) */
@@ -179,7 +140,7 @@ tkf91_rgenerators_init(
     {
         rgen_open(g, x->m2_0j_incr+j);
         rgen_add_expr(g, p->lambda_beta, 1); /* contribution from zeta */
-        rgen_add_fmpq(g, r->pi[j], 1);
+        rgen_add_fmpq(g, r->pi+j, 1);
         rgen_close(g);
     }
 
@@ -188,7 +149,7 @@ tkf91_rgenerators_init(
     {
         rgen_open(g, x->c0_incr+i);
         rgen_add_fmpq(g, r->lambda_div_mu, 1);
-        rgen_add_fmpq(g, r->pi[i], 1);
+        rgen_add_fmpq(g, r->pi+i, 1);
         rgen_add_p0_bar(g, r, p, 1);
         rgen_close(g);
     }
@@ -210,7 +171,7 @@ tkf91_rgenerators_init(
             rgen_open(g, x->c1_incr+i*4+j);
 
             rgen_add_fmpq(g, r->lambda_div_mu, 1);
-            rgen_add_fmpq(g, r->pi[i], 1);
+            rgen_add_fmpq(g, r->pi+i, 1);
 
             /*
              * compare
@@ -230,7 +191,7 @@ tkf91_rgenerators_init(
                 }
                 else
                 {
-                    rgen_add_fmpq(g, r->pi[j], 1);
+                    rgen_add_fmpq(g, r->pi+j, 1);
                     rgen_add_p1_bar(g, r, p, 1);
                 }
             }
@@ -241,13 +202,13 @@ tkf91_rgenerators_init(
                 if (tenacious_strict_gt(tmp_lhs, tmp_rhs))
                 {
                     /* gen_add(g, p->mismatch[j], 1); */
-                    rgen_add_fmpq(g, r->pi[j], 1);
+                    rgen_add_fmpq(g, r->pi+j, 1);
                     rgen_add_expr(g, p->one_minus_exp_negdt, 1);
                     rgen_add_p1(g, r, p, 1);
                 }
                 else
                 {
-                    rgen_add_fmpq(g, r->pi[j], 1);
+                    rgen_add_fmpq(g, r->pi+j, 1);
                     rgen_add_p1_bar(g, r, p, 1);
                 }
             }
@@ -264,14 +225,14 @@ tkf91_rgenerators_init(
     for (i = 0; i < 4; i++)
     {
         rgen_open(g, x->c2_incr+i);
-        rgen_add_fmpq(g, r->pi[i], 1);
+        rgen_add_fmpq(g, r->pi+i, 1);
         rgen_add_expr(g, p->lambda_beta, 1);
         rgen_close(g);
     }
 }
 
 void
-tkf91_rgenerators_clear(tkf91_rgenerators_t x)
+tkf91_rgenerators_clear(tkf91_generator_indices_t x)
 {
     UNUSED(x);
 }
