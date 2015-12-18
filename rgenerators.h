@@ -77,13 +77,19 @@ void rgen_fmpq_node_clear(rgen_fmpq_node_t p);
 void rgen_expr_node_init(rgen_expr_node_t p);
 void rgen_expr_node_clear(rgen_expr_node_t p);
 
+void rgen_reg_node_init(rgen_reg_node_t p);
+void rgen_reg_node_clear(rgen_reg_node_t p);
+void rgen_reg_node_add_fmpq(rgen_reg_node_ptr p, fmpq_t value, slong count);
+void rgen_reg_node_add_expr(rgen_reg_node_ptr p, expr_ptr expr, slong count);
+
 void rgen_reg_refinement_init(rgen_reg_refinement_t p);
 void rgen_reg_refinement_clear(rgen_reg_refinement_t p);
 
 void rgen_reg_init(rgen_reg_t g);
+void rgen_reg_assert_status(rgen_reg_t g, int status);
 void rgen_reg_open(rgen_reg_t g, slong *pidx);
-void rgen_reg_add_expr(rgen_reg_t g, expr_ptr p, slong count);
 void rgen_reg_add_fmpq(rgen_reg_t g, fmpq_t value, slong count);
+void rgen_reg_add_expr(rgen_reg_t g, expr_ptr p, slong count);
 void rgen_reg_close(rgen_reg_t g);
 void rgen_reg_finalize(rgen_reg_t g, reg_ptr reg);
 slong rgen_reg_nrows(rgen_reg_t g);
