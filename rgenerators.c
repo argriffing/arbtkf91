@@ -126,7 +126,6 @@ rgen_reg_node_clear(rgen_reg_node_t p)
 }
 
 
-/* TODO struct eventually should be defined in .c but declared in .h */
 typedef struct
 {
     slong nbases;
@@ -350,7 +349,82 @@ rgen_reg_get_matrix(fmpz_mat_t mat, rgen_reg_t g)
         abort();
     }
 
-    /* TODO */
+    fmpz_mat_zero(mat);
+
+    slong row, col;
+    rgen_reg_node_ptr gnode;
+    fmpz * entry;
+    
+    /*
+     * Add entries that correspond to expressions
+     * that are not associated with factor refinements of rational numbers.
+     */
+    rgen_expr_node_ptr enode;
+    row = 0;
+    for (gnode = g->head; gnode; gnode = gnode->next)
+    {
+        for (enode = enode->p_expr_head; enode; enode = enode->next)
+        {
+            col = enode->p->index;
+            entry = fmpz_mat_entry(mat, row, col);
+            fmpz_add(entry, entry, enode->count);
+        }
+        row++;
+    }
+
+    /*
+     * Add entries using the generator registry,
+     * the expressions registry, the vector of refined factors,
+     * and the vector giving the expressions corresponding to those factors.
+     */
+    rgen_reg_fmpq_node_ptr fnode;
+    int i;
+    fmpz_t x;
+    fmpz_init(x);
+    row = 0;
+    for (gnode = g->head; gnode; gnode = gnode->next)
+    {
+        for (fnode = gnode->p_fmpq_head; fnode; fnode = fnode->next)
+        {
+            /* numerator */
+            fmpz_set(x, fmpq_numref(fnode->value));
+            for (i = 0; i < g->refined->nbases; i++)
+            {
+                while (fmpz_divisible(x, g->base_integers+i))
+                {
+                    col = g->base_expressions[i]->index;
+                    entry = fmpz_mat_entry(mat, row, col);
+                    fmpz_add(entry, entry, fnode->count);
+                    fmpz_divexact(x, x, g->base_integers+i);
+                }
+            }
+            if (!fmpz_is_one(x))
+            {
+                flint_printf("numerator could not be reduced\n");
+                abort();
+            }
+
+            /* denominator */
+            fmpz_set(x, fmpq_denref(fnode->value));
+            for (i = 0; i < g->refined->nbases; i++)
+            {
+                while (fmpz_divisible(x, g->base_integers+i))
+                {
+                    col = g->base_expressions[i]->index;
+                    entry = fmpz_mat_entry(mat, row, col);
+                    fmpz_sub(entry, entry, fnode->count);
+                    fmpz_divexact(x, x, g->base_integers+i);
+                }
+            }
+            if (!fmpz_is_one(x))
+            {
+                flint_printf("denominator could not be reduced\n");
+                abort();
+            }
+        }
+        row++;
+    }
+    fmpz_clear(x);
 }
 
 void

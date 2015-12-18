@@ -66,6 +66,10 @@ typedef rgen_reg_struct rgen_reg_t[1];
 typedef rgen_reg_struct * rgen_reg_ptr;
 
 
+struct rgen_reg_struct_tag;
+typedef struct rgen_reg_struct_tag * rgen_reg_ptr;
+
+
 
 #ifdef __cplusplus
 extern "C" {
