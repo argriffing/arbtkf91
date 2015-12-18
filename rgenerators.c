@@ -1,8 +1,86 @@
 #include "flint/flint.h"
 #include "flint/fmpz.h"
+#include "flint/fmpq.h"
+#include "flint/fmpz_mat.h"
 
 #include "expressions.h"
 #include "rgenerators.h"
+
+
+#define RGEN_STATUS_CLOSED 0
+#define RGEN_STATUS_OPEN 1
+#define RGEN_STATUS_FINALIZED 2
+
+
+
+typedef struct rgen_fmpq_node_struct
+{
+    fmpq_t value;
+    fmpz_t count;
+    struct rgen_fmpq_node_struct * next;
+} rgen_fmpq_node_struct;
+typedef rgen_fmpq_node_struct * rgen_fmpq_node_ptr;
+typedef rgen_fmpq_node_struct rgen_fmpq_node_t[1];
+
+void rgen_fmpq_node_init(rgen_fmpq_node_t p);
+void rgen_fmpq_node_clear(rgen_fmpq_node_t p);
+
+
+typedef struct rgen_expr_node_struct
+{
+    expr_ptr p;
+    fmpz_t count;
+    struct rgen_expr_node_struct * next;
+} rgen_expr_node_struct;
+typedef rgen_expr_node_struct * rgen_expr_node_ptr;
+typedef rgen_expr_node_struct rgen_expr_node_t[1];
+
+void rgen_expr_node_init(rgen_expr_node_t p);
+void rgen_expr_node_clear(rgen_expr_node_t p);
+
+
+typedef struct rgen_reg_node_struct
+{
+    rgen_fmpq_node_ptr p_fmpq_head, p_fmpq_tail;
+    rgen_expr_node_ptr p_expr_head, p_expr_tail;
+    struct rgen_reg_node_struct * next;
+} rgen_reg_node_struct;
+typedef rgen_reg_node_struct * rgen_reg_node_ptr;
+typedef rgen_reg_node_struct rgen_reg_node_t[1];
+
+void rgen_reg_node_init(rgen_reg_node_t p);
+void rgen_reg_node_clear(rgen_reg_node_t p);
+void rgen_reg_node_add_fmpq(rgen_reg_node_ptr p, fmpq_t value, slong count);
+void rgen_reg_node_add_expr(rgen_reg_node_ptr p, expr_ptr expr, slong count);
+
+
+typedef struct
+{
+    slong nbases;
+    fmpz * base_integers;
+    expr_ptr base_expressions;
+} rgen_reg_refinement_struct;
+typedef rgen_reg_refinement_struct rgen_reg_refinement_t[1];
+typedef rgen_reg_refinement_struct * rgen_reg_refinement_ptr;
+
+void rgen_reg_refinement_init(rgen_reg_refinement_t p);
+void rgen_reg_refinement_clear(rgen_reg_refinement_t p);
+
+
+typedef struct rgen_reg_struct_tag
+{
+    int status;
+    rgen_reg_node_ptr head;
+    rgen_reg_node_ptr tail;
+    slong size;
+    rgen_refinement_ptr refinement;
+    reg_ptr reg;
+} rgen_reg_struct;
+
+void rgen_reg_assert_status(rgen_reg_t g, int status);
+
+
+
 
 
 
@@ -155,19 +233,7 @@ rgen_reg_refinement_clear(rgen_reg_refinement_t p)
 
 
 
-typedef struct
-{
-    int status;
-    rgen_reg_node_ptr head;
-    rgen_reg_node_ptr tail;
-    slong size;
-    rgen_refinement_ptr refinement;
-    reg_ptr reg;
-} rgen_reg_struct;
-typedef rgen_reg_struct rgen_reg_t[1];
-typedef rgen_reg_struct * rgen_reg_ptr;
-
-void rgen_reg_assert_status(rgen_reg_t g, int status)
+void rgen_reg_assert_status(rgen_reg_ptr g, int status)
 {
     if (g->status != status)
     {
@@ -176,7 +242,7 @@ void rgen_reg_assert_status(rgen_reg_t g, int status)
     }
 }
 
-void rgen_reg_init(rgen_reg_t g)
+void rgen_reg_init(rgen_reg_ptr g)
 {
     g->status = RGEN_STATUS_CLOSED;
     g->head = NULL;
@@ -186,7 +252,7 @@ void rgen_reg_init(rgen_reg_t g)
     g->reg = NULL;
 }
 
-void rgen_reg_open(rgen_reg_t g, slong *pidx)
+void rgen_reg_open(rgen_reg_ptr g, slong *pidx)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_CLOSED);
 
@@ -211,27 +277,27 @@ void rgen_reg_open(rgen_reg_t g, slong *pidx)
     g->status = RGEN_STATUS_OPEN;
 }
 
-void rgen_reg_add_expr(rgen_reg_t g, expr_ptr expr, slong count)
+void rgen_reg_add_expr(rgen_reg_ptr g, expr_ptr expr, slong count)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_OPEN);
     rgen_reg_node_add_expr(g->tail, expr);
 }
 
-void rgen_reg_add_fmpq(rgen_reg_t g, fmpq_t value, slong count)
+void rgen_reg_add_fmpq(rgen_reg_ptr g, fmpq_t value, slong count)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_OPEN);
     rgen_reg_node_add_fmpq(g->tail, value);
 }
 
 void
-rgen_reg_close(rgen_reg_t g)
+rgen_reg_close(rgen_reg_ptr g)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_OPEN);
     g->status = RGEN_STATUS_CLOSED;
 }
 
 void
-rgen_reg_finalize(rgen_reg_t g, reg_ptr reg)
+rgen_reg_finalize(rgen_reg_ptr g, reg_ptr reg)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_CLOSED);
 
@@ -249,7 +315,7 @@ rgen_reg_finalize(rgen_reg_t g, reg_ptr reg)
     {
         for (fnode = gnode->p_fmpq_head; fnode; fnode = fnode->next)
         {
-            unrefined_count += 2 * fnode->count;
+            unrefined_count += 2;
         }
     }
 
@@ -271,14 +337,10 @@ rgen_reg_finalize(rgen_reg_t g, reg_ptr reg)
     {
         for (fnode = gnode->p_fmpq_head; fnode; fnode = fnode->next)
         {
-            /* Assume that the count is 1 or is otherwise small. */
-            for (i = 0; i < fnode->count; i++)
-            {
-                fmpz_set(unrefined_factors + c, fmpq_numref(fnode->value));
-                c += 1;
-                fmpz_set(unrefined_factors + c, fmpq_denref(fnode->value));
-                c += 1;
-            }
+            fmpz_set(unrefined_factors + c, fmpq_numref(fnode->value));
+            c++;
+            fmpz_set(unrefined_factors + c, fmpq_denref(fnode->value));
+            c++;
         }
     }
     if (c != unrefined_count)
@@ -294,13 +356,13 @@ rgen_reg_finalize(rgen_reg_t g, reg_ptr reg)
             &unused_exponents,
             &(g->refinement->nbases),
             unrefined_factors,
-            rational_count * 2);
+            unrefined_count);
 
     /*
      * Delete temporary and unused fmpz vectors
      * related to the factor refinement.
      */
-    _fmpz_vec_clear(unrefined_factors, rational_count * 2);
+    _fmpz_vec_clear(unrefined_factors, unrefined_count);
     _fmpz_vec_clear(unused_exponents, g->refinement->nbases);
 
     /*
@@ -323,14 +385,14 @@ rgen_reg_finalize(rgen_reg_t g, reg_ptr reg)
 }
 
 slong
-rgen_reg_nrows(rgen_reg_t g)
+rgen_reg_nrows(rgen_reg_ptr g)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_FINALIZED);
     return g->size;
 }
 
 slong
-rgen_reg_ncols(rgen_reg_t g)
+rgen_reg_ncols(rgen_reg_ptr g)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_FINALIZED);
     return g->reg->size;
@@ -338,7 +400,7 @@ rgen_reg_ncols(rgen_reg_t g)
 
 
 void
-rgen_reg_get_matrix(fmpz_mat_t mat, rgen_reg_t g)
+rgen_reg_get_matrix(fmpz_mat_t mat, rgen_reg_ptr g)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_FINALIZED);
 
@@ -428,7 +490,7 @@ rgen_reg_get_matrix(fmpz_mat_t mat, rgen_reg_t g)
 }
 
 void
-rgen_reg_clear(rgen_reg_t g)
+rgen_reg_clear(rgen_reg_ptr g)
 {
     rgen_reg_assert_status(g, RGEN_STATUS_FINALIZED);
 
