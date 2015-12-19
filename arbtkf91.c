@@ -1239,9 +1239,11 @@ tkf91_hermite(
         expr_eval(x, expressions_table[i], level);
         arb_log(arb_mat_entry(expression_logs, i, 0), x, prec);
 
+        /*
         flint_printf("expression %wd : ", i);
         arb_printd(x, 15);
         flint_printf("\n");
+        */
     }
 
     /*
@@ -1312,8 +1314,10 @@ tkf91_hermite(
     flint_printf("\n");
     */
 
+    /*
     flint_printf("V:\n"); fmpz_mat_print_pretty(V); flint_printf("\n");
     flint_printf("H:\n"); fmpz_mat_print_pretty(H); flint_printf("\n");
+    */
 
     /*
      * Clear temporary variables.
