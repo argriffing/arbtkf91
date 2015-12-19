@@ -169,17 +169,17 @@ void tkf91_expressions_init(
         p->exp_neg_mu_tau = reg_new(reg);
         expr_exp_fmpq(p->exp_neg_mu_tau, r->neg_mu_tau);
 
-        expr_ptr beta = reg_new(reg);
-        expr_div(beta, num, den);
+        p->beta = reg_new(reg);
+        expr_div(p->beta, num, den);
 
         p->lambda_beta = reg_new(reg);
-        expr_mul(p->lambda_beta, x_lambda, beta);
+        expr_mul(p->lambda_beta, x_lambda, p->beta);
 
         p->one_minus_lambda_beta = reg_new(reg);
         expr_complement(p->one_minus_lambda_beta, p->lambda_beta);
 
         p->mu_beta = reg_new(reg);
-        expr_mul(p->mu_beta, x_mu, beta);
+        expr_mul(p->mu_beta, x_mu, p->beta);
 
         expr_ptr c = reg_new(reg);
         expr_add(c, p->exp_neg_mu_tau, p->mu_beta);

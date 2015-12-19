@@ -28,8 +28,8 @@ void rgen_add_p1_bar(rgen_reg_ptr g,
 
 void rgen_add_p0_bar(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k) {
-    UNUSED(r);
-    rgen_add_expr(g, p->mu_beta, k);
+    rgen_add_fmpq(g, r->mu, k);
+    rgen_add_expr(g, p->beta, k);
 }
 
 void rgen_add_gamma_0(rgen_reg_ptr g,
@@ -53,9 +53,9 @@ void rgen_add_zeta_1(rgen_reg_ptr g,
 
 void rgen_add_zeta_2(rgen_reg_ptr g,
         tkf91_rationals_ptr r, tkf91_expressions_ptr p, slong k) {
-    UNUSED(r);
     rgen_add_expr(g, p->one_minus_lambda_beta, k);
-    rgen_add_expr(g, p->lambda_beta, k);
+    rgen_add_fmpq(g, r->lambda, k);
+    rgen_add_expr(g, p->beta, k);
 }
 
 void rgen_add_p1(rgen_reg_ptr g,
@@ -120,7 +120,8 @@ tkf91_rgenerators_init(
     {
         rgen_open(g, x->m0_i0_incr+i);
         rgen_add_fmpq(g, r->lambda_div_mu, 1); /* contribution from gamma */
-        rgen_add_expr(g, p->lambda_beta, 1); /* contribution from zeta */
+        rgen_add_fmpq(g, r->lambda, 1); /* contribution from zeta */
+        rgen_add_expr(g, p->beta, 1); /* contribution from zeta */
         rgen_add_fmpq(g, r->pi+i, 1);
         rgen_add_p0_bar(g, r, p, 1);
         rgen_close(g);
@@ -139,7 +140,8 @@ tkf91_rgenerators_init(
     for (j = 0; j < 4; j++)
     {
         rgen_open(g, x->m2_0j_incr+j);
-        rgen_add_expr(g, p->lambda_beta, 1); /* contribution from zeta */
+        rgen_add_fmpq(g, r->lambda, 1); /* contribution from zeta */
+        rgen_add_expr(g, p->beta, 1); /* contribution from zeta */
         rgen_add_fmpq(g, r->pi+j, 1);
         rgen_close(g);
     }
@@ -226,7 +228,8 @@ tkf91_rgenerators_init(
     {
         rgen_open(g, x->c2_incr+i);
         rgen_add_fmpq(g, r->pi+i, 1);
-        rgen_add_expr(g, p->lambda_beta, 1);
+        rgen_add_fmpq(g, r->lambda, 1);
+        rgen_add_expr(g, p->beta, 1);
         rgen_close(g);
     }
 }

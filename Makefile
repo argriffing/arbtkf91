@@ -195,6 +195,30 @@ example2b: bin/arbtkf91
 		--pg-num 26 --pg-den 100 \
 		--pt-num 23 --pt-den 100
 
+example2c: bin/arbtkf91
+	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
+		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
+		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
+		--lambda-num 1 --lambda-den 1 \
+		--mu-num 2 --mu-den 1 \
+		--tau-num 1 --tau-den 10 \
+		--pa-num 1 --pa-den 2 \
+		--pc-num 1 --pc-den 4 \
+		--pg-num 1 --pg-den 8 \
+		--pt-num 1 --pt-den 8
+
+example2d: bin/arbtkf91
+	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
+		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
+		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
+		--lambda-num 1 --lambda-den 1 \
+		--mu-num 3 --mu-den 1 \
+		--tau-num 1 --tau-den 10 \
+		--pa-num 27 --pa-den 100 \
+		--pc-num 24 --pc-den 100 \
+		--pg-num 26 --pg-den 100 \
+		--pt-num 23 --pt-den 100
+
 
 
 clean:

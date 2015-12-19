@@ -50,6 +50,7 @@ typedef struct
     expr_ptr pi[4];
 
     /* factors related to the indel process involving beta */
+    expr_ptr beta;
     expr_ptr exp_neg_mu_tau;
     expr_ptr one_minus_lambda_beta;
     expr_ptr lambda_beta;
