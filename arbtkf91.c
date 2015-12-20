@@ -1,3 +1,4 @@
+#include <time.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -21,6 +22,8 @@
 #include "wavefront_double.h"
 #include "wavefront_hermite.h"
 #include "tkf91_generator_indices.h"
+
+#define MAXSEQLEN 20000
 
 typedef struct
 {
@@ -215,27 +218,26 @@ _fill_sequence_vector(slong *v, const char *str, slong n)
             case 'G' : v[i] = 2; break;
             case 'T' : v[i] = 3; break;
             default:
-               abort();
+                       {
+                           flint_printf("unrecognized nucleotide\n");
+                           abort();
+                       }
         }
     }
 }
 
 
-double max2(double a, double b);
-double max3(double a, double b, double c);
-
-double
-max2(double a, double b)
+static __inline__
+double max2(double a, double b)
 {
     return a > b ? a : b;
 }
 
-double
-max3(double a, double b, double c)
+static __inline__
+double max3(double a, double b, double c)
 {
     return max2(a, max2(b, c));
 }
-
 
 
 
@@ -291,6 +293,7 @@ breadcrumb_mat_clear(breadcrumb_mat_t mat)
 breadcrumb_ptr
 breadcrumb_mat_entry(breadcrumb_mat_t mat, slong i, slong j)
 {
+    /*
     if (i < 0 || i >= mat->nrows || j < 0 || j >= mat->ncols)
     {
         flint_printf("breadcrumb matrix indexing error\n");
@@ -298,6 +301,7 @@ breadcrumb_mat_entry(breadcrumb_mat_t mat, slong i, slong j)
         flint_printf("nrows=%wd ncols=%wd\n", mat->nrows, mat->ncols);
         abort();
     }
+    */
     return mat->data + i * mat->ncols + j;
 }
 
@@ -361,10 +365,12 @@ breadcrumb_mat_get_alignment(char **psa, char **psb,
 
 
 void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
+        int trace_flag,
         slong *A, slong szA,
         slong *B, slong szB);
 
 void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
+        int trace_flag,
         slong *A, slong szA,
         slong *B, slong szB)
 {
@@ -413,13 +419,17 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
     slong ncols = szB + 1;
     breadcrumb_mat_t crumb_mat;
 
-    breadcrumb_mat_init(crumb_mat, nrows, ncols);
+    if (trace_flag)
+    {
+        breadcrumb_mat_init(crumb_mat, nrows, ncols);
+    }
 
     /* define the wavefront matrix */
     wave_mat_t wave;
-    slong modulus = nrows + ncols - 1;
+    /* slong modulus = nrows + ncols - 1; */
     /* slong modulus = 3; */
-    wave_mat_init(wave, nrows + ncols - 1, modulus);
+    /* wave_mat_init(wave, nrows + ncols - 1, modulus); */
+    wave_mat_init(wave, nrows + ncols - 1);
 
     /*
      * Let M_{ij} be the matrix created for traceback.
@@ -456,6 +466,7 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
         while (0 <= i && i < nrows && 0 <= j && j < ncols)
         {
             /* check some invariants */
+            /*
             if (k != i + j)
             {
                 flint_printf("wavefront indexing problem ");
@@ -468,70 +479,77 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
                 flint_printf("i=%wd j=%wd l=%wd\n", i, j, l);
                 abort();
             }
+            */
 
             cell = wave_mat_entry(wave, k, l);
-            if (i == 0 && j == 0)
+            if (i < 1 || j < 1)
             {
-                cell->m0 = -INFINITY;
-                cell->m1 = g->m1_00;
-                cell->m2 = -INFINITY;
-            }
-            else if (i == 1 && j == 0)
-            {
-                cell->m0 = g->m0_10;
-                cell->m1 = -INFINITY;
-                cell->m2 = -INFINITY;
-            }
-            else if (i == 0 && j == 1)
-            {
-                cell->m0 = -INFINITY;
-                cell->m1 = -INFINITY;
-                cell->m2 = g->m2_01;
-            }
-            else
-            {
-                if (i == 0)
+                if (i == 0 && j == 0)
                 {
-                    ntb = B[j - 1];
-                    p2 = wave_mat_entry_left(wave, k, l);
                     cell->m0 = -INFINITY;
-                    cell->m1 = -INFINITY;
-                    cell->m2 = p2->m2 + g->m2_0j_incr[ntb];
+                    cell->m1 = g->m1_00;
+                    cell->m2 = -INFINITY;
                 }
-                else if (j == 0)
+                else if (i == 1 && j == 0)
                 {
-                    nta = A[i - 1];
-                    p0 = wave_mat_entry_top(wave, k, l);
-                    cell->m0 = p0->m0 + g->m0_i0_incr[nta];
+                    cell->m0 = g->m0_10;
                     cell->m1 = -INFINITY;
                     cell->m2 = -INFINITY;
                 }
+                else if (i == 0 && j == 1)
+                {
+                    cell->m0 = -INFINITY;
+                    cell->m1 = -INFINITY;
+                    cell->m2 = g->m2_01;
+                }
                 else
                 {
-                    nta = A[i - 1];
-                    ntb = B[j - 1];
-                    p0 = wave_mat_entry_top(wave, k, l);
-                    p1 = wave_mat_entry_diag(wave, k, l);
-                    p2 = wave_mat_entry_left(wave, k, l);
-                    cell->m0 = max3(p0->m0, p0->m1, p0->m2) + g->c0_incr[nta];
-                    cell->m1 = max3(p1->m0, p1->m1, p1->m2);
-                    cell->m1 += g->c1_incr[nta*4 + ntb];
-                    cell->m2 = max2(p2->m1, p2->m2) + g->c2_incr[ntb];
+                    if (i == 0)
+                    {
+                        ntb = B[j - 1];
+                        p2 = wave_mat_entry_left(wave, k, l);
+                        cell->m0 = -INFINITY;
+                        cell->m1 = -INFINITY;
+                        cell->m2 = p2->m2 + g->m2_0j_incr[ntb];
+                    }
+                    else if (j == 0)
+                    {
+                        nta = A[i - 1];
+                        p0 = wave_mat_entry_top(wave, k, l);
+                        cell->m0 = p0->m0 + g->m0_i0_incr[nta];
+                        cell->m1 = -INFINITY;
+                        cell->m2 = -INFINITY;
+                    }
                 }
+            }
+            else
+            {
+                nta = A[i - 1];
+                ntb = B[j - 1];
+                p0 = wave_mat_entry_top(wave, k, l);
+                p1 = wave_mat_entry_diag(wave, k, l);
+                p2 = wave_mat_entry_left(wave, k, l);
+                cell->m0 = max3(p0->m0, p0->m1, p0->m2) + g->c0_incr[nta];
+                cell->m1 = max3(p1->m0, p1->m1, p1->m2);
+                cell->m1 += g->c1_incr[nta*4 + ntb];
+                cell->m2 = max2(p2->m1, p2->m2) + g->c2_incr[ntb];
             }
 
             /* fill the table for traceback */
-            double best;
-            best = max3(cell->m0, cell->m1, cell->m2);
-            breadcrumb_ptr pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
-            if (cell->m0 == best) {
-                *pcrumb |= CRUMB_TOP;
-            }
-            if (cell->m1 == best) {
-                *pcrumb |= CRUMB_DIAG;
-            }
-            if (cell->m2 == best) {
-                *pcrumb |= CRUMB_LEFT;
+            if (trace_flag)
+            {
+                double best;
+                best = max3(cell->m0, cell->m1, cell->m2);
+                breadcrumb_ptr pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
+                if (cell->m0 == best) {
+                    *pcrumb |= CRUMB_TOP;
+                }
+                if (cell->m1 == best) {
+                    *pcrumb |= CRUMB_DIAG;
+                }
+                if (cell->m2 == best) {
+                    *pcrumb |= CRUMB_LEFT;
+                }
             }
 
             /*
@@ -603,17 +621,22 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
     flint_printf("score: %g\n", exp(max3(cell->m0, cell->m1, cell->m2)));
 
     /* do the traceback */
-    char *sa, *sb;
-    breadcrumb_mat_get_alignment(&sa, &sb, crumb_mat, A, B);
-    flint_printf("%s\n", sa);
-    flint_printf("%s\n", sb);
-    flint_printf("\n");
-    free(sa);
-    free(sb);
+    if (trace_flag)
+    {
+        char *sa, *sb;
+        breadcrumb_mat_get_alignment(&sa, &sb, crumb_mat, A, B);
+        flint_printf("%s\n", sa);
+        flint_printf("%s\n", sb);
+        flint_printf("\n");
+        free(sa);
+        free(sb);
+    }
 
-    /* clear the tables */
     wave_mat_clear(wave);
-    breadcrumb_mat_clear(crumb_mat);
+    if (trace_flag)
+    {
+        breadcrumb_mat_clear(crumb_mat);
+    }
 }
 
 
@@ -623,6 +646,7 @@ void
 tkf91_double_precision(
         fmpz_mat_t mat, expr_ptr * expressions_table,
         tkf91_generator_indices_t g,
+        int trace_flag,
         slong *A, size_t szA,
         slong *B, size_t szB);
 
@@ -630,6 +654,7 @@ void
 tkf91_double_precision(
         fmpz_mat_t mat, expr_ptr * expressions_table,
         tkf91_generator_indices_t g,
+        int trace_flag,
         slong *A, size_t szA,
         slong *B, size_t szB)
 {
@@ -657,9 +682,12 @@ tkf91_double_precision(
     {
         expr_eval(x, expressions_table[i], level);
         arb_log(arb_mat_entry(expression_logs, i, 0), x, prec);
+
+        /*
         flint_printf("expression %wd : ", i);
         arb_printd(x, 15);
         flint_printf("\n");
+        */
     }
 
     /* compute the generator logs */
@@ -669,8 +697,17 @@ tkf91_double_precision(
     /* fill a structure with corresponding double precision values */
     doublify_tkf91_generators(h, g, generator_logs);
 
-    /* do the thing */
-    tkf91_dynamic_programming_double(h, A, szA, B, szB);
+    {
+        clock_t diff_b;
+        clock_t start_b = clock();
+
+        tkf91_dynamic_programming_double(h, trace_flag, A, szA, B, szB);
+
+        diff_b = clock() - start_b;
+        int msec_b = (diff_b * 1000) / CLOCKS_PER_SEC;
+        printf("Internal dynamic programming time taken %d seconds %d milliseconds.\n",
+                msec_b/1000, msec_b%1000);
+    }
 
     arb_clear(x);
     arb_mat_clear(G);
@@ -1367,44 +1404,162 @@ run(const char *strA, const char *strB, const user_params_t params)
     B = flint_malloc(szB * sizeof(slong));
     _fill_sequence_vector(B, strB, szB);
 
-    reg_init(reg);
-    tkf91_rationals_init(r,
-            params->lambda, params->mu, params->tau, params->pi);
-    tkf91_expressions_init(p, reg, r);
+    int i;
+    int runs = 1;
 
-    /*
-    generator_reg_t genreg;
-    generator_reg_init(genreg, reg->size);
-    tkf91_generators_init(g, genreg, p, A, szA, B, szB);
-    fmpz_mat_init(mat,
-            generator_reg_generators_len(genreg),
-            generator_reg_expressions_len(genreg));
-    generator_reg_get_matrix(mat, genreg);
-    generator_reg_clear(genreg);
-    */
 
-    rgen_reg_ptr rg = rgen_reg_new();
-    tkf91_rgenerators_init(g, rg, r, p, A, szA, B, szB);
-    rgen_reg_finalize(rg, reg);
-    fmpz_mat_init(mat, rgen_reg_nrows(rg), rgen_reg_ncols(rg));
-    rgen_reg_get_matrix(mat, rg);
-    rgen_reg_clear(rg);
+    for (i = 0; i < runs; i++)
+    {
+        clock_t diff;
+        clock_t start = clock();
 
-    expressions_table = reg_vec(reg);
+        reg_init(reg);
+        tkf91_rationals_init(r,
+                params->lambda, params->mu, params->tau, params->pi);
+        tkf91_expressions_init(p, reg, r);
 
-    /*
-    tkf91_double_precision(mat, expressions_table, g, A, szA, B, szB);
-    */
-    tkf91_hermite(mat, expressions_table, g, A, szA, B, szB);
+        rgen_reg_ptr rg = rgen_reg_new();
+        tkf91_rgenerators_init(g, rg, r, p, A, szA, B, szB);
+        rgen_reg_finalize(rg, reg);
+        fmpz_mat_init(mat, rgen_reg_nrows(rg), rgen_reg_ncols(rg));
+        rgen_reg_get_matrix(mat, rg);
+        rgen_reg_clear(rg);
 
-    reg_clear(reg);
-    tkf91_rationals_clear(r);
-    tkf91_expressions_clear(p);
-    fmpz_mat_clear(mat);
+        expressions_table = reg_vec(reg);
 
-    flint_free(expressions_table);
+        /* TODO use the trace flag provided by the user */
+        int trace_flag = 1;
+        tkf91_double_precision(mat, expressions_table, g, trace_flag,
+                A, szA, B, szB);
+        /*
+        tkf91_hermite(mat, expressions_table, g, A, szA, B, szB);
+        */
+
+        fmpz_mat_clear(mat);
+        flint_free(expressions_table);
+
+        reg_clear(reg);
+        tkf91_rationals_clear(r);
+        tkf91_expressions_clear(p);
+
+        diff = clock() - start;
+        int msec = (diff * 1000) / CLOCKS_PER_SEC;
+        printf("Time taken %d seconds %d milliseconds.\n",
+                msec/1000, msec%1000);
+    }
+
     flint_free(A);
     flint_free(B);
+}
+
+
+void bench(const user_params_t params, int trace_flag);
+
+void
+bench(const user_params_t params, int trace_flag)
+{
+    char strA[MAXSEQLEN];
+    char strB[MAXSEQLEN];
+    size_t szA, szB;
+
+    slong *A;
+    slong *B;
+    expr_ptr * expressions_table;
+
+    reg_t reg;
+    tkf91_rationals_t r;
+    tkf91_expressions_t p;
+    tkf91_generator_indices_t g;
+    fmpz_mat_t mat;
+
+    /*
+     * Read pairs of sequences from stdin.
+     * Assume one sequence per line.
+     */
+    while (1)
+    {
+
+        printf("waiting for first sequence...\n");
+        if (!fgets(strA, MAXSEQLEN, stdin))
+        {
+            break;
+        }
+        szA = strlen(strA);
+        szA--; /* do not count the newline */
+        if (!szA)
+        {
+            break;
+        }
+        printf("length of sequence A: %ld\n", szA);
+
+        printf("waiting for second sequence...\n");
+        if (!fgets(strB, MAXSEQLEN, stdin))
+        {
+            break;
+        }
+        szB = strlen(strB);
+        szB--; /* do not count the newline */
+        if (!szB)
+        {
+            break;
+        }
+        printf("length of sequence B: %ld\n", szB);
+
+
+        A = flint_malloc(szA * sizeof(slong));
+        _fill_sequence_vector(A, strA, szA);
+
+        B = flint_malloc(szB * sizeof(slong));
+        _fill_sequence_vector(B, strB, szB);
+
+
+        clock_t diff;
+        clock_t start = clock();
+
+        reg_init(reg);
+        tkf91_rationals_init(r,
+                params->lambda, params->mu, params->tau, params->pi);
+        tkf91_expressions_init(p, reg, r);
+
+        rgen_reg_ptr rg = rgen_reg_new();
+        tkf91_rgenerators_init(g, rg, r, p, A, szA, B, szB);
+        rgen_reg_finalize(rg, reg);
+        fmpz_mat_init(mat, rgen_reg_nrows(rg), rgen_reg_ncols(rg));
+        rgen_reg_get_matrix(mat, rg);
+        rgen_reg_clear(rg);
+
+        expressions_table = reg_vec(reg);
+
+        clock_t diff_b;
+        clock_t start_b = clock();
+
+        tkf91_double_precision(mat, expressions_table, g, trace_flag,
+                A, szA, B, szB);
+        /*
+        tkf91_hermite(mat, expressions_table, g, A, szA, B, szB);
+        */
+
+        diff_b = clock() - start_b;
+        int msec_b = (diff_b * 1000) / CLOCKS_PER_SEC;
+        printf("Dynamic programming time taken %d seconds %d milliseconds.\n",
+                msec_b/1000, msec_b%1000);
+
+
+        fmpz_mat_clear(mat);
+        flint_free(expressions_table);
+
+        reg_clear(reg);
+        tkf91_rationals_clear(r);
+        tkf91_expressions_clear(p);
+
+        diff = clock() - start;
+        int msec = (diff * 1000) / CLOCKS_PER_SEC;
+        printf("Total time taken %d seconds %d milliseconds.\n",
+                msec/1000, msec%1000);
+
+        flint_free(A);
+        flint_free(B);
+    }
 }
 
 
@@ -1421,6 +1576,10 @@ main(int argc, char *argv[])
     user_params_t p;
     user_params_init(p);
 
+    /* indicates benchmark mode where sequence pairs are read from stdin */
+    int bench_flag = 0;
+    int trace_flag = 0;
+
     slong lambda_num = 0;
     slong mu_num = 0;
     slong tau_num = 0;
@@ -1433,7 +1592,13 @@ main(int argc, char *argv[])
 
     for (i = 1; i < argc-1; i += 2)
     {
-        if (strcmp(argv[i], "--sequence-1") == 0) {
+        if (strcmp(argv[i], "--bench") == 0) {
+            flint_sscanf(argv[i + 1], "%d", &bench_flag);
+        } else if (strcmp(argv[i], "--trace") == 0) {
+            flint_sscanf(argv[i + 1], "%d", &trace_flag);
+        }
+
+        else if (strcmp(argv[i], "--sequence-1") == 0) {
             Astr = argv[i + 1];
         } else if (strcmp(argv[i], "--sequence-2") == 0) {
             Bstr = argv[i + 1];
@@ -1484,7 +1649,14 @@ main(int argc, char *argv[])
     user_params_print(p);
     flint_printf("\n");
 
-    run(Astr, Bstr, p);
+    if (bench_flag)
+    {
+        bench(p, trace_flag);
+    }
+    else
+    {
+        run(Astr, Bstr, p);
+    }
 
     user_params_clear(p);
 

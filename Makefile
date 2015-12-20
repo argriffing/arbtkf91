@@ -10,10 +10,16 @@ DEFS=
 GLOBAL_DEFS=
 WARNINGS=-Wall  -Wunused-parameter -Wredundant-decls  -Wreturn-type  -Wswitch-default -Wunused-value -Wimport  -Wunused  -Wunused-function  -Wunused-label -Wno-int-to-pointer-cast -Wmissing-declarations -Wextra -Wredundant-decls -Wunused -Wunused-function -Wunused-parameter -Wunused-value  -Wunused-variable -Wformat  -Wformat-nonliteral -Wparentheses -Wsequence-point -Wuninitialized
 
-CFLAGS+= $(WARNINGS) -O3 $(DEFS) $(GLOBAL_DEFS) -march=native
+#CC=g++
+#DEFS=
+#GLOBAL_DEFS=
+#WARNINGS=-W -Wall -Wextra -pedantic -fpermissive
 
-# add a flag for valgrind
+
+CFLAGS+= $(WARNINGS) -O3 $(DEFS) $(GLOBAL_DEFS) -march=native
 CFLAGS+= -g
+#CFLAGS+= -std=c++11
+
 
 TEST_EXECUTABLES=bin/t-factor_refinement \
 		 bin/t-femtocas \
@@ -25,7 +31,7 @@ CHECKS=check_factor_refinement \
        check_expressions \
        check_generators
 
-all: factor_refinement.o femtocas.o expressions.o generators.o
+all: bin/arbtkf91
 
 # force the test scripts to be built by listing them as requirements
 tests: $(TEST_EXECUTABLES)
