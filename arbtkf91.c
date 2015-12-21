@@ -19,9 +19,10 @@
 #include "rgenerators.h"
 #include "tkf91_generators.h"
 #include "tkf91_rgenerators.h"
+#include "tkf91_generator_indices.h"
 #include "wavefront_double.h"
 #include "wavefront_hermite.h"
-#include "tkf91_generator_indices.h"
+#include "breadcrumbs.h"
 
 #define MAXSEQLEN 20000
 
@@ -238,128 +239,6 @@ double max3(double a, double b, double c)
 {
     return max2(a, max2(b, c));
 }
-
-
-
-/* the matrix for the traceback stage of dynamic programming */
-
-/*
- * Breadcrumbs for the traceback stage of dynamic programming may indicate
- * that multiple paths have identical scores.
- * To show that multiple traceback continuations from a partial solution
- * are equally valid, use a bitwise combination of these flags.
- *
- * If multiple directions are equally valid and exact equality is
- * detected symbolically, then the numerical ambiguity flag is not used.
- * The numerical ambiguity flag is used only if numerical (not symbolic)
- * ambiguity is detected.
- */
-#define CRUMB_TOP  0b00000001
-#define CRUMB_DIAG 0b00000010
-#define CRUMB_LEFT 0b00000100
-#define CRUMB_NUMERICAL_AMBIGUITY 0b00001000
-
-typedef unsigned char breadcrumb_t;
-typedef breadcrumb_t * breadcrumb_ptr;
-
-typedef struct
-{
-    breadcrumb_t *data;
-    slong nrows;
-    slong ncols;
-} breadcrumb_mat_struct;
-typedef breadcrumb_mat_struct breadcrumb_mat_t[1];
-
-void breadcrumb_mat_init(breadcrumb_mat_t mat, slong nrows, slong ncols);
-void breadcrumb_mat_clear(breadcrumb_mat_t mat);
-breadcrumb_ptr breadcrumb_mat_entry(breadcrumb_mat_t mat, slong i, slong j);
-void breadcrumb_mat_get_alignment(char **psa, char **psb,
-        breadcrumb_mat_t mat, const slong *A, const slong *B);
-
-void
-breadcrumb_mat_init(breadcrumb_mat_t mat, slong nrows, slong ncols)
-{
-    mat->data = calloc(nrows * ncols, sizeof(breadcrumb_t));
-    mat->nrows = nrows;
-    mat->ncols = ncols;
-}
-
-void
-breadcrumb_mat_clear(breadcrumb_mat_t mat)
-{
-    free(mat->data);
-}
-
-breadcrumb_ptr
-breadcrumb_mat_entry(breadcrumb_mat_t mat, slong i, slong j)
-{
-    /*
-    if (i < 0 || i >= mat->nrows || j < 0 || j >= mat->ncols)
-    {
-        flint_printf("breadcrumb matrix indexing error\n");
-        flint_printf("i=%wd j=%wd\n", i, j);
-        flint_printf("nrows=%wd ncols=%wd\n", mat->nrows, mat->ncols);
-        abort();
-    }
-    */
-    return mat->data + i * mat->ncols + j;
-}
-
-void
-breadcrumb_mat_get_alignment(char **psa, char **psb,
-        breadcrumb_mat_t mat, const slong *A, const slong *B)
-{
-    /* do the traceback */
-    slong i, j;
-    char ACGT[4] = "ACGT";
-    slong n = mat->nrows + mat->ncols;
-    char *sa = calloc(n, sizeof(char));
-    char *sb = calloc(n, sizeof(char));
-    slong len = 0;
-    i = mat->nrows - 1;
-    j = mat->ncols - 1;
-    breadcrumb_t crumb;
-    while (i > 0 || j > 0)
-    {
-        crumb = *breadcrumb_mat_entry(mat, i, j);
-        if (crumb & CRUMB_TOP)
-        {
-            sa[len] = ACGT[A[i-1]];
-            sb[len] = '-';
-            i--;
-        }
-        else if (crumb & CRUMB_DIAG)
-        {
-            sa[len] = ACGT[A[i-1]];
-            sb[len] = ACGT[B[j-1]];
-            i--;
-            j--;
-        }
-        else if (crumb & CRUMB_LEFT)
-        {
-            sa[len] = '-';
-            sb[len] = ACGT[B[j-1]];
-            j--;
-        }
-        else
-        {
-            flint_printf("lost the thread ");
-            flint_printf("in the dynamic programing traceback\n");
-            abort();
-        }
-        len++;
-    }
-    char tmp;
-    for (i = 0; i < len/2; i++)
-    {
-        j = len - 1 - i;
-        tmp = sa[i]; sa[i] = sa[j]; sa[j] = tmp;
-        tmp = sb[i]; sb[i] = sb[j]; sb[j] = tmp;
-    }
-    *psa = sa;
-    *psb = sb;
-}
-
 
 
 

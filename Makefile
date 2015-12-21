@@ -135,18 +135,25 @@ wavefront_hermite.o: wavefront_hermite.c
 		-lflint -lgmp -larb
 
 
+# the matrix of breadcrumbs for the traceback stage of dynamic programming
+
+breadcrumbs.o: breadcrumbs.c
+	$(CC) breadcrumbs.c -c $(CFLAGS) \
+		-lflint -lgmp
+
+
 # this is the command line binary executable
 
 bin/arbtkf91: arbtkf91.c \
 	femtocas.o factor_refinement.o expressions.o tkf91_rationals.o \
 	generators.o tkf91_generators.o \
 	rgenerators.o tkf91_rgenerators.o \
-	wavefront_double.o wavefront_hermite.o
+	wavefront_double.o wavefront_hermite.o breadcrumbs.o
 	$(CC) arbtkf91.c \
 		femtocas.o factor_refinement.o expressions.o tkf91_rationals.o \
 		generators.o tkf91_generators.o \
 		rgenerators.o tkf91_rgenerators.o \
-		wavefront_double.o wavefront_hermite.o \
+		wavefront_double.o wavefront_hermite.o breadcrumbs.o \
 		-o bin/arbtkf91 \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb -lm
 
