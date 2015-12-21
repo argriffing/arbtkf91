@@ -2,8 +2,8 @@ ARB_INCLUDES=-I. -I../arb -I/usr/local/include/flint
 ARB_LIBS=-L../arb
 ARB_LD_LIBRARY=LD_LIBRARY_PATH=/usr/local/bin:../arb
 
-#VALGRIND=valgrind --leak-check=full --show-leak-kinds=all
-VALGRIND=
+VALGRIND=valgrind --leak-check=full --show-leak-kinds=all
+#VALGRIND=
 
 CC=gcc
 DEFS=
@@ -43,7 +43,7 @@ check: $(CHECKS)
 # factor refinement
 
 check_factor_refinement: bin/t-factor_refinement
-	valgrind bin/t-factor_refinement
+	$(VALGRIND) bin/t-factor_refinement
 
 factor_refinement.o:
 	$(CC) factor_refinement.c -c $(CFLAGS) -lflint -lgmp
@@ -57,7 +57,7 @@ bin/t-factor_refinement: tests/t-factor_refinement.c factor_refinement.o
 # femtocas
 
 check_femtocas: bin/t-femtocas
-	$(ARB_LD_LIBRARY) valgrind bin/t-femtocas
+	$(ARB_LD_LIBRARY) $(VALGRIND) valgrind bin/t-femtocas
 
 femtocas.o: femtocas.c
 	$(CC) femtocas.c -c $(ARB_INCLUDES) $(CFLAGS) -lflint -lgmp -larb
@@ -71,14 +71,16 @@ bin/t-femtocas: tests/t-femtocas.c femtocas.o
 # expressions
 
 check_expressions: bin/t-expressions
-	$(ARB_LD_LIBRARY) valgrind bin/t-expressions
+	$(ARB_LD_LIBRARY) $(VALGRIND) bin/t-expressions
 
 expressions.o: expressions.c
 	$(CC) expressions.c -c $(ARB_INCLUDES) $(CFLAGS) femtocas.o \
 		-lflint -lgmp -larb
 
-bin/t-expressions: tests/t-expressions.c expressions.o
-	$(CC) tests/t-expressions.c expressions.o femtocas.o \
+bin/t-expressions: tests/t-expressions.c expressions.o \
+	femtocas.o tkf91_rationals.o
+	$(CC) tests/t-expressions.c expressions.o \
+		femtocas.o tkf91_rationals.o \
 		-o bin/t-expressions \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
 
@@ -86,16 +88,18 @@ bin/t-expressions: tests/t-expressions.c expressions.o
 # generators
 
 check_generators: bin/t-generators
-	$(ARB_LD_LIBRARY) valgrind bin/t-generators
+	$(ARB_LD_LIBRARY) $(VALGRIND) bin/t-generators
 
 generators.o: generators.c
 	$(CC) generators.c -c $(ARB_INCLUDES) $(CFLAGS) \
 		femtocas.o expressions.o \
 		-lflint -lgmp -larb
 
-bin/t-generators: tests/t-generators.c generators.o tkf91_generators.o
+bin/t-generators: tests/t-generators.c generators.o \
+	tkf91_generators.o tkf91_rationals.o
 	$(CC) tests/t-generators.c \
-		generators.o femtocas.o expressions.o tkf91_generators.o \
+		generators.o femtocas.o expressions.o \
+		tkf91_generators.o tkf91_rationals.o \
 		-o bin/t-generators \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
 

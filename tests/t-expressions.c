@@ -2,6 +2,7 @@
 #include "flint/fmpq.h"
 #include "femtocas.h"
 #include "expressions.h"
+#include "tkf91_rationals.h"
 
 int main()
 {
@@ -17,6 +18,7 @@ int main()
         fmpq pi[4];
         reg_t reg;
         tkf91_expressions_t p;
+        tkf91_rationals_t r;
 
         fmpq_init(lambda);
         fmpq_init(mu);
@@ -34,7 +36,8 @@ int main()
         fmpq_init(pi+3); fmpq_set_si(pi+3, 23, 100);
 
         reg_init(reg);
-        tkf91_expressions_init(p, reg, lambda, mu, tau, pi);
+        tkf91_rationals_init(r, lambda, mu, tau, pi);
+        tkf91_expressions_init(p, reg, r);
 
         /* evaluate all of the registered expressions */
         {
@@ -56,6 +59,7 @@ int main()
 
         reg_clear(reg);
         tkf91_expressions_clear(p);
+        tkf91_rationals_clear(r);
         fmpq_clear(lambda);
         fmpq_clear(mu);
         fmpq_clear(tau);

@@ -8,6 +8,8 @@
 #include "femtocas.h"
 #include "expressions.h"
 #include "generators.h"
+#include "tkf91_generator_indices.h"
+#include "tkf91_rationals.h"
 #include "tkf91_generators.h"
 
 
@@ -69,7 +71,8 @@ int main()
         reg_t reg;
         tkf91_expressions_t p;
         generator_reg_t genreg;
-        tkf91_generators_t tkf91_generators;
+        tkf91_generator_indices_t tkf91_generators;
+        tkf91_rationals_t r;
 
         fmpq_init(lambda);
         fmpq_init(mu);
@@ -87,7 +90,8 @@ int main()
         fmpq_init(pi+3); fmpq_set_si(pi+3, 23, 100);
 
         reg_init(reg);
-        tkf91_expressions_init(p, reg, lambda, mu, tau, pi);
+        tkf91_rationals_init(r, lambda, mu, tau, pi);
+        tkf91_expressions_init(p, reg, r);
         generator_reg_init(genreg, reg->size);
         tkf91_generators_init(tkf91_generators, genreg, p, A, szA, B, szB);
 
@@ -105,6 +109,7 @@ int main()
         }
 
         reg_clear(reg);
+        tkf91_rationals_clear(r);
         tkf91_expressions_clear(p);
         generator_reg_clear(genreg);
         tkf91_generators_clear(tkf91_generators);
