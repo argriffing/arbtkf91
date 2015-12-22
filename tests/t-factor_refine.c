@@ -308,7 +308,7 @@ int main(void)
 
             if (!_fmpz_factor_equal(f, h))
             {
-                flint_printf("FAIL: (factorial example)\n");
+                flint_printf("FAIL: (factorial)\n");
                 flint_printf("%wd\n", i);
                 abort();
             }
