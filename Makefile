@@ -21,12 +21,12 @@ CFLAGS+= -g
 #CFLAGS+= -std=c++11
 
 
-TEST_EXECUTABLES=bin/t-factor_refinement \
+TEST_EXECUTABLES=bin/t-factor_refine \
 		 bin/t-femtocas \
 		 bin/t-expressions \
 		 bin/t-generators
 
-CHECKS=check_factor_refinement \
+CHECKS=check_factor_refine \
        check_femtocas \
        check_expressions \
        check_generators
@@ -40,17 +40,17 @@ tests: $(TEST_EXECUTABLES)
 check: $(CHECKS)
 
 
-# factor refinement
+# factor refine
 
-check_factor_refinement: bin/t-factor_refinement
-	$(VALGRIND) bin/t-factor_refinement
+check_factor_refine: bin/t-factor_refine
+	$(VALGRIND) bin/t-factor_refine
 
-factor_refinement.o: factor_refinement.c
-	$(CC) factor_refinement.c -c $(CFLAGS) -lflint -lgmp
+factor_refine.o: factor_refine.c
+	$(CC) factor_refine.c -c $(CFLAGS) -lflint -lgmp
 
-bin/t-factor_refinement: tests/t-factor_refinement.c factor_refinement.o
-	$(CC) tests/t-factor_refinement.c factor_refinement.o \
-		-o bin/t-factor_refinement \
+bin/t-factor_refine: tests/t-factor_refine.c factor_refine.o
+	$(CC) tests/t-factor_refine.c factor_refine.o \
+		-o bin/t-factor_refine \
 		-I. $(CFLAGS) -lflint -lgmp
 
 
@@ -149,12 +149,12 @@ breadcrumbs.o: breadcrumbs.c
 # this is the command line binary executable
 
 bin/arbtkf91: arbtkf91.c \
-	femtocas.o factor_refinement.o expressions.o tkf91_rationals.o \
+	femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 	generators.o tkf91_generators.o \
 	rgenerators.o tkf91_rgenerators.o \
 	wavefront_double.o wavefront_hermite.o breadcrumbs.o
 	$(CC) arbtkf91.c \
-		femtocas.o factor_refinement.o expressions.o tkf91_rationals.o \
+		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 		generators.o tkf91_generators.o \
 		rgenerators.o tkf91_rgenerators.o \
 		wavefront_double.o wavefront_hermite.o breadcrumbs.o \
@@ -241,7 +241,7 @@ example2d: bin/arbtkf91
 clean:
 	rm -f *.o
 	rm -f bin/example
-	rm -f bin/t-factor_refinement
+	rm -f bin/t-factor_refine
 	rm -f bin/t-femtocas
 	rm -f bin/t-expressions
 	rm -f bin/t-generators

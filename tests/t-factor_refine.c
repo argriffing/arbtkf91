@@ -2,7 +2,7 @@
 #include "flint/flint.h"
 #include "flint/fmpz.h"
 #include "flint/fmpz_vec.h"
-#include "factor_refinement.h"
+#include "factor_refine.h"
 
 void fmpz_factor_randtest(fmpz_factor_t f, flint_rand_t state,
         slong num, mp_bitcnt_t bits);

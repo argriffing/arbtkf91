@@ -4,7 +4,7 @@
  * Computer Sciences Technical Report #883
  * October 1989.
  */
-#include "factor_refinement.h"
+#include "factor_refine.h"
 #include "flint/fmpz_vec.h"
 
 

@@ -3,7 +3,7 @@
 #include "flint/fmpq.h"
 #include "flint/fmpz_mat.h"
 
-#include "factor_refinement.h"
+#include "factor_refine.h"
 #include "expressions.h"
 #include "rgenerators.h"
 
