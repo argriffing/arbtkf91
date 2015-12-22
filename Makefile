@@ -45,7 +45,7 @@ check: $(CHECKS)
 check_factor_refinement: bin/t-factor_refinement
 	$(VALGRIND) bin/t-factor_refinement
 
-factor_refinement.o:
+factor_refinement.o: factor_refinement.c
 	$(CC) factor_refinement.c -c $(CFLAGS) -lflint -lgmp
 
 bin/t-factor_refinement: tests/t-factor_refinement.c factor_refinement.o

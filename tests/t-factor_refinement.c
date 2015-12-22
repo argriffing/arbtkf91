@@ -4,131 +4,132 @@
 #include "flint/fmpz_vec.h"
 #include "factor_refinement.h"
 
-void _fmpz_vec_randtest_pos(fmpz * f, flint_rand_t state,
-        slong len, mp_bitcnt_t bits);
+void fmpz_factor_randtest(fmpz_factor_t f, flint_rand_t state,
+        slong num, mp_bitcnt_t bits);
 
 void
-_fmpz_vec_randtest_pos(fmpz * f, flint_rand_t state,
-        slong len, mp_bitcnt_t bits)
+fmpz_factor_randtest(fmpz_factor_t f, flint_rand_t state,
+        slong num, mp_bitcnt_t bits)
 {
     slong i;
-    _fmpz_vec_randtest_unsigned(f, state, len, bits-1);
-    for (i = 0; i < len; i++)
+    ulong n;
+    int s;
+
+    /* s is -1 or 1 or rarely 0 */
+    s = 0;
+    n = n_randint(state, 11);
+    if (n)
     {
-        fmpz_add_ui(f+i, f+i, 1);
+        s = (n % 2) ? 1 : -1;
     }
+
+    _fmpz_factor_fit_length(f, num);
+    for (i = 0; i < num; i++)
+    {
+        fmpz_randtest(f->p+i, state, bits);
+        f->exp[i] = n_randint(state, 4);
+    }
+
+    f->num = num;
+    f->sign = s;
 }
+
 
 int main(void)
 {
-    int i;
+    int iter, i;
     FLINT_TEST_INIT(state);
 
-    flint_printf("factor_refinement....");
+    flint_printf("factor_refine....");
     fflush(stdout);
 
-    for (i = 0; i < 100; i++)
+    for (iter = 0; iter < 10000; iter++)
     {
-        fmpz *x, *ybase, *yexp;
-        slong xlen, ylen;
-
+        fmpz_factor_t f, g;
+        slong num;
         mp_bitcnt_t bits;
 
-        x = ybase = yexp = NULL;
-        xlen = ylen = 0;
+        bits = n_randint(state, 30) + 2;
+        num = n_randint(state, 30);
 
-        bits = n_randint(state, 100) + 2;
-        xlen = n_randint(state, 100) + 1;
+        /* sample a factor structure that is not in canonical form */
+        fmpz_factor_init(f);
+        fmpz_factor_randtest(f, state, num, bits);
 
-        /* create the random input vector of positive integers */
-        x = _fmpz_vec_init(xlen);
-        _fmpz_vec_randtest_pos(x, state, xlen, bits);
+        /* compute the factor refinement */
+        fmpz_factor_init(g);
+        fmpz_factor_refine(g, f);
 
-        factor_refinement(&ybase, &yexp, &ylen, x, xlen);
-
-        /* check that products are equal */
+        /* each base must not be less than 2 */
+        for (i = 0; i < g->num; i++)
         {
-            fmpz_t a, b, p;
-            slong j, u;
-
-            fmpz_init_set_ui(a, 1);
-            for (j = 0; j < xlen; j++)
+            if (fmpz_cmp_ui(g->p+i, 2) < 0)
             {
-                fmpz_mul(a, a, x+j);
-            }
-
-            fmpz_init_set_ui(b, 1);
-            fmpz_init(p);
-            for (j = 0; j < ylen; j++)
-            {
-                u = fmpz_get_ui(yexp+j);
-                fmpz_pow_ui(p, ybase+j, u);
-                fmpz_mul(b, b, p);
-            }
-
-            if (!fmpz_equal(a, b))
-            {
-                flint_printf("FAIL:\n");
-                fmpz_print(a); flint_printf(" ");
-                fmpz_print(b); flint_printf("\n");
+                flint_printf("FAIL: (base minimum)\n");
+                fmpz_print(g->p+i); flint_printf("\n");
                 abort();
             }
-
-            fmpz_clear(a);
-            fmpz_clear(b);
-            fmpz_clear(p);
         }
 
-        /* check that elements of the base are pairwise coprime */
+        /* each exponent must not be less than 1 */
+        for (i = 0; i < g->num; i++)
+        {
+            if (g->exp[i] < 1)
+            {
+                flint_printf("FAIL: (exponent minimum)\n");
+                flint_printf("%wd\n", g->exp[i]);
+                abort();
+            }
+        }
+
+        /* bases must be coprime */
         {
             slong u, v;
-            fmpz_t g;
-            fmpz_init(g);
-            for (u = 0; u < ylen; u++)
+            fmpz_t x;
+            fmpz_init(x);
+            for (u = 0; u < g->num; u++)
             {
                 for (v = 0; v < u; v++)
                 {
-                    fmpz_gcd(g, ybase+u, ybase+v);
-                    if (!fmpz_is_one(g))
+                    fmpz_gcd(x, g->p+u, g->p+v);
+                    if (!fmpz_is_one(x))
                     {
-                        flint_printf("FAIL:\n");
-                        fmpz_print(ybase+u); flint_printf(" ");
-                        fmpz_print(ybase+v); flint_printf("\n");
+                        flint_printf("FAIL: (coprime bases)\n");
+                        fmpz_print(g->p+u); flint_printf(" ");
+                        fmpz_print(g->p+v); flint_printf("\n");
                         abort();
                     }
                 }
             }
-            fmpz_clear(g);
+            fmpz_clear(x);
         }
 
-        /* check that each input is a product of powers of outputs */
+        /* products must be equal when multiplied out */
         {
-            slong u, v;
-            fmpz_t a;
-            fmpz_init(a);
-            for (u = 0; u < xlen; u++)
+            fmpz_t x, y;
+
+            fmpz_init(x);
+            fmpz_init(y);
+
+            fmpz_factor_expand(x, f);
+            fmpz_factor_expand(y, g);
+
+            if (!fmpz_equal(x, y))
             {
-                fmpz_set(a, x+u);
-                for (v = 0; v < ylen && !fmpz_is_one(a); v++)
-                {
-                    while (fmpz_divisible(a, ybase+v))
-                    {
-                        fmpz_divexact(a, a, ybase+v);
-                    }
-                }
-                if (!fmpz_is_one(a))
-                {
-                    flint_printf("FAIL:\n");
-                    fmpz_print(ybase+u); flint_printf("\n");
-                    abort();
-                }
+                flint_printf("FAIL: (products)\n");
+                fmpz_factor_print(f); flint_printf(" : ");
+                fmpz_print(x); flint_printf("\n");
+                fmpz_factor_print(g); flint_printf(" : ");
+                fmpz_print(y); flint_printf("\n");
+                abort();
             }
-            fmpz_clear(a);
+
+            fmpz_clear(x);
+            fmpz_clear(y);
         }
 
-        _fmpz_vec_clear(x, xlen);
-        _fmpz_vec_clear(ybase, ylen);
-        _fmpz_vec_clear(yexp, ylen);
+        fmpz_factor_clear(f);
+        fmpz_factor_clear(g);
     }
 
     FLINT_TEST_CLEANUP(state);

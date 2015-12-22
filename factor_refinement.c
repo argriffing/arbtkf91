@@ -3,36 +3,29 @@
  * Eric Bach, James Driscoll, Jeffrey Shallit
  * Computer Sciences Technical Report #883
  * October 1989.
- *
- * GPL implementation by Alex G. 2015.
  */
-
 #include "factor_refinement.h"
 #include "flint/fmpz_vec.h"
 
 
 #define fr_node_mref(x) (&(x)->m)
-#define fr_node_eref(x) (&(x)->e)
 
 typedef struct fr_node_struct
 {
     fmpz m;
-    fmpz e;
+    ulong e;
     struct fr_node_struct * next;
 } fr_node_struct;
-
 typedef fr_node_struct * fr_node_ptr;
 
 
-/* the harsher gcc warning flags are making me add some declarations */
-
-/* functions directly related to factor refinement nodes */
+/* functions related to factor refinement nodes */
 void fr_node_init(fr_node_ptr x);
-void fr_node_init_fmpz_fmpz(fr_node_ptr x, const fmpz_t m, const fmpz_t e);
+void fr_node_init_fmpz_ui(fr_node_ptr x, const fmpz_t m, ulong e);
 void fr_node_clear(fr_node_ptr x);
 int fr_node_is_one(fr_node_ptr x);
-void fr_node_set_fmpz_fmpz(fr_node_ptr x, const fmpz_t m, const fmpz_t e);
-void fr_node_get_fmpz_fmpz(fmpz_t m, fmpz_t e, fr_node_ptr x);
+void fr_node_set_fmpz_ui(fr_node_ptr x, const fmpz_t m, ulong e);
+void fr_node_get_fmpz_ui(fmpz_t m, ulong * e, fr_node_ptr x);
 
 /* functions related to lists of factor refinement nodes */
 slong fr_node_list_length(fr_node_ptr x);
@@ -44,27 +37,27 @@ void fr_node_list_print(fr_node_ptr head);
 
 /* functions related to the actual algorithms of interest */
 void pair_refine_unreduced(fr_node_ptr *phead,
-        fmpz_t m1, fmpz_t e1, fmpz_t m2, fmpz_t e2);
+        fmpz_t m1, ulong e1, fmpz_t m2, ulong e2);
 void remove_ones(fr_node_ptr *phead, fr_node_ptr *ptail, fr_node_ptr ohead);
 void pair_refine(fr_node_ptr *phead, fr_node_ptr *ptail,
-        fmpz_t m1, fmpz_t e1, fmpz_t m2, fmpz_t e2);
+        fmpz_t m1, ulong e1, fmpz_t m2, ulong e2);
 void augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
-        const fmpz_t m_jp1,
+        const fmpz_t m_jp1, ulong e_jp1,
         fr_node_ptr L_j, fr_node_ptr L_j_tail);
 
 void
 fr_node_init(fr_node_ptr x)
 {
     fmpz_init(fr_node_mref(x));
-    fmpz_init(fr_node_eref(x));
+    x->e = 0;
     x->next = NULL;
 }
 
 void
-fr_node_init_fmpz_fmpz(fr_node_ptr x, const fmpz_t m, const fmpz_t e)
+fr_node_init_fmpz_ui(fr_node_ptr x, const fmpz_t m, ulong e)
 {
     fmpz_init_set(fr_node_mref(x), m);
-    fmpz_init_set(fr_node_eref(x), e);
+    x->e = e;
     x->next = NULL;
 }
 
@@ -72,28 +65,29 @@ void
 fr_node_clear(fr_node_ptr x)
 {
     fmpz_clear(fr_node_mref(x));
-    fmpz_clear(fr_node_eref(x));
+    x->e = 0;
     x->next = NULL;
 }
 
 int
 fr_node_is_one(fr_node_ptr x)
 {
-    return fmpz_is_one(fr_node_mref(x));
+    /* follow the fmpz_pow_ui convention 0^0 = 1 */
+    return (x->e == WORD(0) || fmpz_is_one(fr_node_mref(x)));
 }
 
 void
-fr_node_set_fmpz_fmpz(fr_node_ptr x, const fmpz_t m, const fmpz_t e)
+fr_node_set_fmpz_ui(fr_node_ptr x, const fmpz_t m, ulong e)
 {
     fmpz_set(fr_node_mref(x), m);
-    fmpz_set(fr_node_eref(x), e);
+    x->e = e;
 }
 
 void
-fr_node_get_fmpz_fmpz(fmpz_t m, fmpz_t e, fr_node_ptr x)
+fr_node_get_fmpz_ui(fmpz_t m, ulong * e, fr_node_ptr x)
 {
     fmpz_set(m, fr_node_mref(x));
-    fmpz_set(e, fr_node_eref(x));
+    *e = x->e;
 }
 
 slong
@@ -131,7 +125,7 @@ fr_node_list_pop_front(fr_node_ptr *phead, fr_node_ptr *ptail)
         tmp = (*phead)->next;
         fr_node_clear(*phead);
         flint_free(*phead);
-        (*phead) = tmp;
+        *phead = tmp;
     }
 }
 
@@ -148,8 +142,8 @@ fr_node_list_concat(fr_node_ptr *phead, fr_node_ptr *ptail,
     /* if the first list is empty then use the second list */
     if (!(*phead))
     {
-        (*phead) = rhead;
-        (*ptail) = rtail;
+        *phead = rhead;
+        *ptail = rtail;
         return;
     }
 
@@ -181,9 +175,7 @@ fr_node_list_print(fr_node_ptr head)
     while (curr)
     {
         fmpz_print(fr_node_mref(curr));
-        flint_printf("^");
-        fmpz_print(fr_node_eref(curr));
-        flint_printf(" ");
+        flint_printf("^%wu ", curr->e);
         curr = curr->next;
     }
     flint_printf("\n");
@@ -191,8 +183,8 @@ fr_node_list_print(fr_node_ptr head)
 
 void
 pair_refine_unreduced(fr_node_ptr *phead,
-        fmpz_t m1, fmpz_t e1,
-        fmpz_t m2, fmpz_t e2)
+        fmpz_t m1, ulong e1,
+        fmpz_t m2, ulong e2)
 {
     fr_node_ptr head, tail, curr, next, neo;
     fmpz_t d;
@@ -207,10 +199,10 @@ pair_refine_unreduced(fr_node_ptr *phead,
     fmpz_init(d);
 
     head = flint_malloc(sizeof(fr_node_struct));
-    fr_node_init_fmpz_fmpz(head, m1, e1);
+    fr_node_init_fmpz_ui(head, m1, e1);
 
     tail = flint_malloc(sizeof(fr_node_struct));
-    fr_node_init_fmpz_fmpz(tail, m2, e2);
+    fr_node_init_fmpz_ui(tail, m2, e2);
 
     head->next = tail;
 
@@ -232,8 +224,7 @@ pair_refine_unreduced(fr_node_ptr *phead,
                 neo = flint_malloc(sizeof(fr_node_struct));
                 fr_node_init(neo);
                 fmpz_set(fr_node_mref(neo), d);
-                fmpz_add(fr_node_eref(neo),
-                         fr_node_eref(curr), fr_node_eref(next));
+                neo->e = curr->e + next->e;
 
                 curr->next = neo;
                 neo->next = next;
@@ -300,8 +291,8 @@ remove_ones(fr_node_ptr *phead, fr_node_ptr *ptail, fr_node_ptr ohead)
 
 void
 pair_refine(fr_node_ptr *phead, fr_node_ptr *ptail,
-        fmpz_t m1, fmpz_t e1,
-        fmpz_t m2, fmpz_t e2)
+        fmpz_t m1, ulong e1,
+        fmpz_t m2, ulong e2)
 {
     pair_refine_unreduced(phead, m1, e1, m2, e2);
     remove_ones(phead, ptail, *phead);
@@ -309,17 +300,19 @@ pair_refine(fr_node_ptr *phead, fr_node_ptr *ptail,
 
 void
 augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
-        const fmpz_t m_jp1,
+        const fmpz_t m_jp1, ulong e_jp1,
         fr_node_ptr L_j, fr_node_ptr L_j_tail)
 {
+    /* m_jp1 must be positive and greater than 1 */
     /* this function is destructive to the existing refinement L_j */
 
     fr_node_ptr L_jp1, L_jp1_tail, L_prime, L_prime_tail, neo;
-    fmpz_t m, e;
+    fmpz_t m;
+    ulong e;
 
     /* initialize (m, e) <- (m_{j+1}, 1), L_{j+1} <- empty list */
     fmpz_init_set(m, m_jp1);
-    fmpz_init_set_ui(e, 1);
+    e = e_jp1;
     L_jp1 = NULL;
     L_jp1_tail = NULL;
     L_prime = NULL;
@@ -331,10 +324,10 @@ augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
         {
             /* L' <- Pair-Refine((m, e), First(L_j)) */
             pair_refine(&L_prime, &L_prime_tail, m, e,
-                        fr_node_mref(L_j), fr_node_eref(L_j));
+                        fr_node_mref(L_j), L_j->e);
 
             /* (m, e) <- First(L') */
-            fr_node_get_fmpz_fmpz(m, e, L_prime);
+            fr_node_get_fmpz_ui(m, &e, L_prime);
 
             /* L' <- Rest(L') */
             fr_node_list_pop_front(&L_prime, &L_prime_tail);
@@ -347,11 +340,11 @@ augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
         fr_node_list_pop_front(&L_j, &L_j_tail);
     }
 
-    /* create a single-element list like (m, e) */
+    /* create a single-element list like [(m, e)] */
     neo = flint_malloc(sizeof(fr_node_struct));
-    fr_node_init_fmpz_fmpz(neo, m, e);
+    fr_node_init_fmpz_ui(neo, m, e);
 
-    /* L_{j+1} <- Concat(L_{j+1}, Rest(L_j), (m, e)) */
+    /* L_{j+1} <- Concat(L_{j+1}, Rest(L_j), [(m, e)]) */
     fr_node_list_pop_front(&L_j, &L_j_tail);
     fr_node_list_concat(&L_jp1, &L_jp1_tail, L_j, L_j_tail);
     fr_node_list_concat(&L_jp1, &L_jp1_tail, neo, neo);
@@ -360,40 +353,83 @@ augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
     remove_ones(phead, ptail, L_jp1);
 
     fmpz_clear(m);
-    fmpz_clear(e);
 }
 
-void
-factor_refinement(fmpz **ybase, fmpz **yexp, slong *ylen,
-              const fmpz *x, const slong xlen)
-{
-    fr_node_ptr L, L_tail, curr;
-    slong i;
 
-    /* compute the refinement as a linked list */
-    L = NULL;
-    L_tail = NULL;
-    for (i = 0; i < xlen; i++)
+int
+fmpz_factor_sgn(const fmpz_factor_t f)
+{
+    int i, s;
+    ulong e, neg;
+    if (!f->sign)
     {
-        if (!fmpz_is_one(x+i))
+        return 0;
+    }
+    neg = f->sign < 0;
+    for (i = 0; i < f->num; i++)
+    {
+        /* follow the fmpz_pow_ui convention 0^0 = 1 */
+        e = f->exp[i];
+        if (e != WORD(0))
         {
-            augment_refinement(&L, &L_tail, x+i, L, L_tail);
+            s = fmpz_sgn(f->p+i);
+            if (!s)
+            {
+                return 0;
+            }
+            else if (s < 0)
+            {
+                neg = (neg + e) % 2;
+            }
         }
     }
+    return neg ? -1 : 1;
+}
 
-    /* convert the linked list to a more standard format */
-    *ylen = fr_node_list_length(L);
-    *ybase = _fmpz_vec_init(*ylen);
-    *yexp = _fmpz_vec_init(*ylen);
-    curr = L;
-    i = 0;
-    while (curr)
+
+void
+fmpz_factor_refine(fmpz_factor_t res, const fmpz_factor_t f)
+{
+    int s;
+    fr_node_ptr L, L_tail, curr;
+    slong i, len;
+    ulong e;
+    fmpz_t x;
+
+    /* check the sign of f without requiring canonical form */
+    s = fmpz_factor_sgn(f);
+    if (!s)
     {
-        fmpz_set((*ybase)+i, fr_node_mref(curr));
-        fmpz_set((*yexp)+i, fr_node_eref(curr));
-        curr = curr->next;
-        i++;
+        _fmpz_factor_set_length(res, 0);
+        res->sign = 0;
+        return;
     }
 
+    /* compute the refinement as a linked list */
+    fmpz_init(x);
+    for (L = L_tail = NULL, i = 0; i < f->num; i++)
+    {
+        e = f->exp[i];
+        if (e != WORD(0))
+        {
+            fmpz_abs(x, f->p+i);
+            if (!fmpz_is_one(x))
+            {
+                augment_refinement(&L, &L_tail, x, e, L, L_tail);
+            }
+        }
+    }
+    fmpz_clear(x);
+
+    /* fill the output with the contents of the linked list */
+    len = fr_node_list_length(L);
+    _fmpz_factor_fit_length(res, len);
+    _fmpz_factor_set_length(res, len);
+    res->sign = s;
+    for (i = 0, curr = L; i < len; i++, curr = curr->next)
+    {
+        fmpz_set(res->p+i, fr_node_mref(curr));
+        res->exp[i] = curr->e;
+    }
     fr_node_list_clear(L);
 }

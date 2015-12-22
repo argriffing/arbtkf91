@@ -57,8 +57,7 @@ void rgen_reg_node_add_expr(rgen_reg_node_ptr p, expr_ptr expr, slong count);
 
 typedef struct
 {
-    slong nbases;
-    fmpz * base_integers;
+    fmpz_factor_t fac;
     expr_ptr * base_expressions;
 } rgen_reg_refinement_struct;
 typedef rgen_reg_refinement_struct rgen_reg_refinement_t[1];
@@ -213,19 +212,16 @@ rgen_reg_node_clear(rgen_reg_node_t p)
 void
 rgen_reg_refinement_init(rgen_reg_refinement_t p)
 {
-    p->nbases = 0;
-    p->base_integers = NULL;
+    fmpz_factor_init(p->fac);
     p->base_expressions = NULL;
 }
 
 void
 rgen_reg_refinement_clear(rgen_reg_refinement_t p)
 {
-    _fmpz_vec_clear(p->base_integers, p->nbases);
+    fmpz_factor_clear(p->fac);
     free(p->base_expressions);
-    p->base_integers = NULL;
     p->base_expressions = NULL;
-    p->nbases = 0;
 }
 
 
@@ -312,16 +308,6 @@ rgen_reg_finalize(rgen_reg_ptr g, reg_ptr reg)
     rgen_reg_node_ptr gnode;
     rgen_fmpq_node_ptr fnode;
 
-    /* Count all of the fmpq nodes within the generator registry. */
-    int unrefined_count = 0;
-    for (gnode = g->head; gnode; gnode = gnode->next)
-    {
-        for (fnode = gnode->p_fmpq_head; fnode; fnode = fnode->next)
-        {
-            unrefined_count += 2;
-        }
-    }
-
     /*
      * Allocate the fmpz vector as input for factor refinement.
      * This will have twice the total number of fmpq nodes;
@@ -329,68 +315,47 @@ rgen_reg_finalize(rgen_reg_ptr g, reg_ptr reg)
      * Semantically, the input for factor refinement will be treated
      * as a set, so there is no need to preserve any kind of ordering.
      */
-    fmpz * unrefined_factors = _fmpz_vec_init(unrefined_count);
+    fmpz_factor_t unrefined;
+    fmpz_factor_init(unrefined);
+    unrefined->sign = 1;
 
     /*
      * Fill the fmpz vector by digging through the layers of node links
      * and scavenging the numerators and denominators.
      */
-    int c = 0;
     for (gnode = g->head; gnode; gnode = gnode->next)
     {
         for (fnode = gnode->p_fmpq_head; fnode; fnode = fnode->next)
         {
-            fmpz_set(unrefined_factors + c, fmpq_numref(fnode->value));
-            c++;
-            fmpz_set(unrefined_factors + c, fmpq_denref(fnode->value));
-            c++;
+            _fmpz_factor_append(unrefined, fmpq_numref(fnode->value), 1);
+            _fmpz_factor_append(unrefined, fmpq_denref(fnode->value), 1);
         }
     }
-    if (c != unrefined_count)
-    {
-        flint_printf("the numerators and denominators do not add up\n");
-        abort();
-    }
-
-    /* Compute the factor refinement. */
-    fmpz * unused_exponents = NULL;
-    factor_refinement(
-            &(g->refinement->base_integers),
-            &unused_exponents,
-            &(g->refinement->nbases),
-            unrefined_factors,
-            unrefined_count);
 
     flint_printf("before refinement:\n");
-    _fmpz_vec_print(unrefined_factors, unrefined_count);
+    fmpz_factor_print(unrefined);
     flint_printf("\n");
+
+    fmpz_factor_refine(g->refinement->fac, unrefined);
+    fmpz_factor_clear(unrefined);
 
     flint_printf("after refinement:\n");
-    _fmpz_vec_print(
-            g->refinement->base_integers,
-            g->refinement->nbases);
+    fmpz_factor_print(g->refinement->fac);
     flint_printf("\n");
-
-    /*
-     * Delete temporary and unused fmpz vectors
-     * related to the factor refinement.
-     */
-    _fmpz_vec_clear(unrefined_factors, unrefined_count);
-    _fmpz_vec_clear(unused_exponents, g->refinement->nbases);
 
     /*
      * Create an array of uninitialized expression pointers
      * which will eventually hold the registered refined factor expressions.
      */
     g->refinement->base_expressions = flint_malloc(
-            g->refinement->nbases * sizeof(expr_ptr));
+            g->refinement->fac->num * sizeof(expr_ptr));
 
     /* Register the refined factors as new expressions. */
     expr_ptr expr;
-    for (i = 0; i < g->refinement->nbases; i++)
+    for (i = 0; i < g->refinement->fac->num; i++)
     {
         expr = reg_new(reg);
-        expr_fmpz(expr, g->refinement->base_integers+i);
+        expr_fmpz(expr, g->refinement->fac->p+i);
         g->refinement->base_expressions[i] = expr;
     }
 
@@ -465,15 +430,15 @@ rgen_reg_get_matrix(fmpz_mat_t mat, rgen_reg_ptr g)
         {
             /* numerator */
             fmpz_set(x, fmpq_numref(fnode->value));
-            for (i = 0; i < g->refinement->nbases; i++)
+            for (i = 0; i < g->refinement->fac->num; i++)
             {
-                while (fmpz_divisible(x, g->refinement->base_integers+i))
+                while (fmpz_divisible(x, g->refinement->fac->p+i))
                 {
                     r = g->refinement->base_expressions[i]->userdata;
                     col = r->index;
                     entry = fmpz_mat_entry(mat, row, col);
                     fmpz_add(entry, entry, fnode->count);
-                    fmpz_divexact(x, x, g->refinement->base_integers+i);
+                    fmpz_divexact(x, x, g->refinement->fac->p+i);
                 }
             }
             if (!fmpz_is_one(x))
@@ -484,15 +449,15 @@ rgen_reg_get_matrix(fmpz_mat_t mat, rgen_reg_ptr g)
 
             /* denominator */
             fmpz_set(x, fmpq_denref(fnode->value));
-            for (i = 0; i < g->refinement->nbases; i++)
+            for (i = 0; i < g->refinement->fac->num; i++)
             {
-                while (fmpz_divisible(x, g->refinement->base_integers+i))
+                while (fmpz_divisible(x, g->refinement->fac->p+i))
                 {
                     r = g->refinement->base_expressions[i]->userdata;
                     col = r->index;
                     entry = fmpz_mat_entry(mat, row, col);
                     fmpz_sub(entry, entry, fnode->count);
-                    fmpz_divexact(x, x, g->refinement->base_integers+i);
+                    fmpz_divexact(x, x, g->refinement->fac->p+i);
                 }
             }
             if (!fmpz_is_one(x))

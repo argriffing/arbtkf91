@@ -1308,11 +1308,13 @@ run(const char *strA, const char *strB, const user_params_t params)
 
         /* TODO use the trace flag provided by the user */
         int trace_flag = 1;
+
+        /*
         tkf91_double_precision(mat, expressions_table, g, trace_flag,
                 A, szA, B, szB);
-        /*
-        tkf91_hermite(mat, expressions_table, g, A, szA, B, szB);
         */
+
+        tkf91_hermite(mat, expressions_table, g, A, szA, B, szB);
 
         fmpz_mat_clear(mat);
         flint_free(expressions_table);

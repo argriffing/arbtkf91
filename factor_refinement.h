@@ -1,6 +1,3 @@
-/* factor_refinement -- integer factor refinement
- */
-
 #ifndef FACTOR_REFINEMENT_H
 #define FACTOR_REFINEMENT_H
 
@@ -11,8 +8,8 @@
 extern "C" {
 #endif
 
-void factor_refinement(fmpz **ybase, fmpz **yexp, slong *ylen,
-        const fmpz *x, const slong xlen);
+int fmpz_factor_sgn(const fmpz_factor_t f);
+void fmpz_factor_refine(fmpz_factor_t res, const fmpz_factor_t f);
 
 #ifdef __cplusplus
 }
