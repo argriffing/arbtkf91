@@ -36,6 +36,9 @@ void fr_node_list_concat(fr_node_ptr *phead, fr_node_ptr *ptail,
 void fr_node_list_clear(fr_node_ptr head);
 void fr_node_list_print(fr_node_ptr head);
 
+/* fmpz_factor_t convenience function */
+int _fmpz_factor_sgn(const fmpz_factor_t f);
+
 /* functions related to the actual algorithms of interest */
 void pair_refine_unreduced(fr_node_ptr *phead,
         fmpz_t m1, ulong e1, fmpz_t m2, ulong e2);
@@ -374,7 +377,7 @@ augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
 
 
 int
-fmpz_factor_sgn(const fmpz_factor_t f)
+_fmpz_factor_sgn(const fmpz_factor_t f)
 {
     int i, s;
     ulong e, neg;
@@ -414,7 +417,7 @@ fmpz_factor_refine(fmpz_factor_t res, const fmpz_factor_t f)
     fmpz_t x;
 
     /* check the sign of f without requiring canonical form */
-    s = fmpz_factor_sgn(f);
+    s = _fmpz_factor_sgn(f);
     if (!s)
     {
         _fmpz_factor_set_length(res, 0);

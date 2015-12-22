@@ -8,7 +8,6 @@
 extern "C" {
 #endif
 
-int fmpz_factor_sgn(const fmpz_factor_t f);
 void fmpz_factor_refine(fmpz_factor_t res, const fmpz_factor_t f);
 
 #ifdef __cplusplus
