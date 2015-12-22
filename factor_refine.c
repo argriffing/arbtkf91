@@ -323,15 +323,19 @@ augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
         const fmpz_t m_jp1, ulong e_jp1,
         fr_node_ptr L_j, fr_node_ptr L_j_tail)
 {
-    /* m_jp1 must be positive and greater than 1 */
-    /* this function is destructive to the existing refinement L_j */
+    /*
+     * m_jp1 must have absolute value greater than 1,
+     * and its sign will be discarded.
+     * This function is destructive to the existing refinement L_j
+     */
 
     fr_node_ptr L_jp1, L_jp1_tail, L_prime, L_prime_tail, neo;
     fmpz_t m;
     ulong e;
 
     /* initialize (m, e) <- (m_{j+1}, 1), L_{j+1} <- empty list */
-    fmpz_init_set(m, m_jp1);
+    fmpz_init(m);
+    fmpz_abs(m, m_jp1);
     e = e_jp1;
     L_jp1 = NULL;
     L_jp1_tail = NULL;
@@ -413,8 +417,8 @@ fmpz_factor_refine(fmpz_factor_t res, const fmpz_factor_t f)
     int s;
     fr_node_ptr L, L_tail, curr;
     slong i, len;
+    fmpz * b;
     ulong e;
-    fmpz_t x;
 
     /* check the sign of f without requiring canonical form */
     s = _fmpz_factor_sgn(f);
@@ -426,25 +430,20 @@ fmpz_factor_refine(fmpz_factor_t res, const fmpz_factor_t f)
     }
 
     /* compute the refinement as a linked list */
-    fmpz_init(x);
     for (L = L_tail = NULL, i = 0; i < f->num; i++)
     {
+        b = f->p+i;
         e = f->exp[i];
-        if (e != WORD(0))
+        if (e != WORD(0) && !fmpz_is_pm1(b))
         {
-            fmpz_abs(x, f->p+i);
-            if (!fmpz_is_one(x))
-            {
-                augment_refinement(&L, &L_tail, x, e, L, L_tail);
-            }
+            augment_refinement(&L, &L_tail, b, e, L, L_tail);
         }
     }
-    fmpz_clear(x);
 
-    /* refinement length */
+    /* this is the length of the list of refined factors */
     len = fr_node_list_length(L);
 
-    /* make a sorted array of pointers to the nodes */
+    /* make a sorted array of pointers to the refined factor nodes */
     fr_node_ptr * qsort_arr;
     qsort_arr = flint_malloc(sizeof(fr_node_ptr) * len);
     for (i = 0, curr = L; i < len; i++, curr = curr->next)
