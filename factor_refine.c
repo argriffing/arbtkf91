@@ -18,6 +18,12 @@ typedef struct fr_node_struct
 } fr_node_struct;
 typedef fr_node_struct * fr_node_ptr;
 
+typedef struct
+{
+    fmpz * p;
+    ulong e;
+} fr_qsort_item_t;
+
 
 /* functions related to factor refinement nodes */
 void fr_node_init(fr_node_ptr x);
@@ -35,6 +41,12 @@ void fr_node_list_concat(fr_node_ptr *phead, fr_node_ptr *ptail,
 void fr_node_list_clear(fr_node_ptr head);
 void fr_node_list_print(fr_node_ptr head);
 
+/* convenience functions for working with fmpz_factor_t */
+void _fmpz_factor_set(fmpz_factor_t z, const fmpz_factor_t x);
+void _fmpz_factor_sort(fmpz_factor_t z, const fmpz_factor_t x);
+void _fmpz_factor_sort_no_aliasing(fmpz_factor_t z, const fmpz_factor_t x);
+int _fmpz_factor_qsort_cmp(const void * a, const void * b);
+
 /* functions related to the actual algorithms of interest */
 void pair_refine_unreduced(fr_node_ptr *phead,
         fmpz_t m1, ulong e1, fmpz_t m2, ulong e2);
@@ -44,6 +56,7 @@ void pair_refine(fr_node_ptr *phead, fr_node_ptr *ptail,
 void augment_refinement(fr_node_ptr *phead, fr_node_ptr *ptail,
         const fmpz_t m_jp1, ulong e_jp1,
         fr_node_ptr L_j, fr_node_ptr L_j_tail);
+
 
 void
 fr_node_init(fr_node_ptr x)
@@ -432,4 +445,78 @@ fmpz_factor_refine(fmpz_factor_t res, const fmpz_factor_t f)
         res->exp[i] = curr->e;
     }
     fr_node_list_clear(L);
+
+    /* sort the bases */
+    _fmpz_factor_sort(res, res);
+}
+
+
+void
+_fmpz_factor_set(fmpz_factor_t z, const fmpz_factor_t x)
+{
+    slong i;
+    if (z != x)
+    {
+        z->sign = x->sign;
+        _fmpz_factor_fit_length(z, x->num);
+        _fmpz_factor_set_length(z, x->num);
+        _fmpz_vec_set(z->p, x->p, x->num);
+        for (i = 0; i < x->num; i++)
+        {
+            z->exp[i] = x->exp[i];
+        }
+    }
+}
+
+
+int
+_fmpz_factor_qsort_cmp(const void * a, const void * b)
+{
+    const fr_qsort_item_t * x = a;
+    const fr_qsort_item_t * y = b;
+    return fmpz_cmp(x->p, y->p);
+}
+
+
+void
+_fmpz_factor_sort_no_aliasing(fmpz_factor_t z, const fmpz_factor_t x)
+{
+    slong i;
+    fr_qsort_item_t * qsort_arr;
+    qsort_arr = flint_malloc(x->num * sizeof(fr_qsort_item_t));
+    for (i = 0; i < x->num; i++)
+    {
+        qsort_arr[i].p = x->p+i;
+        qsort_arr[i].e = x->exp[i];
+    }
+    qsort(qsort_arr, x->num, sizeof(fr_qsort_item_t), _fmpz_factor_qsort_cmp);
+
+    z->sign = x->sign;
+    _fmpz_factor_fit_length(z, x->num);
+    _fmpz_factor_set_length(z, x->num);
+    for (i = 0; i < x->num; i++)
+    {
+        fmpz_set(z->p+i, qsort_arr[i].p);
+        z->exp[i] = qsort_arr[i].e;
+    }
+
+    flint_free(qsort_arr);
+}
+
+
+void
+_fmpz_factor_sort(fmpz_factor_t z, const fmpz_factor_t x)
+{
+    if (z == x)
+    {
+        fmpz_factor_t y;
+        fmpz_factor_init(y);
+        _fmpz_factor_set(y, x);
+        _fmpz_factor_sort_no_aliasing(z, y);
+        fmpz_factor_clear(y);
+    }
+    else
+    {
+        _fmpz_factor_sort_no_aliasing(z, x);
+    }
 }

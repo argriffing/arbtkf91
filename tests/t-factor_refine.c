@@ -71,6 +71,18 @@ int main(void)
             }
         }
 
+        /* bases must be increasing */
+        for (i = 0; i < g->num-1; i++)
+        {
+            if (fmpz_cmp(g->p+i, g->p+i+1) >= 0)
+            {
+                flint_printf("FAIL: (base sorting)\n");
+                fmpz_print(g->p+i); flint_printf(" ");
+                fmpz_print(g->p+i+1); flint_printf("\n");
+                abort();
+            }
+        }
+
         /* each exponent must not be less than 1 */
         for (i = 0; i < g->num; i++)
         {
