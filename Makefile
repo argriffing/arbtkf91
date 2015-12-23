@@ -146,18 +146,27 @@ breadcrumbs.o: breadcrumbs.c
 		-lflint -lgmp
 
 
-# this is the command line binary executable
+# double precision tkf91 dynamic programming
+
+tkf91_dp_d.o: tkf91_dp_d.c
+	$(CC) tkf91_dp_d.c -c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+		-lflint -lgmp -larb
+
+
+# the main executable
 
 bin/arbtkf91: arbtkf91.c \
 	femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 	generators.o tkf91_generators.o \
 	rgenerators.o tkf91_rgenerators.o \
-	wavefront_double.o wavefront_hermite.o breadcrumbs.o
+	wavefront_double.o wavefront_hermite.o breadcrumbs.o \
+	tkf91_dp_d.o
 	$(CC) arbtkf91.c \
 		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 		generators.o tkf91_generators.o \
 		rgenerators.o tkf91_rgenerators.o \
 		wavefront_double.o wavefront_hermite.o breadcrumbs.o \
+		tkf91_dp_d.o \
 		-o bin/arbtkf91 \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb -lm
 
