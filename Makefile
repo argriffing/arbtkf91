@@ -146,10 +146,14 @@ breadcrumbs.o: breadcrumbs.c
 		-lflint -lgmp
 
 
-# double precision tkf91 dynamic programming
+# arbitrary and double precision tkf91 dynamic programming
 
 tkf91_dp_d.o: tkf91_dp_d.c
 	$(CC) tkf91_dp_d.c -c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+		-lflint -lgmp -larb
+
+tkf91_dp_r.o: tkf91_dp_r.c
+	$(CC) tkf91_dp_r.c -c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb
 
 
@@ -160,13 +164,13 @@ bin/arbtkf91: arbtkf91.c \
 	generators.o tkf91_generators.o \
 	rgenerators.o tkf91_rgenerators.o \
 	wavefront_double.o wavefront_hermite.o breadcrumbs.o \
-	tkf91_dp_d.o
+	tkf91_dp_d.o tkf91_dp_r.o
 	$(CC) arbtkf91.c \
 		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 		generators.o tkf91_generators.o \
 		rgenerators.o tkf91_rgenerators.o \
 		wavefront_double.o wavefront_hermite.o breadcrumbs.o \
-		tkf91_dp_d.o \
+		tkf91_dp_d.o tkf91_dp_r.o \
 		-o bin/arbtkf91 \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb -lm
 
