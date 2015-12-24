@@ -27,6 +27,22 @@
 #define MAXSEQLEN 20000
 
 
+typedef struct
+{
+    int trace_flag;
+    fmpq_t lambda;
+    fmpq_t mu;
+    fmpq_t tau;
+    fmpq pi[4];
+} user_params_struct;
+typedef user_params_struct user_params_t[1];
+
+void user_params_init(user_params_t p);
+void user_params_clear(user_params_t p);
+void user_params_print(const user_params_t p);
+
+
+/* function pointer typedef for the dynamic programming function */
 typedef void (*tkf91_dp_fn)(
         fmpz_mat_t, expr_ptr *,
         tkf91_generator_indices_t,
@@ -34,12 +50,13 @@ typedef void (*tkf91_dp_fn)(
         slong *, size_t,
         slong *, size_t);
 
-
-/*
- * This helper function converts a string to a list of indices.
- */
-
 void _fill_sequence_vector(slong *v, const char *str, slong n);
+void bench(tkf91_dp_fn f, const user_params_t params);
+void run(tkf91_dp_fn f, const user_params_t params,
+        const char *strA, const char *strB);
+void _run(tkf91_dp_fn f, const user_params_t p,
+        slong *A, size_t szA, slong *B, size_t szB);
+
 
 void
 _fill_sequence_vector(slong *v, const char *str, slong n)
@@ -62,21 +79,6 @@ _fill_sequence_vector(slong *v, const char *str, slong n)
     }
 }
 
-
-
-typedef struct
-{
-    int trace_flag;
-    fmpq_t lambda;
-    fmpq_t mu;
-    fmpq_t tau;
-    fmpq pi[4];
-} user_params_struct;
-typedef user_params_struct user_params_t[1];
-
-void user_params_init(user_params_t p);
-void user_params_clear(user_params_t p);
-void user_params_print(const user_params_t p);
 
 void
 user_params_init(user_params_t p)
@@ -119,25 +121,63 @@ user_params_print(const user_params_t p)
 
 
 
+void
+_run(tkf91_dp_fn f, const user_params_t p,
+        slong *A, size_t szA, slong *B, size_t szB)
+{
+    tkf91_rationals_t r;
+    tkf91_expressions_t expressions;
+    tkf91_generator_indices_t generators;
+    fmpz_mat_t mat;
+    expr_ptr * expressions_table;
+    clock_t diff, start;
+    int msec;
+
+    /* timing */
+    start = clock();
+
+    /* expressions registry and (refining) generator registry */
+    reg_t er;
+    rgen_reg_ptr gr;
+
+    reg_init(er);
+    tkf91_rationals_init(r, p->lambda, p->mu, p->tau, p->pi);
+    tkf91_expressions_init(expressions, er, r);
+
+    gr = rgen_reg_new();
+    tkf91_rgenerators_init(generators, gr, r, expressions, A, szA, B, szB);
+    rgen_reg_finalize(gr, er);
+    fmpz_mat_init(mat, rgen_reg_nrows(gr), rgen_reg_ncols(gr));
+    rgen_reg_get_matrix(mat, gr);
+
+    rgen_reg_clear(gr);
+    tkf91_rationals_clear(r);
+
+    expressions_table = reg_vec(er);
+
+    f(mat, expressions_table, generators, p->trace_flag, A, szA, B, szB);
+
+    /* timing */
+    diff = clock() - start;
+    msec = (diff * 1000) / CLOCKS_PER_SEC;
+    printf("Time taken %d seconds %d milliseconds.\n", msec/1000, msec%1000);
+
+    fmpz_mat_clear(mat);
+    flint_free(expressions_table);
+
+    reg_clear(er);
+    tkf91_expressions_clear(expressions);
+}
 
 
-void run(tkf91_dp_fn f, const char *strA, const char *strB,
-        const user_params_t params);
 
 void
-run(tkf91_dp_fn f, const char *strA, const char *strB,
-        const user_params_t params)
+run(tkf91_dp_fn f, const user_params_t params,
+        const char *strA, const char *strB)
 {
     slong *A;
     slong *B;
-    expr_ptr * expressions_table;
-
     size_t szA, szB;
-    reg_t reg;
-    tkf91_rationals_t r;
-    tkf91_expressions_t p;
-    tkf91_generator_indices_t g;
-    fmpz_mat_t mat;
 
     szA = strlen(strA);
     A = flint_malloc(szA * sizeof(slong));
@@ -147,50 +187,12 @@ run(tkf91_dp_fn f, const char *strA, const char *strB,
     B = flint_malloc(szB * sizeof(slong));
     _fill_sequence_vector(B, strB, szB);
 
-    int i;
-    int runs = 1;
-
-
-    for (i = 0; i < runs; i++)
-    {
-        clock_t diff;
-        clock_t start = clock();
-
-        reg_init(reg);
-        tkf91_rationals_init(r,
-                params->lambda, params->mu, params->tau, params->pi);
-        tkf91_expressions_init(p, reg, r);
-
-        rgen_reg_ptr rg = rgen_reg_new();
-        tkf91_rgenerators_init(g, rg, r, p, A, szA, B, szB);
-        rgen_reg_finalize(rg, reg);
-        fmpz_mat_init(mat, rgen_reg_nrows(rg), rgen_reg_ncols(rg));
-        rgen_reg_get_matrix(mat, rg);
-        rgen_reg_clear(rg);
-
-        expressions_table = reg_vec(reg);
-
-        f(mat, expressions_table, g, params->trace_flag, A, szA, B, szB);
-
-        fmpz_mat_clear(mat);
-        flint_free(expressions_table);
-
-        reg_clear(reg);
-        tkf91_rationals_clear(r);
-        tkf91_expressions_clear(p);
-
-        diff = clock() - start;
-        int msec = (diff * 1000) / CLOCKS_PER_SEC;
-        printf("Time taken %d seconds %d milliseconds.\n",
-                msec/1000, msec%1000);
-    }
+    _run(f, params, A, szA, B, szB);
 
     flint_free(A);
     flint_free(B);
 }
 
-
-void bench(tkf91_dp_fn f, const user_params_t params);
 
 void
 bench(tkf91_dp_fn f, const user_params_t params)
@@ -201,13 +203,6 @@ bench(tkf91_dp_fn f, const user_params_t params)
 
     slong *A;
     slong *B;
-    expr_ptr * expressions_table;
-
-    reg_t reg;
-    tkf91_rationals_t r;
-    tkf91_expressions_t p;
-    tkf91_generator_indices_t g;
-    fmpz_mat_t mat;
 
     /*
      * Read pairs of sequences from stdin.
@@ -242,53 +237,13 @@ bench(tkf91_dp_fn f, const user_params_t params)
         }
         printf("length of sequence B: %ld\n", szB);
 
-
         A = flint_malloc(szA * sizeof(slong));
         _fill_sequence_vector(A, strA, szA);
 
         B = flint_malloc(szB * sizeof(slong));
         _fill_sequence_vector(B, strB, szB);
 
-
-        clock_t diff;
-        clock_t start = clock();
-
-        reg_init(reg);
-        tkf91_rationals_init(r,
-                params->lambda, params->mu, params->tau, params->pi);
-        tkf91_expressions_init(p, reg, r);
-
-        rgen_reg_ptr rg = rgen_reg_new();
-        tkf91_rgenerators_init(g, rg, r, p, A, szA, B, szB);
-        rgen_reg_finalize(rg, reg);
-        fmpz_mat_init(mat, rgen_reg_nrows(rg), rgen_reg_ncols(rg));
-        rgen_reg_get_matrix(mat, rg);
-        rgen_reg_clear(rg);
-
-        expressions_table = reg_vec(reg);
-
-        clock_t diff_b;
-        clock_t start_b = clock();
-
-        f(mat, expressions_table, g, params->trace_flag, A, szA, B, szB);
-
-        diff_b = clock() - start_b;
-        int msec_b = (diff_b * 1000) / CLOCKS_PER_SEC;
-        printf("Dynamic programming time taken %d seconds %d milliseconds.\n",
-                msec_b/1000, msec_b%1000);
-
-
-        fmpz_mat_clear(mat);
-        flint_free(expressions_table);
-
-        reg_clear(reg);
-        tkf91_rationals_clear(r);
-        tkf91_expressions_clear(p);
-
-        diff = clock() - start;
-        int msec = (diff * 1000) / CLOCKS_PER_SEC;
-        printf("Total time taken %d seconds %d milliseconds.\n",
-                msec/1000, msec%1000);
+        _run(f, params, A, szA, B, szB);
 
         flint_free(A);
         flint_free(B);
@@ -402,7 +357,7 @@ main(int argc, char *argv[])
         }
         else
         {
-            run(f, Astr, Bstr, p);
+            run(f, p, Astr, Bstr);
         }
     }
 
