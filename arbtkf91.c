@@ -27,6 +27,12 @@
 #define MAXSEQLEN 20000
 
 
+typedef void (*tkf91_dp_fn)(
+        fmpz_mat_t, expr_ptr *,
+        tkf91_generator_indices_t,
+        int,
+        slong *, size_t,
+        slong *, size_t);
 
 
 /*
@@ -115,10 +121,12 @@ user_params_print(const user_params_t p)
 
 
 
-void run(const char *strA, const char *strB, const user_params_t params);
+void run(tkf91_dp_fn f, const char *strA, const char *strB,
+        const user_params_t params);
 
 void
-run(const char *strA, const char *strB, const user_params_t params)
+run(tkf91_dp_fn f, const char *strA, const char *strB,
+        const user_params_t params)
 {
     slong *A;
     slong *B;
@@ -162,15 +170,7 @@ run(const char *strA, const char *strB, const user_params_t params)
 
         expressions_table = reg_vec(reg);
 
-        /* TODO use the trace flag provided by the user */
-
-        /*
-        tkf91_dp_d(mat, expressions_table, g, params->trace_flag,
-                A, szA, B, szB);
-        */
-
-        tkf91_dp_r(mat, expressions_table, g, params->trace_flag,
-                A, szA, B, szB);
+        f(mat, expressions_table, g, params->trace_flag, A, szA, B, szB);
 
         fmpz_mat_clear(mat);
         flint_free(expressions_table);
@@ -190,10 +190,10 @@ run(const char *strA, const char *strB, const user_params_t params)
 }
 
 
-void bench(const user_params_t params);
+void bench(tkf91_dp_fn f, const user_params_t params);
 
 void
-bench(const user_params_t params)
+bench(tkf91_dp_fn f, const user_params_t params)
 {
     char strA[MAXSEQLEN];
     char strB[MAXSEQLEN];
@@ -270,12 +270,7 @@ bench(const user_params_t params)
         clock_t diff_b;
         clock_t start_b = clock();
 
-        tkf91_dp_d(mat, expressions_table, g, params->trace_flag,
-                A, szA, B, szB);
-        /*
-        tkf91_dp_r(mat, expressions_table, g, params->trace_flag,
-                A, szA, B, szB);
-        */
+        f(mat, expressions_table, g, params->trace_flag, A, szA, B, szB);
 
         diff_b = clock() - start_b;
         int msec_b = (diff_b * 1000) / CLOCKS_PER_SEC;
@@ -327,12 +322,20 @@ main(int argc, char *argv[])
     slong tau_den = 1;
     slong pi_den[4] = {1, 1, 1, 1};
 
+    tkf91_dp_fn f = NULL;
+
     for (i = 1; i < argc-1; i += 2)
     {
         if (strcmp(argv[i], "--bench") == 0) {
             flint_sscanf(argv[i + 1], "%d", &bench_flag);
         } else if (strcmp(argv[i], "--trace") == 0) {
             flint_sscanf(argv[i + 1], "%d", &(p->trace_flag));
+        } else if (strcmp(argv[i], "--precision") == 0) {
+            if (strcmp(argv[i + 1], "double") == 0) {
+                f = &tkf91_dp_d;
+            } else if (strcmp(argv[i + 1], "arbitrary") == 0) {
+                f = &tkf91_dp_r;
+            }
         }
 
         else if (strcmp(argv[i], "--sequence-1") == 0) {
@@ -342,61 +345,68 @@ main(int argc, char *argv[])
         }
         
         else if (strcmp(argv[i], "--lambda-num") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", &lambda_num);
+            flint_sscanf(argv[i + 1], "%wd", &lambda_num);
         } else if (strcmp(argv[i], "--mu-num") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", &mu_num);
+            flint_sscanf(argv[i + 1], "%wd", &mu_num);
         } else if (strcmp(argv[i], "--tau-num") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", &tau_num);
+            flint_sscanf(argv[i + 1], "%wd", &tau_num);
         } else if (strcmp(argv[i], "--pa-num") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", pi_num+0);
+            flint_sscanf(argv[i + 1], "%wd", pi_num+0);
         } else if (strcmp(argv[i], "--pc-num") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", pi_num+1);
+            flint_sscanf(argv[i + 1], "%wd", pi_num+1);
         } else if (strcmp(argv[i], "--pg-num") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", pi_num+2);
+            flint_sscanf(argv[i + 1], "%wd", pi_num+2);
         } else if (strcmp(argv[i], "--pt-num") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", pi_num+3);
+            flint_sscanf(argv[i + 1], "%wd", pi_num+3);
         }
 
         else if (strcmp(argv[i], "--lambda-den") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", &lambda_den);
+            flint_sscanf(argv[i + 1], "%wd", &lambda_den);
         } else if (strcmp(argv[i], "--mu-den") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", &mu_den);
+            flint_sscanf(argv[i + 1], "%wd", &mu_den);
         } else if (strcmp(argv[i], "--tau-den") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", &tau_den);
+            flint_sscanf(argv[i + 1], "%wd", &tau_den);
         } else if (strcmp(argv[i], "--pa-den") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", pi_den+0);
+            flint_sscanf(argv[i + 1], "%wd", pi_den+0);
         } else if (strcmp(argv[i], "--pc-den") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", pi_den+1);
+            flint_sscanf(argv[i + 1], "%wd", pi_den+1);
         } else if (strcmp(argv[i], "--pg-den") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", pi_den+2);
+            flint_sscanf(argv[i + 1], "%wd", pi_den+2);
         } else if (strcmp(argv[i], "--pt-den") == 0) {
-            flint_sscanf(argv[i + 1], "%ws", pi_den+3);
+            flint_sscanf(argv[i + 1], "%wd", pi_den+3);
         }
     }
 
-    fmpq_set_si(p->lambda, lambda_num, lambda_den);
-    fmpq_set_si(p->mu, mu_num, mu_den);
-    fmpq_set_si(p->tau, tau_num, tau_den);
-    for (i = 0; i < 4; i++)
+    if (!f)
     {
-        fmpq_set_si(p->pi+i, pi_num[i], pi_den[i]);
-    }
-
-    flint_printf("user-provided parameter values:\n");
-    user_params_print(p);
-    flint_printf("\n");
-
-    if (bench_flag)
-    {
-        bench(p);
+        flint_printf("expected either '--precision double' ");
+        flint_printf("or '--precision arbitrary'\n");
     }
     else
     {
-        run(Astr, Bstr, p);
+        fmpq_set_si(p->lambda, lambda_num, lambda_den);
+        fmpq_set_si(p->mu, mu_num, mu_den);
+        fmpq_set_si(p->tau, tau_num, tau_den);
+        for (i = 0; i < 4; i++)
+        {
+            fmpq_set_si(p->pi+i, pi_num[i], pi_den[i]);
+        }
+
+        flint_printf("user-provided parameter values:\n");
+        user_params_print(p);
+        flint_printf("\n");
+
+        if (bench_flag)
+        {
+            bench(f, p);
+        }
+        else
+        {
+            run(f, Astr, Bstr, p);
+        }
     }
 
     user_params_clear(p);
-
     flint_cleanup();
     return 0;
 }
