@@ -253,7 +253,7 @@ example2d: bin/arbtkf91
 
 clean:
 	rm -f *.o
-	rm -f bin/example
+	rm -f bin/arbtkf91
 	rm -f bin/t-factor_refine
 	rm -f bin/t-femtocas
 	rm -f bin/t-expressions
