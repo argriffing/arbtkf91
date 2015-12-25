@@ -183,7 +183,7 @@ bin/arbtkf91: arbtkf91.c \
 
 example1a: bin/arbtkf91
 	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
-		--precision double \
+		--precision bound \
 		--sequence-1 ACGATA \
 		--sequence-2 AGTGGTA \
 		--lambda-num 1 --lambda-den 1 \

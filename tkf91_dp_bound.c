@@ -144,8 +144,16 @@ _bounds_init(tkf91_values_t lb, tkf91_values_t ub,
     ub_arr = _mag_vec_init(nr);
     for (i = 0; i < nr; i++)
     {
-        arb_get_mag_lower(lb_arr, v+i);
-        arb_get_mag(ub_arr, v+i);
+        arb_get_mag_lower(lb_arr+i, v+i);
+        arb_get_mag(ub_arr+i, v+i);
+    }
+
+    /* debug */
+    for (i = 0; i < nr; i++)
+    {
+        arb_print(v+i); flint_printf(" ");
+        mag_print(lb_arr+i); flint_printf(" ");
+        mag_print(ub_arr+i); flint_printf("\n");
     }
 
     /* initialize the lb and ub structures */
@@ -374,15 +382,15 @@ tkf91_dp_bound(
                     {
                         ntb = B[j - 1];
                         p2 = cellfront_entry_left(cells, i, j);
-                        mag_add_lower(lb_m2, &(p2->lb2), lb->m2_0j_incr+ntb);
-                        mag_add(ub_m2, &(p2->ub2), ub->m2_0j_incr+ntb);
+                        mag_mul_lower(lb_m2, &(p2->lb2), lb->m2_0j_incr+ntb);
+                        mag_mul(ub_m2, &(p2->ub2), ub->m2_0j_incr+ntb);
                     }
                     else if (j == 0)
                     {
                         nta = A[i - 1];
                         p0 = cellfront_entry_top(cells, i, j);
-                        mag_add_lower(lb_m0, &(p0->lb3), lb->m0_i0_incr+nta);
-                        mag_add(ub_m0, &(p0->ub3), ub->m0_i0_incr+nta);
+                        mag_mul_lower(lb_m0, &(p0->lb3), lb->m0_i0_incr+nta);
+                        mag_mul(ub_m0, &(p0->ub3), ub->m0_i0_incr+nta);
                     }
                 }
             }
@@ -394,14 +402,14 @@ tkf91_dp_bound(
                 p1 = cellfront_entry_diag(cells, i, j);
                 p2 = cellfront_entry_left(cells, i, j);
 
-                mag_add_lower(lb_m0, &(p0->lb3), lb->c0_incr+nta);
-                mag_add(ub_m0, &(p0->ub3), ub->c0_incr+nta);
+                mag_mul_lower(lb_m0, &(p0->lb3), lb->c0_incr+nta);
+                mag_mul(ub_m0, &(p0->ub3), ub->c0_incr+nta);
 
-                mag_add_lower(lb_m1, &(p1->lb3), lb->c1_incr+nta*4 + ntb);
-                mag_add(ub_m1, &(p1->ub3), ub->c1_incr+nta*4 + ntb);
+                mag_mul_lower(lb_m1, &(p1->lb3), lb->c1_incr+nta*4 + ntb);
+                mag_mul(ub_m1, &(p1->ub3), ub->c1_incr+nta*4 + ntb);
 
-                mag_add_lower(lb_m2, &(p2->lb2), lb->c2_incr+ntb);
-                mag_add(ub_m2, &(p2->ub2), ub->c2_incr+ntb);
+                mag_mul_lower(lb_m2, &(p2->lb2), lb->c2_incr+ntb);
+                mag_mul(ub_m2, &(p2->ub2), ub->c2_incr+ntb);
             }
 
             /* fill the current cell using the current m* bounds */
@@ -413,7 +421,13 @@ tkf91_dp_bound(
                 breadcrumb_ptr pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
                 cell_get_crumb(pcrumb, cell, ub_m0, ub_m1, ub_m2);
             }
+
+            /* debug */
+            mag_print(ub_m0);
+            flint_printf(", ");
         }
+        /* debug */
+        flint_printf("\n");
     }
 
     /* report the score */
@@ -421,11 +435,11 @@ tkf91_dp_bound(
     cell = cellfront_entry(cells, nrows - 1, ncols - 1);
 
     flint_printf("best alignment lower bound probability: ");
-    mag_printd(&(cell->lb3), 15);
+    mag_print(&(cell->lb3));
     flint_printf("\n");
 
     flint_printf("best alignment upper bound probability: ");
-    mag_printd(&(cell->ub3), 15);
+    mag_print(&(cell->ub3));
     flint_printf("\n");
 
     /* do the traceback */
