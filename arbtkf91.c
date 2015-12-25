@@ -22,6 +22,7 @@
 #include "tkf91_generator_indices.h"
 #include "tkf91_dp_d.h"
 #include "tkf91_dp_r.h"
+#include "tkf91_dp_bound.h"
 
 
 #define MAXSEQLEN 20000
@@ -290,6 +291,8 @@ main(int argc, char *argv[])
                 f = &tkf91_dp_d;
             } else if (strcmp(argv[i + 1], "arbitrary") == 0) {
                 f = &tkf91_dp_r;
+            } else if (strcmp(argv[i + 1], "bound") == 0) {
+                f = &tkf91_dp_bound;
             }
         }
 
@@ -334,8 +337,7 @@ main(int argc, char *argv[])
 
     if (!f)
     {
-        flint_printf("expected either '--precision double' ");
-        flint_printf("or '--precision arbitrary'\n");
+        flint_printf("expected '--precision {double, arbitrary, bound}");
     }
     else
     {

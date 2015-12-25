@@ -156,6 +156,10 @@ tkf91_dp_r.o: tkf91_dp_r.c
 	$(CC) tkf91_dp_r.c -c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb
 
+tkf91_dp_bound.o: tkf91_dp_bound.c
+	$(CC) tkf91_dp_bound.c -c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+		-lflint -lgmp -larb
+
 
 # the main executable
 
@@ -164,13 +168,13 @@ bin/arbtkf91: arbtkf91.c \
 	generators.o tkf91_generators.o \
 	rgenerators.o tkf91_rgenerators.o \
 	wavefront_double.o wavefront_hermite.o breadcrumbs.o \
-	tkf91_dp_d.o tkf91_dp_r.o
+	tkf91_dp_d.o tkf91_dp_r.o tkf91_dp_bound.o
 	$(CC) arbtkf91.c \
 		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 		generators.o tkf91_generators.o \
 		rgenerators.o tkf91_rgenerators.o \
 		wavefront_double.o wavefront_hermite.o breadcrumbs.o \
-		tkf91_dp_d.o tkf91_dp_r.o \
+		tkf91_dp_d.o tkf91_dp_r.o tkf91_dp_bound.o \
 		-o bin/arbtkf91 \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb -lm
 
@@ -179,6 +183,7 @@ bin/arbtkf91: arbtkf91.c \
 
 example1a: bin/arbtkf91
 	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
+		--precision double \
 		--sequence-1 ACGATA \
 		--sequence-2 AGTGGTA \
 		--lambda-num 1 --lambda-den 1 \
@@ -191,6 +196,7 @@ example1a: bin/arbtkf91
 
 example1b: bin/arbtkf91
 	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
+		--precision bound \
 		--sequence-1 ACGATA \
 		--sequence-2 AGTGGTA \
 		--lambda-num 1 --lambda-den 1 \
@@ -215,6 +221,7 @@ example2a: bin/arbtkf91
 
 example2b: bin/arbtkf91
 	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
+		--precision bound \
 		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
 		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
 		--lambda-num 1 --lambda-den 1 \
@@ -227,6 +234,7 @@ example2b: bin/arbtkf91
 
 example2c: bin/arbtkf91
 	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
+		--precision bound \
 		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
 		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
 		--lambda-num 1 --lambda-den 1 \
@@ -239,6 +247,7 @@ example2c: bin/arbtkf91
 
 example2d: bin/arbtkf91
 	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
+		--precision bound \
 		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
 		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
 		--lambda-num 1 --lambda-den 1 \
