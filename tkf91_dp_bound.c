@@ -149,12 +149,14 @@ _bounds_init(tkf91_values_t lb, tkf91_values_t ub,
     }
 
     /* debug */
+    /*
     for (i = 0; i < nr; i++)
     {
         arb_print(v+i); flint_printf(" ");
         mag_print(lb_arr+i); flint_printf(" ");
         mag_print(ub_arr+i); flint_printf("\n");
     }
+    */
 
     /* initialize the lb and ub structures */
     tkf91_values_init(lb, g, lb_arr);
@@ -330,6 +332,7 @@ tkf91_dp_bound(
     slong nrows = szA + 1;
     slong ncols = szB + 1;
     breadcrumb_mat_t crumb_mat;
+    breadcrumb_ptr pcrumb;
 
     if (trace_flag)
     {
@@ -418,8 +421,12 @@ tkf91_dp_bound(
             /* optionally fill the table for traceback */
             if (trace_flag)
             {
-                breadcrumb_ptr pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
-                cell_get_crumb(pcrumb, cell, ub_m0, ub_m1, ub_m2);
+                /* keep the top left corner empty */
+                if (i || j)
+                {
+                    pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
+                    cell_get_crumb(pcrumb, cell, ub_m0, ub_m1, ub_m2);
+                }
             }
 
             /* debug */
@@ -442,9 +449,24 @@ tkf91_dp_bound(
     mag_print(&(cell->ub3));
     flint_printf("\n");
 
-    /* do the traceback */
     if (trace_flag)
     {
+        /* get the not-ruled-out cells of the dynamic programming table */
+        /*
+        breadcrumb_mat_t mask;
+        breadcrumb_mat_init(mask,
+                breadcrumb_mat_nrows(crumb_mat),
+                breadcrumb_mat_ncols(crumb_mat));
+        */
+        breadcrumb_mat_get_mask(crumb_mat, crumb_mat, 0x08);
+
+        /* print the mask to a file */
+        FILE *fout;
+        fout = fopen("mask.txt", "wt");
+        breadcrumb_mat_fprint(fout, crumb_mat);
+        fclose(fout);
+
+        /* do the traceback */
         char *sa, *sb;
         breadcrumb_mat_get_alignment(&sa, &sb, crumb_mat, A, B);
         flint_printf("%s\n", sa);

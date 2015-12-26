@@ -148,16 +148,25 @@ breadcrumbs.o: breadcrumbs.c
 
 # arbitrary and double precision tkf91 dynamic programming
 
-tkf91_dp_d.o: tkf91_dp_d.c
-	$(CC) tkf91_dp_d.c -c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+tkf91_dp_d.o: tkf91_dp_d.c \
+	breadcrumbs.o
+	$(CC) tkf91_dp_d.c \
+		breadcrumbs.o \
+		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb
 
-tkf91_dp_r.o: tkf91_dp_r.c
-	$(CC) tkf91_dp_r.c -c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+tkf91_dp_r.o: tkf91_dp_r.c \
+	breadcrumbs.o
+	$(CC) tkf91_dp_r.c \
+		breadcrumbs.o \
+		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb
 
-tkf91_dp_bound.o: tkf91_dp_bound.c
-	$(CC) tkf91_dp_bound.c -c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+tkf91_dp_bound.o: tkf91_dp_bound.c \
+	breadcrumbs.o
+	$(CC) tkf91_dp_bound.c \
+		breadcrumbs.o \
+		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb
 
 
@@ -184,6 +193,7 @@ bin/arbtkf91: arbtkf91.c \
 example1a: bin/arbtkf91
 	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
 		--precision bound \
+		--trace 1 \
 		--sequence-1 ACGATA \
 		--sequence-2 AGTGGTA \
 		--lambda-num 1 --lambda-den 1 \
@@ -209,6 +219,8 @@ example1b: bin/arbtkf91
 
 example2a: bin/arbtkf91
 	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
+		--precision bound \
+		--trace 1 \
 		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
 		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
 		--lambda-num 1 --lambda-den 1 \
