@@ -179,7 +179,8 @@ typedef cell_struct * cell_ptr;
 void cell_init(cell_t x);
 void cell_clear(cell_t x);
 void cell_get_crumb(breadcrumb_t * pcrumb, const cell_t x,
-        const mag_t ub_m0, const mag_t ub_m1, const mag_t ub_m2);
+        const mag_t ub_m0, const mag_t ub_m1, const mag_t ub_m2,
+        slong i, slong j);
 
 static __inline__ void
 cell_fill(cell_t x,
@@ -212,20 +213,39 @@ cell_clear(cell_t x)
 
 void
 cell_get_crumb(breadcrumb_t * pcrumb, const cell_t x,
-        const mag_t ub_m0, const mag_t ub_m1, const mag_t ub_m2)
+        const mag_t ub_m0, const mag_t ub_m1, const mag_t ub_m2,
+        slong i, slong j)
 {
     *pcrumb = 0;
-    if (mag_cmp(&(x->lb3), ub_m0) <= 0)
+
+    /* breadcrumb for alignment traceback */
+    if (i || j)
     {
-        *pcrumb |= CRUMB_TOP;
+        if (mag_cmp(&(x->lb3), ub_m0) <= 0)
+        {
+            *pcrumb |= CRUMB_TOP;
+        }
+        if (mag_cmp(&(x->lb3), ub_m1) <= 0)
+        {
+            *pcrumb |= CRUMB_DIAG;
+        }
+        if (mag_cmp(&(x->lb3), ub_m2) <= 0)
+        {
+            *pcrumb |= CRUMB_LEFT;
+        }
     }
-    if (mag_cmp(&(x->lb3), ub_m1) <= 0)
+
+    /* breadcrumb for info propagation for symbolic optimality verification */
+    if (j)
     {
-        *pcrumb |= CRUMB_DIAG;
-    }
-    if (mag_cmp(&(x->lb3), ub_m2) <= 0)
-    {
-        *pcrumb |= CRUMB_LEFT;
+        if (mag_cmp(&(x->lb2), ub_m1) <= 0)
+        {
+            *pcrumb |= CRUMB_DIAG2;
+        }
+        if (mag_cmp(&(x->lb2), ub_m2) <= 0)
+        {
+            *pcrumb |= CRUMB_LEFT2;
+        }
     }
 }
 
@@ -406,12 +426,10 @@ tkf91_dp_bound(
             /* optionally fill the table for traceback */
             if (trace_flag)
             {
-                /* keep the top left corner empty */
-                if (i || j)
-                {
-                    pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
-                    cell_get_crumb(pcrumb, cell, ub_m0, ub_m1, ub_m2);
-                }
+                pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
+
+                /* pass i and j to detect boundaries only */
+                cell_get_crumb(pcrumb, cell, ub_m0, ub_m1, ub_m2, i, j);
             }
         }
     }
@@ -430,8 +448,12 @@ tkf91_dp_bound(
 
     if (trace_flag)
     {
-        /* get the not-ruled-out cells of the dynamic programming table */
-        breadcrumb_mat_get_mask(crumb_mat, crumb_mat, 0x08);
+        /*
+         * Get the not-ruled-out cells of the dynamic programming table,
+         * and get the cells that are not ruled out for contributing
+         * information towards the optimal alignment.
+         */
+        breadcrumb_mat_get_mask(crumb_mat, crumb_mat);
 
         /* print the mask to a file */
         FILE *fout;

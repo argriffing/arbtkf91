@@ -4,10 +4,19 @@ import numpy as np
 
 from PIL import Image
 
+# /* traceback directions for the actual alignment */
 CRUMB_TOP  = 0x01
 CRUMB_DIAG = 0x02
 CRUMB_LEFT = 0x04
-CRUMB_MASK = 0x08
+
+# /* traceback directions for information propagation */
+CRUMB_DIAG2 = 0x08
+CRUMB_LEFT2 = 0x10
+
+CRUMB_WANT2 = 0x20
+CRUMB_WANT3 = 0x40
+CRUMB_CONTENDER = 0x80
+
 
 IRED = 0
 IGREEN = 1
@@ -33,27 +42,50 @@ def gen_rgb_triples(rcv_triples, nr, nc):
             d = data[i, j]
 
             # cell color
-            red = BRIGHT if (d & CRUMB_MASK) else DIM
-            image[i, j, 2:, 2:, IRED] = red
+            if d & CRUMB_CONTENDER:
+                image[i, j, 2:, 2:, IRED] = BRIGHT
+            elif d & CRUMB_WANT3:
+                image[i, j, 2:, 2:, IBLUE] = BRIGHT
+            elif d & CRUMB_WANT2:
+                image[i, j, 2:, 2:, IGREEN] = BRIGHT
+            else:
+                image[i, j, 2:, 2:, IGREEN] = DIM
 
-            # top connection
-            if i > 0:
-                if data[i, j] & CRUMB_MASK and data[i-1, j] & CRUMB_MASK:
-                    blue = BRIGHT if (d & CRUMB_TOP) else DIM
-                    image[i, j, :2, 3, IBLUE] = blue
-
+            # connections among potentially informative nodes
+            #
             # diag connection
             if i > 0 and j > 0:
-                if data[i, j] & CRUMB_MASK and data[i-1, j-1] & CRUMB_MASK:
-                    blue = BRIGHT if (d & CRUMB_DIAG) else DIM
-                    image[i, j, 0, 0, IBLUE] = blue
-                    image[i, j, 1, 1, IBLUE] = blue
-
+                if data[i, j] & (CRUMB_WANT2 | CRUMB_WANT3) and data[i-1, j-1] & (CRUMB_WANT2 | CRUMB_WANT3):
+                    if d & CRUMB_DIAG2:
+                        image[i, j, 0, 0, IBLUE] = BRIGHT
+                        image[i, j, 1, 1, IBLUE] = BRIGHT
+            #
             # left connection
             if j > 0:
-                if data[i, j] & CRUMB_MASK and data[i, j-1] & CRUMB_MASK:
-                    blue = BRIGHT if (d & CRUMB_LEFT) else DIM
-                    image[i, j, 3, :2, IBLUE] = blue
+                if data[i, j] & (CRUMB_WANT2 | CRUMB_WANT3) and data[i, j-1] & (CRUMB_WANT2 | CRUMB_WANT3):
+                    if d & CRUMB_LEFT2:
+                        image[i, j, 3, :2, IBLUE] = BRIGHT
+
+            # connections among potentially visited nodes
+            #
+            # top connection
+            if i > 0:
+                if data[i, j] & CRUMB_CONTENDER and data[i-1, j] & CRUMB_CONTENDER:
+                    if d & CRUMB_TOP:
+                        image[i, j, :2, 3, IRED] = BRIGHT
+            #
+            # diag connection
+            if i > 0 and j > 0:
+                if data[i, j] & CRUMB_CONTENDER and data[i-1, j-1] & CRUMB_CONTENDER:
+                    if d & CRUMB_DIAG:
+                        image[i, j, 0, 0, IRED] = BRIGHT
+                        image[i, j, 1, 1, IRED] = BRIGHT
+            #
+            # left connection
+            if j > 0:
+                if data[i, j] & CRUMB_CONTENDER and data[i, j-1] & CRUMB_CONTENDER:
+                    if d & CRUMB_LEFT:
+                        image[i, j, 3, :2, IRED] = BRIGHT
 
     print 'yielding rgb triples...'
     for i in range(nr):
@@ -63,7 +95,6 @@ def gen_rgb_triples(rcv_triples, nr, nc):
                 for l in range(5):
                     if j == 0 and l < 2: continue
                     if i == 0 and k < 2: continue
-                    #yield tuple(image[i, j, k, l])
                     yield tuple(image[i, j, k, l].tolist())
 
 
@@ -80,5 +111,3 @@ def main():
     im.save('trace.png', 'png')
 
 main()
-
-

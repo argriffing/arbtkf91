@@ -193,22 +193,27 @@ bound_mat_clear(bound_mat_t mat)
 
 
 void
-tkf91_dp_symbolic(
+tkf91_dp_verify_symbolically(
         fmpz_mat_t mat,
         tkf91_generator_indices_t g,
+        breadcrumb_mat_t mask,
         slong *A, size_t szA,
         slong *B, size_t szB)
 {
     /* Inputs:
      *   mat : the generator matrix -- mat_ij where i is a generator index
      *         and j is an expression index.
-     *   expressions_table : map from expression index to expression object
      *   g : a struct with tkf91 generator indices
+     *   mask : a previously computed generalized traceback,
+     *          with marks indicating whether cells are possibly in the
+     *          max likelihood traceback, and with directional links
+     *          indicating which direction(s) are best, backwards,
+     *          from each cell.
      */
-
     fmpz_mat_t H, V;
     slong i, level, prec, rank;
     tkf91_generator_vecs_t h;
+    bound_mat_t b;
 
     /* Compute a Hermite decomposition of the generator matrix. */
     /* U*mat = H ; U^-1 = V ; rank = rank(H) */
@@ -219,24 +224,31 @@ tkf91_dp_symbolic(
     flint_printf("matrix rank ");
     flint_printf("revealed by the Hermite normal form: %wd\n", rank);
 
-    /*
-     * 'vecify' a structure with tkf91 generators,
-     * by pointing the member variables to rows of V.
-     */
-    vecify_tkf91_generators(h, g, V);
+    tkf91_generator_vecs_init(h, g, V, rank);
+    bound_mat_init(b, mask, CRUMB_MARKED, rank);
 
-    _tkf91_dp_symbolic(h, rank, A, szA, B, szB);
+    _tkf91_dp_verify_symbolically(h, b, A, szA, B, szB);
 
     fmpz_mat_clear(H);
     fmpz_mat_clear(V);
+    tkf91_generator_vecs_clear(h);
+    bound_mat_clear(b);
 }
 
 
 void
-_tkf91_dp_symbolic(
+_tkf91_dp_verify_symbolically(
         tkf91_generator_vecs_t h,
-        slong rank,
+        bound_mat_t b,
         slong *A, size_t szA,
         slong *B, size_t szB)
 {
+    /*
+     * Use only a forward pass, not a backward pass.
+     * This should be enough to check whether
+     * the directions indicated as plausible by the nodes of the bound_mat
+     * actually correspond to identical integer state vectors.
+     */
+    slong rank;
+    rank = tkf91_generator_vecs_rank(h);
 }

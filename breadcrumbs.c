@@ -76,8 +76,7 @@ breadcrumb_mat_get_alignment(char **psa, char **psb,
 
 
 void
-breadcrumb_mat_get_mask(breadcrumb_mat_t mask,
-        const breadcrumb_mat_t mat, breadcrumb_t pattern)
+breadcrumb_mat_get_mask(breadcrumb_mat_t mask, const breadcrumb_mat_t mat)
 {
     /* this is a generalized traceback, more like the backward phase
      * of a forward-backward algorithm */
@@ -93,33 +92,61 @@ breadcrumb_mat_get_mask(breadcrumb_mat_t mask,
     {
         for (j = 0; j < nc; j++)
         {
-            *breadcrumb_mat_srcentry(mask, i, j) &= ~pattern;
+            *breadcrumb_mat_srcentry(mask, i, j) &= ~CRUMB_WANT2;
+            *breadcrumb_mat_srcentry(mask, i, j) &= ~CRUMB_WANT3;
+            *breadcrumb_mat_srcentry(mask, i, j) &= ~CRUMB_CONTENDER;
         }
     }
-    *breadcrumb_mat_entry(mask, nr-1, nc-1) |= pattern;
+    *breadcrumb_mat_entry(mask, nr-1, nc-1) |= CRUMB_CONTENDER;
 
     for (i = nr-1; i >= 0; i--)
     {
         for (j = nc-1; j >= 0; j--)
         {
-            if (*breadcrumb_mat_srcentry(mask, i, j) & pattern)
+            crumb = *breadcrumb_mat_srcentry(mat, i, j);
+
+            if (*breadcrumb_mat_srcentry(mask, i, j) & CRUMB_CONTENDER)
             {
-                crumb = *breadcrumb_mat_srcentry(mat, i, j);
-
-                /* printf for debug */
-                flint_printf("%wd %wd %d\n", i, j, crumb);
-
                 if (crumb & CRUMB_TOP)
                 {
-                    *breadcrumb_mat_entry(mask, i-1, j) |= pattern;
+                    *breadcrumb_mat_entry(mask, i-1, j) |= CRUMB_CONTENDER;
                 }
                 if (crumb & CRUMB_DIAG)
                 {
-                    *breadcrumb_mat_entry(mask, i-1, j-1) |= pattern;
+                    *breadcrumb_mat_entry(mask, i-1, j-1) |= CRUMB_CONTENDER;
                 }
                 if (crumb & CRUMB_LEFT)
                 {
-                    *breadcrumb_mat_entry(mask, i, j-1) |= pattern;
+                    *breadcrumb_mat_entry(mask, i, j-1) |= CRUMB_CONTENDER;
+                    *breadcrumb_mat_entry(mask, i, j-1) |= CRUMB_WANT2;
+                }
+            }
+
+            if (*breadcrumb_mat_srcentry(mask, i, j) & CRUMB_WANT3)
+            {
+                if (crumb & CRUMB_TOP)
+                {
+                    *breadcrumb_mat_entry(mask, i-1, j) |= CRUMB_WANT3;
+                }
+                if (crumb & CRUMB_DIAG)
+                {
+                    *breadcrumb_mat_entry(mask, i-1, j-1) |= CRUMB_WANT3;
+                }
+                if (crumb & CRUMB_LEFT)
+                {
+                    *breadcrumb_mat_entry(mask, i, j-1) |= CRUMB_WANT2;
+                }
+            }
+
+            if (*breadcrumb_mat_srcentry(mask, i, j) & CRUMB_WANT2)
+            {
+                if (crumb & CRUMB_DIAG2)
+                {
+                    *breadcrumb_mat_entry(mask, i-1, j-1) |= CRUMB_WANT3;
+                }
+                if (crumb & CRUMB_LEFT2)
+                {
+                    *breadcrumb_mat_entry(mask, i, j-1) |= CRUMB_WANT2;
                 }
             }
         }
