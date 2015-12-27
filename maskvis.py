@@ -26,7 +26,9 @@ def gen_rgb_triples(rcv_triples, nr, nc):
     for r, c, v in rcv_triples:
         data[r, c] = v
     image = np.zeros((nr, nc, 5, 5, 3), dtype=int)
+    print 'creating the array...'
     for i in range(nr):
+        print i
         for j in range(nc):
             d = data[i, j]
 
@@ -53,13 +55,16 @@ def gen_rgb_triples(rcv_triples, nr, nc):
                     blue = BRIGHT if (d & CRUMB_LEFT) else DIM
                     image[i, j, 3, :2, IBLUE] = blue
 
+    print 'yielding rgb triples...'
     for i in range(nr):
+        print i
         for k in range(5):
             for j in range(nc):
                 for l in range(5):
-                    #if j == 0 and l < 2: continue
-                    #if i == 0 and k < 2: continue
-                    yield tuple(image[i, j, k, l])
+                    if j == 0 and l < 2: continue
+                    if i == 0 and k < 2: continue
+                    #yield tuple(image[i, j, k, l])
+                    yield tuple(image[i, j, k, l].tolist())
 
 
 
@@ -68,8 +73,8 @@ def main():
     rcv_triples = [tuple(int(s) for s in line.split()) for line in lines]
     nr, nc = get_shape(rcv_triples)
     rgb_triples = list(gen_rgb_triples(rcv_triples, nr, nc))
-    width = nc * 5
-    height = nr * 5
+    width = nc * 5 - 2
+    height = nr * 5 - 2
     im = Image.new("RGB", (width, height))
     im.putdata(rgb_triples)
     im.save('trace.png', 'png')

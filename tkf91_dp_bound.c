@@ -29,11 +29,21 @@ void tkf91_values_init(tkf91_values_t h,
 
 void tkf91_values_clear(tkf91_values_t h);
 
-void _arb_mat_get_col(arb_ptr v, const arb_mat_t mat, slong j);
-
 void _bounds_init(tkf91_values_t lb, tkf91_values_t ub,
         fmpz_mat_t mat, expr_ptr * expressions_table,
         tkf91_generator_indices_t g);
+
+
+static __inline__ void
+_arb_mat_get_col(arb_ptr v, const arb_mat_t mat, slong j)
+{
+    slong i, nr;
+    nr = arb_mat_nrows(mat);
+    for (i = 0; i < nr; i++)
+    {
+        arb_set(v+i, arb_mat_entry(mat, i, j));
+    }
+}
 
 
 
@@ -80,17 +90,6 @@ tkf91_values_clear(tkf91_values_t h)
     }
 }
 
-
-void
-_arb_mat_get_col(arb_ptr v, const arb_mat_t mat, slong j)
-{
-    slong i, nr;
-    nr = arb_mat_nrows(mat);
-    for (i = 0; i < nr; i++)
-    {
-        arb_set(v+i, arb_mat_entry(mat, i, j));
-    }
-}
 
 
 void
@@ -188,11 +187,19 @@ typedef cell_struct * cell_ptr;
 
 void cell_init(cell_t x);
 void cell_clear(cell_t x);
-void cell_fill(cell_t x,
-        const mag_t lb_m0, const mag_t lb_m1, const mag_t lb_m2,
-        const mag_t ub_m0, const mag_t ub_m1, const mag_t ub_m2);
 void cell_get_crumb(breadcrumb_t * pcrumb, const cell_t x,
         const mag_t ub_m0, const mag_t ub_m1, const mag_t ub_m2);
+
+static __inline__ void
+cell_fill(cell_t x,
+        const mag_t lb_m0, const mag_t lb_m1, const mag_t lb_m2,
+        const mag_t ub_m0, const mag_t ub_m1, const mag_t ub_m2)
+{
+    mag_max(&(x->ub2), ub_m1, ub_m2);
+    mag_max(&(x->lb2), lb_m1, lb_m2);
+    mag_max(&(x->ub3), &(x->ub2), ub_m0);
+    mag_max(&(x->lb3), &(x->lb2), lb_m0);
+}
 
 void
 cell_init(cell_t x)
@@ -210,17 +217,6 @@ cell_clear(cell_t x)
     mag_clear(&(x->ub2));
     mag_clear(&(x->lb3));
     mag_clear(&(x->ub3));
-}
-
-void
-cell_fill(cell_t x,
-        const mag_t lb_m0, const mag_t lb_m1, const mag_t lb_m2,
-        const mag_t ub_m0, const mag_t ub_m1, const mag_t ub_m2)
-{
-    mag_max(&(x->ub2), ub_m1, ub_m2);
-    mag_max(&(x->lb2), lb_m1, lb_m2);
-    mag_max(&(x->ub3), &(x->ub2), ub_m0);
-    mag_max(&(x->lb3), &(x->lb2), lb_m0);
 }
 
 void
@@ -254,10 +250,31 @@ typedef cellfront_struct * cellfront_ptr;
 
 void cellfront_init(cellfront_t x, slong nrows, slong ncols);
 void cellfront_clear(cellfront_t x);
-cell_ptr cellfront_entry(cellfront_t x, slong i, slong j);
-cell_ptr cellfront_entry_top(cellfront_t x, slong i, slong j);
-cell_ptr cellfront_entry_diag(cellfront_t x, slong i, slong j);
-cell_ptr cellfront_entry_left(cellfront_t x, slong i, slong j);
+
+static __inline__ cell_ptr
+cellfront_entry(cellfront_t x, slong i, slong j)
+{
+    return x->data + (i % 2) * (x->c) + j;
+}
+
+static __inline__ cell_ptr
+cellfront_entry_top(cellfront_t x, slong i, slong j)
+{
+    return cellfront_entry(x, i-1, j);
+}
+
+static __inline__ cell_ptr
+cellfront_entry_diag(cellfront_t x, slong i, slong j)
+{
+    return cellfront_entry(x, i-1, j-1);
+}
+
+static __inline__ cell_ptr
+cellfront_entry_left(cellfront_t x, slong i, slong j)
+{
+    return cellfront_entry(x, i, j-1);
+}
+
 
 void
 cellfront_init(cellfront_t x, slong nrows, slong ncols)
@@ -283,29 +300,6 @@ cellfront_clear(cellfront_t x)
     flint_free(x->data);
 }
 
-cell_ptr
-cellfront_entry(cellfront_t x, slong i, slong j)
-{
-    return x->data + (i % 2) * (x->c) + j;
-}
-
-cell_ptr
-cellfront_entry_top(cellfront_t x, slong i, slong j)
-{
-    return cellfront_entry(x, i-1, j);
-}
-
-cell_ptr
-cellfront_entry_diag(cellfront_t x, slong i, slong j)
-{
-    return cellfront_entry(x, i-1, j-1);
-}
-
-cell_ptr
-cellfront_entry_left(cellfront_t x, slong i, slong j)
-{
-    return cellfront_entry(x, i, j-1);
-}
 
 
 
@@ -430,11 +424,15 @@ tkf91_dp_bound(
             }
 
             /* debug */
+            /*
             mag_print(ub_m0);
             flint_printf(", ");
+            */
         }
         /* debug */
+        /*
         flint_printf("\n");
+        */
     }
 
     /* report the score */
