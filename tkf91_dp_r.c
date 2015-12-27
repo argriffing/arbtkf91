@@ -1,5 +1,9 @@
 /*
  * Arbitrary precision tkf91 dynamic programming.
+ *
+ * After some experimentation, this method of using arb_t values
+ * has turned out to be slower than explicitly tracking upper and lower
+ * mag_t bounds.
  */
 
 #include <time.h>
