@@ -1,5 +1,6 @@
 /*
  * tkf91 dynamic programming cell bounds
+ * using a dense tableau with mag_t lower and upper bounds.
  */
 
 #include <time.h>
@@ -146,16 +147,6 @@ _bounds_init(tkf91_values_t lb, tkf91_values_t ub,
         arb_get_mag_lower(lb_arr+i, v+i);
         arb_get_mag(ub_arr+i, v+i);
     }
-
-    /* debug */
-    /*
-    for (i = 0; i < nr; i++)
-    {
-        arb_print(v+i); flint_printf(" ");
-        mag_print(lb_arr+i); flint_printf(" ");
-        mag_print(ub_arr+i); flint_printf("\n");
-    }
-    */
 
     /* initialize the lb and ub structures */
     tkf91_values_init(lb, g, lb_arr);
@@ -422,17 +413,7 @@ tkf91_dp_bound(
                     cell_get_crumb(pcrumb, cell, ub_m0, ub_m1, ub_m2);
                 }
             }
-
-            /* debug */
-            /*
-            mag_print(ub_m0);
-            flint_printf(", ");
-            */
         }
-        /* debug */
-        /*
-        flint_printf("\n");
-        */
     }
 
     /* report the score */
@@ -450,12 +431,6 @@ tkf91_dp_bound(
     if (trace_flag)
     {
         /* get the not-ruled-out cells of the dynamic programming table */
-        /*
-        breadcrumb_mat_t mask;
-        breadcrumb_mat_init(mask,
-                breadcrumb_mat_nrows(crumb_mat),
-                breadcrumb_mat_ncols(crumb_mat));
-        */
         breadcrumb_mat_get_mask(crumb_mat, crumb_mat, 0x08);
 
         /* print the mask to a file */

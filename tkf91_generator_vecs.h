@@ -2,6 +2,11 @@
 #define TKF91_GENERATOR_VECS_H
 
 #include "flint/flint.h"
+#include "flint/fmpz.h"
+#include "flint/fmpz_mat.h"
+
+#include "tkf91_generator_indices.h"
+
 
 /*
  * Vec-ification of tkf91 generators.
@@ -23,6 +28,7 @@ typedef struct
     fmpz * c0_incr[4];
     fmpz * c1_incr[16];
     fmpz * c2_incr[4];
+    fmpz_mat_t M;
 } tkf91_generator_vecs_struct;
 typedef tkf91_generator_vecs_struct tkf91_generator_vecs_t[1];
 
@@ -33,10 +39,24 @@ extern "C" {
 #endif
 
 
-void vecify_tkf91_generators(
+void _fmpz_mat_hnf_inverse_transform(
+        fmpz_mat_t H, fmpz_mat_t V, slong * prank, const fmpz_mat_t A);
+
+
+static __inline__ slong
+tkf91_generator_vecs_rank(tkf91_generator_vecs_t h)
+{
+    return fmpz_mat_ncols(h->M);
+}
+
+
+void tkf91_generator_vecs_init(
         tkf91_generator_vecs_t h,
         const tkf91_generator_indices_t g,
-        const fmpz_mat_t M);
+        const fmpz_mat_t V,
+        slong rank);
+
+void tkf91_generator_vecs_clear(tkf91_generator_vecs_t h);
 
 
 #ifdef __cplusplus

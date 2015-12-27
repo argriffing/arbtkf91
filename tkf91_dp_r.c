@@ -11,72 +11,8 @@
 #include "tkf91_dp_r.h"
 #include "breadcrumbs.h"
 #include "wavefront_hermite.h"
+#include "tkf91_generator_vecs.h"
 
-
-/*
- * Hermitification of tkf91 generators.
- * The members of this structure will point to rows of an fmpz matrix.
- * If my ideas are right, the fmpz matrix will be the inverse of the
- * transform matrix associated with the hermite normal form transformation
- * of the generator matrix.
- * Each of the vectors will have length equal to the rank of the Hermite 
- * normal form, but the 'hermitification' procedures do not need to
- * know or care about this length.
- */
-typedef struct
-{
-    fmpz * m1_00;
-    fmpz * m0_10;
-    fmpz * m0_i0_incr[4];
-    fmpz * m2_01;
-    fmpz * m2_0j_incr[4];
-    fmpz * c0_incr[4];
-    fmpz * c1_incr[16];
-    fmpz * c2_incr[4];
-} tkf91_hermite_generators_struct;
-typedef tkf91_hermite_generators_struct tkf91_hermite_generators_t[1];
-
-fmpz * _hermitify(slong i, fmpz_mat_t M);
-void hermitify_tkf91_generators(
-        tkf91_hermite_generators_t h,
-        tkf91_generator_indices_t g,
-        fmpz_mat_t M);
-
-fmpz *
-_hermitify(slong i, fmpz_mat_t M)
-{
-    return M->rows[i];
-}
-
-void
-hermitify_tkf91_generators(
-        tkf91_hermite_generators_t h,
-        tkf91_generator_indices_t g,
-        fmpz_mat_t M)
-{
-    slong i, j;
-    h->m1_00 = _hermitify(g->m1_00, M);
-    h->m0_10 = _hermitify(g->m0_10, M);
-    h->m2_01 = _hermitify(g->m2_01, M);
-    for (i = 0; i < 4; i++)
-    {
-        h->m0_i0_incr[i] = _hermitify(g->m0_i0_incr[i], M);
-        h->m2_0j_incr[i] = _hermitify(g->m2_0j_incr[i], M);
-        h->c0_incr[i] = _hermitify(g->c0_incr[i], M);
-        for (j = 0; j < 4; j++)
-        {
-            h->c1_incr[i*4+j] = _hermitify(g->c1_incr[i*4+j], M);
-        }
-        h->c2_incr[i] = _hermitify(g->c2_incr[i], M);
-    }
-}
-
-
-/*
- * Dynamic programming with some symbolic and numeric cleverness.
- * But undoubtedly much slower than the variant that uses double precision.
- * See that less sophisticated variant for more details.
- */
 
 void
 _arb_vec_dot_fmpz_vec(
@@ -110,31 +46,9 @@ _hwave_element_add_vec(
         hwave_element_t e, const fmpz * vec1, const fmpz * vec2, arb_srcptr v,
         slong r, slong prec)
 {
-    /*
-    flint_printf("adding coefficients\n");
-    flint_printf("  "); _fmpz_vec_print(vec1, r); flint_printf("\n");
-    flint_printf("+ "); _fmpz_vec_print(vec2, r); flint_printf("\n");
-    */
-
     _fmpz_vec_add(e->vec, vec1, vec2, r);
     _arb_vec_dot_fmpz_vec(e->value, v, e->vec, r, prec);
     e->status = HWAVE_STATUS_UNAMBIGUOUS;
-
-    /*
-    flint_printf("= "); _fmpz_vec_print(e->vec, r); flint_printf("\n\n");
-    arb_t a, b;
-    arb_init(a);
-    arb_init(b);
-    _arb_vec_dot_fmpz_vec(a, v, vec1, r, prec);
-    _arb_vec_dot_fmpz_vec(b, v, vec2, r, prec);
-    arb_printd(a, 15); flint_printf("\n");
-    arb_printd(b, 15); flint_printf("\n");
-    arb_clear(a);
-    arb_clear(b);
-    flint_printf("yielding function value ");
-    arb_printd(e->value, 15);
-    flint_printf("\n");
-    */
 }
 
 void
@@ -230,12 +144,12 @@ _get_max3_checked(
     return best;
 }
 
-void tkf91_dynamic_programming_hermite(tkf91_hermite_generators_t g,
+void tkf91_dynamic_programming_hermite(tkf91_generator_vecs_t g,
         arb_ptr v, slong rank, slong prec,
         slong *A, slong szA,
         slong *B, slong szB);
 
-void tkf91_dynamic_programming_hermite(tkf91_hermite_generators_t g,
+void tkf91_dynamic_programming_hermite(tkf91_generator_vecs_t g,
         arb_ptr v, slong rank, slong prec,
         slong *A, slong szA,
         slong *B, slong szB)
@@ -511,90 +425,36 @@ tkf91_dp_r(
      */
     UNUSED(trace_flag); /* TODO use this */
 
+    arb_t x;
+    fmpz_mat_t H, V;
+    slong i, level, prec, rank;
+    tkf91_generator_vecs_t h;
+
+    arb_init(x);
+
     /*
      * For now, use an arbitrary precision.
      * In later versions of this program,
      * we could decide to adjust it dynamically if it is detected
      * to be insufficient.
      */
-    slong level = 6;
-    slong prec = 1 << level;
-
-    arb_t x;
-    arb_init(x);
+    level = 6;
+    prec = 1 << level;
 
     /* Compute a Hermite decomposition of the generator matrix. */
-    /* U * mat = H */
-    fmpz_mat_t H, U;
+    /* U*mat = H ; U^-1 = V ; rank = rank(H) */
     fmpz_mat_init(H, fmpz_mat_nrows(mat), fmpz_mat_ncols(mat));
-    fmpz_mat_init(U, fmpz_mat_nrows(mat), fmpz_mat_nrows(mat));
-    fmpz_mat_hnf_transform(H, U, mat);
+    fmpz_mat_init(V, fmpz_mat_nrows(mat), fmpz_mat_nrows(mat));
+    _fmpz_mat_hnf_inverse_transform(H, V, &rank, mat);
 
-    /*
-     * The number of nonzero rows of H should determine the rank of mat.
-     * In H, rows with nonzero entries should precede rows without 
-     * nonzero entries
-     */
-    slong i;
-    slong rank = 0;
-    for (i = 0; i < fmpz_mat_nrows(H); i++)
-    {
-        if (!fmpz_mat_is_zero_row(H, i))
-        {
-            if (i != rank)
-            {
-                flint_printf("expected each row in H ");
-                flint_printf("containing a nonzero entry ");
-                flint_printf("to precede each row containing only zeros\n");
-                abort();
-            }
-            rank++;
-        }
-    }
     flint_printf("matrix rank ");
-    flint_printf("as revealed by the Hermite normal form: %wd\n", rank);
+    flint_printf("revealed by the Hermite normal form: %wd\n", rank);
 
     /*
-     * Invert the transform matrix U.
-     * This should be possible because U should be unimodular
-     * and therefore nonsingular.
-     * The inverse should have entries that are integers,
-     * and its determinant should be 1.
-     *
-     * We only care about the first r columns of this inverse,
-     * where r is the rank of the Hermite form H.
+     * 'vecify' a structure with tkf91 generators,
+     * by pointing the member variables to copies of rows of V.
      */
-    fmpz_mat_t V;
-    int result;
-    fmpz_t den;
-    fmpz_mat_init(V, fmpz_mat_nrows(U), fmpz_mat_ncols(U));
-    fmpz_init(den);
-    result = fmpz_mat_inv(V, den, U);
-    if (!result)
-    {
-        flint_printf("expected U to be nonsingular\n");
-        abort();
-    }
-    if (!fmpz_is_pm1(den))
-    {
-        flint_printf("expected U to be unimodular -- ");
-        flint_printf("denominator of inverse of U: ");
-        fmpz_print(den);
-        flint_printf("\n");
-        abort();
-    }
-    if (!fmpz_is_one(den))
-    {
-        fmpz_mat_neg(V, V);
-    }
-    fmpz_clear(den);
-
-    /*
-     * 'hermitify' a structure with tkf91 generators,
-     * by pointing the member variables to rows of V.
-     */
-    tkf91_hermite_generators_t h;
-    hermitify_tkf91_generators(h, g, V);
+    tkf91_generator_vecs_init(h, g, V, rank);
 
     /*
      * Initialize an arbitrary precision matrix.
@@ -696,14 +556,10 @@ tkf91_dp_r(
     flint_printf("H:\n"); fmpz_mat_print_pretty(H); flint_printf("\n");
     */
 
-    /*
-     * Clear temporary variables.
-     * Keep V because member variables of h point to its rows.
-     * Keep v because it is used directly in the next stage.
-     */
+    /* clear temporary variables */
     arb_clear(x);
     fmpz_mat_clear(H);
-    fmpz_mat_clear(U);
+    fmpz_mat_clear(V);
     arb_mat_clear(arbH);
     arb_mat_clear(arbG);
     arb_mat_clear(expression_logs);
@@ -713,8 +569,8 @@ tkf91_dp_r(
     /* do the thing */
     tkf91_dynamic_programming_hermite(h, v, rank, prec, A, szA, B, szB);
 
-    /* Clear the remaining variables. */
-    fmpz_mat_clear(V);
+    /* clear the remaining variables */
     _arb_vec_clear(v, rank);
+    tkf91_generator_vecs_clear(h);
 }
 

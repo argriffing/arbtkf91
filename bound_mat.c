@@ -8,6 +8,7 @@
 #include "flint/flint.h"
 
 #include "breadcrumbs.h"
+#include "tkf91_generator_vecs.h"
 
 
 typedef struct bound_node_struct
@@ -179,10 +180,6 @@ bound_mat_init(bound_mat_t mat, breadcrumb_mat_t mask, breadcrumb_t pattern,
     flint_free(tmp);
 }
 
-void
-bound_mat_init(bound_mat_t mat)
-{
-}
 
 void
 bound_mat_clear(bound_mat_t mat)
@@ -192,4 +189,54 @@ bound_mat_clear(bound_mat_t mat)
     flint_free(mat->indices);
     flint_free(mat->data);
     _fmpz_vec_clear(mat->brick_of_fmpz);
+}
+
+
+void
+tkf91_dp_symbolic(
+        fmpz_mat_t mat,
+        tkf91_generator_indices_t g,
+        slong *A, size_t szA,
+        slong *B, size_t szB)
+{
+    /* Inputs:
+     *   mat : the generator matrix -- mat_ij where i is a generator index
+     *         and j is an expression index.
+     *   expressions_table : map from expression index to expression object
+     *   g : a struct with tkf91 generator indices
+     */
+
+    fmpz_mat_t H, V;
+    slong i, level, prec, rank;
+    tkf91_generator_vecs_t h;
+
+    /* Compute a Hermite decomposition of the generator matrix. */
+    /* U*mat = H ; U^-1 = V ; rank = rank(H) */
+    fmpz_mat_init(H, fmpz_mat_nrows(mat), fmpz_mat_ncols(mat));
+    fmpz_mat_init(V, fmpz_mat_nrows(mat), fmpz_mat_nrows(mat));
+    _fmpz_mat_hnf_inverse_transform(H, V, &rank, mat);
+
+    flint_printf("matrix rank ");
+    flint_printf("revealed by the Hermite normal form: %wd\n", rank);
+
+    /*
+     * 'vecify' a structure with tkf91 generators,
+     * by pointing the member variables to rows of V.
+     */
+    vecify_tkf91_generators(h, g, V);
+
+    _tkf91_dp_symbolic(h, rank, A, szA, B, szB);
+
+    fmpz_mat_clear(H);
+    fmpz_mat_clear(V);
+}
+
+
+void
+_tkf91_dp_symbolic(
+        tkf91_generator_vecs_t h,
+        slong rank,
+        slong *A, size_t szA,
+        slong *B, size_t szB)
+{
 }
