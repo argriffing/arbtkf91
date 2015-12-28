@@ -18,6 +18,7 @@ typedef struct
 {
     double max2;
     double max3;
+    breadcrumb_t crumb;
 } dnode_struct;
 typedef dnode_struct dnode_t[1];
 typedef dnode_struct * dnode_ptr;
@@ -32,6 +33,8 @@ typedef dmat_struct dmat_t[1];
 
 void dmat_init(dmat_t mat, slong nrows, slong ncols);
 void dmat_clear(dmat_t mat);
+void dmat_get_alignment(char **psa, char **psb,
+        const dmat_t mat, const slong *A, const slong *B);
 
 static __inline__ slong
 dmat_nrows(const dmat_t mat)
@@ -48,7 +51,15 @@ dmat_ncols(const dmat_t mat)
 static __inline__ dnode_ptr
 dmat_entry(dmat_t mat, slong i, slong j)
 {
-    return mat->data + (i % 2) * mat->c + j;
+    /* return mat->data + (i % 2) * mat->c + j; */
+    return mat->data + i * mat->c + j;
+}
+
+static __inline__ dnode_ptr
+dmat_srcentry(const dmat_t mat, slong i, slong j)
+{
+    /* return mat->data + (i % 2) * mat->c + j; */
+    return mat->data + i * mat->c + j;
 }
 
 static __inline__ dnode_ptr
@@ -72,7 +83,8 @@ dmat_entry_left(dmat_t mat, slong i, slong j)
 void
 dmat_init(dmat_t mat, slong nrows, slong ncols)
 {
-    mat->data = flint_malloc(2 * ncols * sizeof(dmat_struct));
+    /* mat->data = flint_malloc(2 * ncols * sizeof(dmat_struct)); */
+    mat->data = flint_malloc(nrows * ncols * sizeof(dmat_struct));
     mat->r = nrows;
     mat->c = ncols;
 }
@@ -81,6 +93,66 @@ void
 dmat_clear(dmat_t mat)
 {
     flint_free(mat->data);
+}
+
+void
+dmat_get_alignment(char **psa, char **psb,
+        const dmat_t mat, const slong *A, const slong *B)
+{
+    slong i, j;
+    char ACGT[4] = "ACGT";
+    char * sa;
+    char * sb;
+    char tmp;
+    slong len, nrows, ncols, n;
+    breadcrumb_t crumb;
+
+    nrows = dmat_nrows(mat);
+    ncols = dmat_ncols(mat);
+    n = nrows * ncols;
+    sa = calloc(n, sizeof(char));
+    sb = calloc(n, sizeof(char));
+    i = nrows - 1;
+    j = ncols - 1;
+    len = 0;
+    while (i > 0 || j > 0)
+    {
+        crumb = dmat_srcentry(mat, i, j)->crumb;
+        if (crumb & CRUMB_TOP)
+        {
+            sa[len] = ACGT[A[i-1]];
+            sb[len] = '-';
+            i--;
+        }
+        else if (crumb & CRUMB_DIAG)
+        {
+            sa[len] = ACGT[A[i-1]];
+            sb[len] = ACGT[B[j-1]];
+            i--;
+            j--;
+        }
+        else if (crumb & CRUMB_LEFT)
+        {
+            sa[len] = '-';
+            sb[len] = ACGT[B[j-1]];
+            j--;
+        }
+        else
+        {
+            flint_printf("lost the thread ");
+            flint_printf("in the dynamic programing traceback\n");
+            abort();
+        }
+        len++;
+    }
+    for (i = 0; i < len/2; i++)
+    {
+        j = len - 1 - i;
+        tmp = sa[i]; sa[i] = sa[j]; sa[j] = tmp;
+        tmp = sb[i]; sb[i] = sb[j]; sb[j] = tmp;
+    }
+    *psa = sa;
+    *psb = sb;
 }
 
 
@@ -162,8 +234,10 @@ void tkf91_dynamic_programming_double(
 {
     slong nrows, ncols;
     breadcrumb_mat_t crumb_mat;
+    /*
     breadcrumb_ptr pcrumb;
     breadcrumb_t crumb;
+    */
     dmat_t dmat;
     double m0, m1, m2, max2, max3;
     slong i, j;
@@ -293,27 +367,16 @@ void tkf91_dynamic_programming_double(
             /* fill the table for traceback */
             if (trace_flag)
             {
-                pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
-                crumb = *pcrumb;
-
-                /* this is not much, if any, faster */
-                /*
-                crumb |= (m0 == max3) << 0;
-                crumb |= (m1 == max3) << 1;
-                crumb |= (m2 == max3) << 2;
-                */
-
+                cell->crumb = 0;
                 if (m0 == max3) {
-                    crumb |= CRUMB_TOP;
+                    cell->crumb |= CRUMB_TOP;
                 }
                 else if (m1 == max3) {
-                    crumb |= CRUMB_DIAG;
+                    cell->crumb |= CRUMB_DIAG;
                 }
                 else if (m2 == max3) {
-                    crumb |= CRUMB_LEFT;
+                    cell->crumb |= CRUMB_LEFT;
                 }
-
-                *pcrumb = crumb;
             }
         }
     }
@@ -338,7 +401,8 @@ void tkf91_dynamic_programming_double(
         start = clock();
 
         char *sa, *sb;
-        breadcrumb_mat_get_alignment(&sa, &sb, crumb_mat, A, B);
+        /* breadcrumb_mat_get_alignment(&sa, &sb, crumb_mat, A, B); */
+        dmat_get_alignment(&sa, &sb, dmat, A, B);
         flint_printf("%s\n", sa);
         flint_printf("%s\n", sb);
         flint_printf("\n");
