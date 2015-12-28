@@ -169,6 +169,8 @@ void tkf91_dynamic_programming_double(
     slong i, j;
     dnode_ptr cell, p0, p1, p2;
     slong nta, ntb;
+    clock_t diff, start;
+    int msec;
 
     /* dynamic programming 'generators' as local variables */
     double m1_00;
@@ -185,6 +187,9 @@ void tkf91_dynamic_programming_double(
     double c0_incr_nta;
     double c1_incr_nta[4];
 
+    /* start the clock */
+    start = clock();
+
     /* init the dynamic programming 'generators' */
     m1_00 = _doublify(g->m1_00, m);
     m0_10 = _doublify(g->m0_10, m);
@@ -199,6 +204,15 @@ void tkf91_dynamic_programming_double(
             c1_incr[i*4+j] = _doublify(g->c1_incr[i*4+j], m);
         }
         c2_incr[i] = _doublify(g->c2_incr[i], m);
+    }
+
+    /* redundantly init precomputed values to avoid compiler warning */
+    nta = 0;
+    m0_i0_incr_nta = m0_i0_incr[nta];
+    c0_incr_nta = c0_incr[nta];
+    for (ntb = 0; ntb < 4; ntb++)
+    {
+        c1_incr_nta[ntb] = c1_incr[4*nta + ntb];
     }
 
     nrows = szA + 1;
@@ -292,10 +306,10 @@ void tkf91_dynamic_programming_double(
                 if (m0 == max3) {
                     crumb |= CRUMB_TOP;
                 }
-                if (m1 == max3) {
+                else if (m1 == max3) {
                     crumb |= CRUMB_DIAG;
                 }
-                if (m2 == max3) {
+                else if (m2 == max3) {
                     crumb |= CRUMB_LEFT;
                 }
 
@@ -308,9 +322,21 @@ void tkf91_dynamic_programming_double(
     cell = dmat_entry(dmat, nrows-1, ncols-1);
     flint_printf("score: %g\n", exp(cell->max3));
 
+    /* stop the clock */
+    diff = clock() - start;
+    msec = (diff * 1000) / CLOCKS_PER_SEC;
+    printf("pre-traceback dynamic programming ");
+    printf("time taken %d seconds %d milliseconds.\n",
+            msec/1000, msec%1000);
+
+
     /* do the traceback */
     if (trace_flag)
     {
+
+        /* restart the clock for traceback */
+        start = clock();
+
         char *sa, *sb;
         breadcrumb_mat_get_alignment(&sa, &sb, crumb_mat, A, B);
         flint_printf("%s\n", sa);
@@ -318,13 +344,30 @@ void tkf91_dynamic_programming_double(
         flint_printf("\n");
         free(sa);
         free(sb);
+
+        diff = clock() - start;
+        msec = (diff * 1000) / CLOCKS_PER_SEC;
+        printf("traceback ");
+        printf("time taken %d seconds %d milliseconds.\n",
+                msec/1000, msec%1000);
     }
+
+
+
+    /* restart the clock for cleanup */
+    start = clock();
 
     dmat_clear(dmat);
     if (trace_flag)
     {
         breadcrumb_mat_clear(crumb_mat);
     }
+
+    diff = clock() - start;
+    msec = (diff * 1000) / CLOCKS_PER_SEC;
+    printf("cleanup ");
+    printf("time taken %d seconds %d milliseconds.\n",
+            msec/1000, msec%1000);
 }
 
 
@@ -367,18 +410,8 @@ tkf91_dp_d(
     arb_mat_init(generator_logs, generator_count, 1);
     arb_mat_mul(generator_logs, G, expression_logs, prec);
 
-    {
-        clock_t diff_b;
-        clock_t start_b = clock();
-
-        tkf91_dynamic_programming_double(
-                g, generator_logs, trace_flag, A, szA, B, szB);
-
-        diff_b = clock() - start_b;
-        int msec_b = (diff_b * 1000) / CLOCKS_PER_SEC;
-        printf("Internal dynamic programming time taken %d seconds %d milliseconds.\n",
-                msec_b/1000, msec_b%1000);
-    }
+    tkf91_dynamic_programming_double(
+            g, generator_logs, trace_flag, A, szA, B, szB);
 
     arb_clear(x);
     arb_mat_clear(G);
