@@ -9,6 +9,7 @@
 
 #include "tkf91_dp_bound.h"
 #include "breadcrumbs.h"
+#include "bound_mat.h"
 
 
 typedef struct
@@ -469,7 +470,11 @@ tkf91_dp_bound(
         flint_printf("\n");
         free(sa);
         free(sb);
+
+        /* symbolic verification */
+        tkf91_dp_verify_symbolically(mat, g, mask, A, szA, B, szB);
     }
+
 
     cellfront_clear(cells);
     if (trace_flag)

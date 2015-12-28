@@ -44,7 +44,6 @@ void breadcrumb_mat_get_alignment(char **psa, char **psb,
         breadcrumb_mat_t mat, const slong *A, const slong *B);
 void breadcrumb_mat_get_mask(breadcrumb_mat_t mask, const breadcrumb_mat_t mat);
 void breadcrumb_mat_fprint(FILE *stream, const breadcrumb_mat_t mat);
-slong breadcrumb_mat_nnz(const breadcrumb_mat_t mat, breadcrumb_t pattern);
 
 static __inline__ breadcrumb_ptr
 breadcrumb_mat_srcentry(const breadcrumb_mat_t mat, slong i, slong j)

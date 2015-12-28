@@ -168,11 +168,19 @@ tkf91_dp_r.o: tkf91_dp_r.c \
 		-lflint -lgmp -larb
 
 tkf91_dp_bound.o: tkf91_dp_bound.c \
-	breadcrumbs.o
+	breadcrumbs.o bound_mat.o
 	$(CC) tkf91_dp_bound.c \
-		breadcrumbs.o \
+		breadcrumbs.o bound_mat.o \
 		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb
+
+bound_mat.o: bound_mat.c \
+	breadcrumbs.o bound_mat.o
+	$(CC) bound_mat.c \
+		breadcrumbs.o bound_mat.o \
+		-c $(CFLAGS) \
+		-lflint -lgmp
+
 
 
 # the main executable
@@ -183,14 +191,14 @@ bin/arbtkf91: arbtkf91.c \
 	rgenerators.o tkf91_rgenerators.o \
 	wavefront_double.o wavefront_hermite.o breadcrumbs.o \
 	tkf91_generator_vecs.o \
-	tkf91_dp_d.o tkf91_dp_r.o tkf91_dp_bound.o
+	tkf91_dp_d.o tkf91_dp_r.o tkf91_dp_bound.o bound_mat.o
 	$(CC) arbtkf91.c \
 		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 		generators.o tkf91_generators.o \
 		rgenerators.o tkf91_rgenerators.o \
 		wavefront_double.o wavefront_hermite.o breadcrumbs.o \
 		tkf91_generator_vecs.o \
-		tkf91_dp_d.o tkf91_dp_r.o tkf91_dp_bound.o \
+		tkf91_dp_d.o tkf91_dp_r.o tkf91_dp_bound.o bound_mat.o \
 		-o bin/arbtkf91 \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb -lm
 

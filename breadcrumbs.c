@@ -168,21 +168,3 @@ breadcrumb_mat_fprint(FILE *stream, const breadcrumb_mat_t mat)
         }
     }
 }
-
-slong
-breadcrumb_mat_nnz(const breadcrumb_mat_t mat, breadcrumb_t pattern)
-{
-    slong i, j, nnz;
-    nnz = 0;
-    for (i = 0; i < breadcrumb_mat_nrows(mat); i++)
-    {
-        for (j = 0; j < breadcrumb_mat_ncols(mat); j++)
-        {
-            if (*breadcrumb_mat_srcentry(mat, i, j) & pattern)
-            {
-                nnz++;
-            }
-        }
-    }
-    return nnz;
-}
