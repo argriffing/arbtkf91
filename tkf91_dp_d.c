@@ -104,7 +104,9 @@ void doublify_tkf91_generators(
         tkf91_generator_indices_t g,
         arb_mat_t m);
 
-void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
+void tkf91_dynamic_programming_double(
+        const tkf91_generator_indices_t g,
+        const arb_mat_t m,
         int trace_flag,
         slong *A, slong szA,
         slong *B, slong szB);
@@ -151,15 +153,48 @@ doublify_tkf91_generators(
 
 
 
-void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
+void tkf91_dynamic_programming_double(
+        const tkf91_generator_indices_t g,
+        const arb_mat_t m,
         int trace_flag,
         slong *A, slong szA,
         slong *B, slong szB)
 {
     slong nrows, ncols;
     breadcrumb_mat_t crumb_mat;
+    breadcrumb_ptr pcrumb;
+    breadcrumb_t crumb;
     dmat_t dmat;
-    double m0, m1, m2;
+    double m0, m1, m2, max2, max3;
+    slong i, j;
+    dnode_ptr cell, p0, p1, p2;
+    slong nta, ntb;
+
+    /* dynamic programming 'generators' as local variables */
+    double m1_00;
+    double m0_10;
+    double m0_i0_incr[4];
+    double m2_01;
+    double m2_0j_incr[4];
+    double c0_incr[4];
+    double c1_incr[16];
+    double c2_incr[4];
+
+    /* init the dynamic programming 'generators' */
+    m1_00 = _doublify(g->m1_00, m);
+    m0_10 = _doublify(g->m0_10, m);
+    m2_01 = _doublify(g->m2_01, m);
+    for (i = 0; i < 4; i++)
+    {
+        m0_i0_incr[i] = _doublify(g->m0_i0_incr[i], m);
+        m2_0j_incr[i] = _doublify(g->m2_0j_incr[i], m);
+        c0_incr[i] = _doublify(g->c0_incr[i], m);
+        for (j = 0; j < 4; j++)
+        {
+            c1_incr[i*4+j] = _doublify(g->c1_incr[i*4+j], m);
+        }
+        c2_incr[i] = _doublify(g->c2_incr[i], m);
+    }
 
     nrows = szA + 1;
     ncols = szB + 1;
@@ -171,9 +206,6 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
 
     dmat_init(dmat, nrows, ncols);
 
-    dnode_ptr cell, p0, p1, p2;
-    slong i, j;
-    slong nta, ntb;
     for (i = 0; i < nrows; i++)
     {
         for (j = 0; j < ncols; j++)
@@ -185,15 +217,15 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
                 m2 = -INFINITY;
                 if (i == 0 && j == 0)
                 {
-                    m1 = g->m1_00;
+                    m1 = m1_00;
                 }
                 else if (i == 1 && j == 0)
                 {
-                    m0 = g->m0_10;
+                    m0 = m0_10;
                 }
                 else if (i == 0 && j == 1)
                 {
-                    m2 = g->m2_01;
+                    m2 = m2_01;
                 }
                 else
                 {
@@ -201,13 +233,13 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
                     {
                         ntb = B[j - 1];
                         p2 = dmat_entry_left(dmat, i, j);
-                        m2 = p2->max2 + g->m2_0j_incr[ntb];
+                        m2 = p2->max2 + m2_0j_incr[ntb];
                     }
                     else if (j == 0)
                     {
                         nta = A[i - 1];
                         p0 = dmat_entry_top(dmat, i, j);
-                        m0 = p0->max3 + g->m0_i0_incr[nta];
+                        m0 = p0->max3 + m0_i0_incr[nta];
                     }
                 }
             }
@@ -218,28 +250,32 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
                 p0 = dmat_entry_top(dmat, i, j);
                 p1 = dmat_entry_diag(dmat, i, j);
                 p2 = dmat_entry_left(dmat, i, j);
-                m0 = p0->max3 + g->c0_incr[nta];
-                m1 = p1->max3 + g->c1_incr[nta*4+ntb];
-                m2 = p2->max2 + g->c2_incr[ntb];
+                m0 = p0->max3 + c0_incr[nta];
+                m1 = p1->max3 + c1_incr[nta*4+ntb];
+                m2 = p2->max2 + c2_incr[ntb];
             }
+            max2 = max(m1, m2);
+            max3 = max(m0, max2);
 
             cell = dmat_entry(dmat, i, j);
-            cell->max2 = max(m1, m2);
-            cell->max3 = max(m0, cell->max2);
+            cell->max2 = max2;
+            cell->max3 = max3;
 
             /* fill the table for traceback */
             if (trace_flag)
             {
-                breadcrumb_ptr pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
-                if (m0 == cell->max3) {
-                    *pcrumb |= CRUMB_TOP;
+                pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
+                crumb = *pcrumb;
+                if (m0 == max3) {
+                    crumb |= CRUMB_TOP;
                 }
-                if (m1 == cell->max3) {
-                    *pcrumb |= CRUMB_DIAG;
+                if (m1 == max3) {
+                    crumb |= CRUMB_DIAG;
                 }
-                if (m2 == cell->max3) {
-                    *pcrumb |= CRUMB_LEFT;
+                if (m2 == max3) {
+                    crumb |= CRUMB_LEFT;
                 }
+                *pcrumb = crumb;
             }
         }
     }
@@ -288,7 +324,6 @@ tkf91_dp_d(
     slong i;
     slong generator_count = fmpz_mat_nrows(mat);
     slong expression_count = fmpz_mat_ncols(mat);
-    tkf91_double_generators_t h;
 
     arb_init(x);
 
@@ -308,14 +343,12 @@ tkf91_dp_d(
     arb_mat_init(generator_logs, generator_count, 1);
     arb_mat_mul(generator_logs, G, expression_logs, prec);
 
-    /* fill a structure with corresponding double precision values */
-    doublify_tkf91_generators(h, g, generator_logs);
-
     {
         clock_t diff_b;
         clock_t start_b = clock();
 
-        tkf91_dynamic_programming_double(h, trace_flag, A, szA, B, szB);
+        tkf91_dynamic_programming_double(
+                g, generator_logs, trace_flag, A, szA, B, szB);
 
         diff_b = clock() - start_b;
         int msec_b = (diff_b * 1000) / CLOCKS_PER_SEC;
