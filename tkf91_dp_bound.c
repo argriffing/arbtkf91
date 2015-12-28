@@ -106,6 +106,8 @@ _bounds_init(tkf91_values_t lb, tkf91_values_t ub,
     mag_ptr lb_arr, ub_arr;
     slong i;
 
+    /* debug change this precision level */
+
     /* set the precision level used before converting to 30 bit magnitudes */
     level = 8;
     prec = 1 << level;
@@ -449,12 +451,23 @@ tkf91_dp_bound(
 
     if (trace_flag)
     {
+        clock_t diff, start;
+        int msec;
+
         /*
          * Get the not-ruled-out cells of the dynamic programming table,
          * and get the cells that are not ruled out for contributing
          * information towards the optimal alignment.
          */
+        flint_printf("timing the mask extraction...\n");
+        start = clock();
+
         breadcrumb_mat_get_mask(crumb_mat, crumb_mat);
+
+        diff = clock() - start;
+        msec = (diff * 1000) / CLOCKS_PER_SEC;
+        flint_printf("Time taken %d seconds %d milliseconds.\n", msec/1000, msec%1000);
+
 
         /* print the mask to a file */
         /*
@@ -464,7 +477,12 @@ tkf91_dp_bound(
         fclose(fout);
         */
 
+
+
         /* do the traceback */
+        flint_printf("timing the alignment traceback...\n");
+        start = clock();
+
         char *sa, *sb;
         breadcrumb_mat_get_alignment(&sa, &sb, crumb_mat, A, B);
         flint_printf("%s\n", sa);
@@ -473,8 +491,19 @@ tkf91_dp_bound(
         free(sa);
         free(sb);
 
+        diff = clock() - start;
+        msec = (diff * 1000) / CLOCKS_PER_SEC;
+        flint_printf("Time taken %d seconds %d milliseconds.\n", msec/1000, msec%1000);
+
         /* symbolic verification */
+        flint_printf("timing the symbolic verification...\n");
+        start = clock();
+
         tkf91_dp_verify_symbolically(mat, g, crumb_mat, A, B);
+
+        diff = clock() - start;
+        msec = (diff * 1000) / CLOCKS_PER_SEC;
+        flint_printf("Time taken %d seconds %d milliseconds.\n", msec/1000, msec%1000);
     }
 
 

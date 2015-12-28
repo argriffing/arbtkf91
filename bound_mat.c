@@ -290,13 +290,17 @@ tkf91_dp_verify_symbolically(
 void
 _check_equal(fmpz * u, fmpz * v, slong r)
 {
+    /*
     flint_printf("verifying... ");
+    */
     if (!_fmpz_vec_equal(u, v, r))
     {
         flint_printf("verification failed\n");
         abort();
     }
+    /*
     flint_printf("OK\n");
+    */
 }
 
 
