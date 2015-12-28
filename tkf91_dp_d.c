@@ -8,6 +8,82 @@
 #include "breadcrumbs.h"
 #include "wavefront_double.h"
 
+static __inline__
+double max(double a, double b)
+{
+    return a > b ? a : b;
+}
+
+typedef struct
+{
+    double max2;
+    double max3;
+} dnode_struct;
+typedef dnode_struct dnode_t[1];
+typedef dnode_struct * dnode_ptr;
+
+typedef struct
+{
+    dnode_ptr data;
+    slong r;
+    slong c;
+} dmat_struct;
+typedef dmat_struct dmat_t[1];
+
+void dmat_init(dmat_t mat, slong nrows, slong ncols);
+void dmat_clear(dmat_t mat);
+
+static __inline__ slong
+dmat_nrows(const dmat_t mat)
+{
+    return mat->r;
+}
+
+static __inline__ slong
+dmat_ncols(const dmat_t mat)
+{
+    return mat->c;
+}
+
+static __inline__ dnode_ptr
+dmat_entry(dmat_t mat, slong i, slong j)
+{
+    return mat->data + (i % 2) * mat->c + j;
+}
+
+static __inline__ dnode_ptr
+dmat_entry_top(dmat_t mat, slong i, slong j)
+{
+    return dmat_entry(mat, i-1, j);
+}
+
+static __inline__ dnode_ptr
+dmat_entry_diag(dmat_t mat, slong i, slong j)
+{
+    return dmat_entry(mat, i-1, j-1);
+}
+
+static __inline__ dnode_ptr
+dmat_entry_left(dmat_t mat, slong i, slong j)
+{
+    return dmat_entry(mat, i, j-1);
+}
+
+void
+dmat_init(dmat_t mat, slong nrows, slong ncols)
+{
+    mat->data = flint_malloc(2 * ncols * sizeof(dmat_struct));
+    mat->r = nrows;
+    mat->c = ncols;
+}
+
+void
+dmat_clear(dmat_t mat)
+{
+    flint_free(mat->data);
+}
+
+
 
 typedef struct
 {
@@ -23,8 +99,6 @@ typedef struct
 typedef tkf91_double_generators_struct tkf91_double_generators_t[1];
 
 
-double _doublify(slong i, arb_mat_t m);
-
 void doublify_tkf91_generators(
         tkf91_double_generators_t h,
         tkf91_generator_indices_t g,
@@ -36,26 +110,18 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
         slong *B, slong szB);
 
 
-static __inline__
-double max2(double a, double b)
+static __inline__ double
+_arb_get_d(const arb_t x)
 {
-    return a > b ? a : b;
+    return arf_get_d(arb_midref(x), ARF_RND_NEAR);
 }
-
-static __inline__
-double max3(double a, double b, double c)
-{
-    return max2(a, max2(b, c));
-}
-
 
 /* helper function for converting the generator array to double precision */
 /* m should be a column vector */
-double
-_doublify(slong i, arb_mat_t m)
+static __inline__ double
+_doublify(slong i, const arb_mat_t m)
 {
-    arb_ptr p = arb_mat_entry(m, i, 0);
-    return arf_get_d(arb_midref(p), ARF_RND_NEAR);
+    return _arb_get_d(arb_mat_entry(m, i, 0));
 }
 
 
@@ -90,151 +156,58 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
         slong *A, slong szA,
         slong *B, slong szB)
 {
-    /*
-     * Make the dynamic programming table.
-     *
-     * Inputs:
-     *  - a structure whose member variables store generator indices
-     *  - a list that maps expression indices to expression objects
-     *  - a matrix G such that G_{ij} indicates the integer exponent of
-     *    expression j in generator i
-     *  - the two sequences to be aligned, as integer arrays
-     *  - the two sequence lengths
-     *
-     * The dynamic programming can use a trick that
-     * packs three diagonals into a table with two rows,
-     * using an idea like the following diagram.
-     * Notice that if you are iterating through rows of that diagram
-     * using an algorithm that needs to track the most recent three rows,
-     * the sparsity of the entries in that diagram allow you to use
-     * a physical buffer of only two rows.
-     *
-     *    |    |  0 |  1 |  2 |  3 |  4 |  5
-     *  --|----|----|----|----|----|----|---
-     *  0 |    |    |    | 00 |    |    |          
-     *  --|----|----|----|----|----|----|---
-     *  1 |    |    | 10 |    | 01 |    |   
-     *  --|----|----|----|----|----|----|---
-     *  2 |    | 20 |    | 11 |    | 02 |   
-     *  --|----|----|----|----|----|----|---
-     *  3 |    |    | 21 |    | 12 |    | 03
-     *  --|----|----|----|----|----|----|---
-     *  4 |    |    |    | 22 |    | 13 |   
-     *  --|----|----|----|----|----|----|---
-     *  5 |    |    |    |    | 23 |    |   
-     *
-     */
-
-    /*
-     * Define the matrix to be used for the traceback.
-     * The number of rows is one greater than the length of the first sequence,
-     * and the number of columns is one greater than the length of the second
-     * sequence.
-     */
-    slong nrows = szA + 1;
-    slong ncols = szB + 1;
+    slong nrows, ncols;
     breadcrumb_mat_t crumb_mat;
+    dmat_t dmat;
+    double m0, m1, m2;
+
+    nrows = szA + 1;
+    ncols = szB + 1;
 
     if (trace_flag)
     {
         breadcrumb_mat_init(crumb_mat, nrows, ncols);
     }
 
-    /* define the wavefront matrix */
-    wave_mat_t wave;
-    /* slong modulus = nrows + ncols - 1; */
-    /* slong modulus = 3; */
-    /* wave_mat_init(wave, nrows + ncols - 1, modulus); */
-    wave_mat_init(wave, nrows + ncols - 1);
+    dmat_init(dmat, nrows, ncols);
 
-    /*
-     * Let M_{ij} be the matrix created for traceback.
-     * Let R_{kl} be the 'logical' wavefront matrix.
-     * Then
-     *  k = i + j
-     *  l = nrows - 1 + j - i
-     */
-
-
-    /* iterate over anti-diagonal bands of the dynamic programming matrix */
-    wave_value_ptr cell, p0, p1, p2;
-    slong i, j, k, l;
-    slong istart, jstart, lstart;
-    for (k = 0; k < nrows + ncols - 1; k++)
+    dnode_ptr cell, p0, p1, p2;
+    slong i, j;
+    slong nta, ntb;
+    for (i = 0; i < nrows; i++)
     {
-        if (k < nrows)
+        for (j = 0; j < ncols; j++)
         {
-            istart = k;
-            jstart = 0;
-        }
-        else
-        {
-            istart = nrows - 1;
-            jstart = k - (nrows - 1);
-        }
-        lstart = nrows - 1 + jstart - istart;
-
-        /* iterate over entries of the diagonal */
-        i = istart;
-        j = jstart;
-        l = lstart;
-        slong nta, ntb;
-        while (0 <= i && i < nrows && 0 <= j && j < ncols)
-        {
-            /* check some invariants */
-            /*
-            if (k != i + j)
-            {
-                flint_printf("wavefront indexing problem ");
-                flint_printf("i=%wd j=%wd k=%wd\n", i, j, k);
-                abort();
-            }
-            if (l != nrows - 1 + j - i)
-            {
-                flint_printf("wavefront indexing problem ");
-                flint_printf("i=%wd j=%wd l=%wd\n", i, j, l);
-                abort();
-            }
-            */
-
-            cell = wave_mat_entry(wave, k, l);
             if (i < 1 || j < 1)
             {
+                m0 = -INFINITY;
+                m1 = -INFINITY;
+                m2 = -INFINITY;
                 if (i == 0 && j == 0)
                 {
-                    cell->m0 = -INFINITY;
-                    cell->m1 = g->m1_00;
-                    cell->m2 = -INFINITY;
+                    m1 = g->m1_00;
                 }
                 else if (i == 1 && j == 0)
                 {
-                    cell->m0 = g->m0_10;
-                    cell->m1 = -INFINITY;
-                    cell->m2 = -INFINITY;
+                    m0 = g->m0_10;
                 }
                 else if (i == 0 && j == 1)
                 {
-                    cell->m0 = -INFINITY;
-                    cell->m1 = -INFINITY;
-                    cell->m2 = g->m2_01;
+                    m2 = g->m2_01;
                 }
                 else
                 {
                     if (i == 0)
                     {
                         ntb = B[j - 1];
-                        p2 = wave_mat_entry_left(wave, k, l);
-                        cell->m0 = -INFINITY;
-                        cell->m1 = -INFINITY;
-                        cell->m2 = p2->m2 + g->m2_0j_incr[ntb];
+                        p2 = dmat_entry_left(dmat, i, j);
+                        m2 = p2->max2 + g->m2_0j_incr[ntb];
                     }
                     else if (j == 0)
                     {
                         nta = A[i - 1];
-                        p0 = wave_mat_entry_top(wave, k, l);
-                        cell->m0 = p0->m0 + g->m0_i0_incr[nta];
-                        cell->m1 = -INFINITY;
-                        cell->m2 = -INFINITY;
+                        p0 = dmat_entry_top(dmat, i, j);
+                        m0 = p0->max3 + g->m0_i0_incr[nta];
                     }
                 }
             }
@@ -242,99 +215,38 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
             {
                 nta = A[i - 1];
                 ntb = B[j - 1];
-                p0 = wave_mat_entry_top(wave, k, l);
-                p1 = wave_mat_entry_diag(wave, k, l);
-                p2 = wave_mat_entry_left(wave, k, l);
-                cell->m0 = max3(p0->m0, p0->m1, p0->m2) + g->c0_incr[nta];
-                cell->m1 = max3(p1->m0, p1->m1, p1->m2);
-                cell->m1 += g->c1_incr[nta*4 + ntb];
-                cell->m2 = max2(p2->m1, p2->m2) + g->c2_incr[ntb];
+                p0 = dmat_entry_top(dmat, i, j);
+                p1 = dmat_entry_diag(dmat, i, j);
+                p2 = dmat_entry_left(dmat, i, j);
+                m0 = p0->max3 + g->c0_incr[nta];
+                m1 = p1->max3 + g->c1_incr[nta*4+ntb];
+                m2 = p2->max2 + g->c2_incr[ntb];
             }
+
+            cell = dmat_entry(dmat, i, j);
+            cell->max2 = max(m1, m2);
+            cell->max3 = max(m0, cell->max2);
 
             /* fill the table for traceback */
             if (trace_flag)
             {
-                double best;
-                best = max3(cell->m0, cell->m1, cell->m2);
                 breadcrumb_ptr pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
-                if (cell->m0 == best) {
+                if (m0 == cell->max3) {
                     *pcrumb |= CRUMB_TOP;
                 }
-                if (cell->m1 == best) {
+                if (m1 == cell->max3) {
                     *pcrumb |= CRUMB_DIAG;
                 }
-                if (cell->m2 == best) {
+                if (m2 == cell->max3) {
                     *pcrumb |= CRUMB_LEFT;
                 }
             }
-
-            /*
-            flint_printf("%wd %wd %wd %wd ", i, j, k, l);
-            flint_printf("%g %g %g\n",
-                    exp(cell->m0),
-                    exp(cell->m1),
-                    exp(cell->m2));
-            */
-
-            l += 2;
-            i--;
-            j++;
         }
     }
-
-    /* report the probability matrices */
-
-    /*
-    flint_printf("m0:\n");
-    for (i = 0; i < nrows; i++)
-    {
-        for (j = 0; j < ncols; j++)
-        {
-            k = i + j;
-            l = nrows - 1 + j - i;
-            cell = wave_mat_entry(wave, k, l);
-            flint_printf("%.15lf ", exp(cell->m0));
-        }
-        flint_printf("\n");
-    }
-    flint_printf("\n");
-
-    flint_printf("m1:\n");
-    for (i = 0; i < nrows; i++)
-    {
-        for (j = 0; j < ncols; j++)
-        {
-            k = i + j;
-            l = nrows - 1 + j - i;
-            cell = wave_mat_entry(wave, k, l);
-            flint_printf("%.15lf ", exp(cell->m1));
-        }
-        flint_printf("\n");
-    }
-    flint_printf("\n");
-
-    flint_printf("m2:\n");
-    for (i = 0; i < nrows; i++)
-    {
-        for (j = 0; j < ncols; j++)
-        {
-            k = i + j;
-            l = nrows - 1 + j - i;
-            cell = wave_mat_entry(wave, k, l);
-            flint_printf("%.15lf ", exp(cell->m2));
-        }
-        flint_printf("\n");
-    }
-    flint_printf("\n");
-    */
 
     /* report the score */
-    i = nrows - 1;
-    j = ncols - 1;
-    k = i + j;
-    l = nrows - 1 + j - i;
-    cell = wave_mat_entry(wave, k, l);
-    flint_printf("score: %g\n", exp(max3(cell->m0, cell->m1, cell->m2)));
+    cell = dmat_entry(dmat, nrows-1, ncols-1);
+    flint_printf("score: %g\n", exp(cell->max3));
 
     /* do the traceback */
     if (trace_flag)
@@ -348,7 +260,7 @@ void tkf91_dynamic_programming_double(tkf91_double_generators_t g,
         free(sb);
     }
 
-    wave_mat_clear(wave);
+    dmat_clear(dmat);
     if (trace_flag)
     {
         breadcrumb_mat_clear(crumb_mat);
@@ -384,21 +296,15 @@ tkf91_dp_d(
     arb_mat_init(G, generator_count, expression_count);
     arb_mat_set_fmpz_mat(G, mat);
 
-    /* compute the expression logs */
+    /* compute the expression logarithms */
     arb_mat_init(expression_logs, expression_count, 1);
     for (i = 0; i < expression_count; i++)
     {
         expr_eval(x, expressions_table[i], level);
         arb_log(arb_mat_entry(expression_logs, i, 0), x, prec);
-
-        /*
-        flint_printf("expression %wd : ", i);
-        arb_printd(x, 15);
-        flint_printf("\n");
-        */
     }
 
-    /* compute the generator logs */
+    /* compute the generator logarithms */
     arb_mat_init(generator_logs, generator_count, 1);
     arb_mat_mul(generator_logs, G, expression_logs, prec);
 
