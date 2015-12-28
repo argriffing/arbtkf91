@@ -180,6 +180,11 @@ void tkf91_dynamic_programming_double(
     double c1_incr[16];
     double c2_incr[4];
 
+    /* values that are cached per row */
+    double m0_i0_incr_nta;
+    double c0_incr_nta;
+    double c1_incr_nta[4];
+
     /* init the dynamic programming 'generators' */
     m1_00 = _doublify(g->m1_00, m);
     m0_10 = _doublify(g->m0_10, m);
@@ -208,8 +213,22 @@ void tkf91_dynamic_programming_double(
 
     for (i = 0; i < nrows; i++)
     {
+        /* precompute values that are constant along the row */
+        if (i)
+        {
+            nta = A[i - 1];
+            m0_i0_incr_nta = m0_i0_incr[nta];
+            c0_incr_nta = c0_incr[nta];
+            for (ntb = 0; ntb < 4; ntb++)
+            {
+                c1_incr_nta[ntb] = c1_incr[4*nta + ntb];
+            }
+        }
+
         for (j = 0; j < ncols; j++)
         {
+            ntb = B[j - 1];
+
             if (i < 1 || j < 1)
             {
                 m0 = -INFINITY;
@@ -231,27 +250,23 @@ void tkf91_dynamic_programming_double(
                 {
                     if (i == 0)
                     {
-                        ntb = B[j - 1];
                         p2 = dmat_entry_left(dmat, i, j);
                         m2 = p2->max2 + m2_0j_incr[ntb];
                     }
                     else if (j == 0)
                     {
-                        nta = A[i - 1];
                         p0 = dmat_entry_top(dmat, i, j);
-                        m0 = p0->max3 + m0_i0_incr[nta];
+                        m0 = p0->max3 + m0_i0_incr_nta;
                     }
                 }
             }
             else
             {
-                nta = A[i - 1];
-                ntb = B[j - 1];
                 p0 = dmat_entry_top(dmat, i, j);
                 p1 = dmat_entry_diag(dmat, i, j);
                 p2 = dmat_entry_left(dmat, i, j);
-                m0 = p0->max3 + c0_incr[nta];
-                m1 = p1->max3 + c1_incr[nta*4+ntb];
+                m0 = p0->max3 + c0_incr_nta;
+                m1 = p1->max3 + c1_incr_nta[ntb];
                 m2 = p2->max2 + c2_incr[ntb];
             }
             max2 = max(m1, m2);
@@ -266,6 +281,14 @@ void tkf91_dynamic_programming_double(
             {
                 pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
                 crumb = *pcrumb;
+
+                /* this is not much, if any, faster */
+                /*
+                crumb |= (m0 == max3) << 0;
+                crumb |= (m1 == max3) << 1;
+                crumb |= (m2 == max3) << 2;
+                */
+
                 if (m0 == max3) {
                     crumb |= CRUMB_TOP;
                 }
@@ -275,6 +298,7 @@ void tkf91_dynamic_programming_double(
                 if (m2 == max3) {
                     crumb |= CRUMB_LEFT;
                 }
+
                 *pcrumb = crumb;
             }
         }
