@@ -9,31 +9,24 @@
 
 #include "breadcrumbs.h"
 #include "tkf91_generator_vecs.h"
+#include "bound_mat.h"
 
+slong _breadcrumb_mat_nnz(const breadcrumb_mat_t mat);
+slong _breadcrumb_mat_max_row_nnz(const breadcrumb_mat_t mat);
 
-typedef struct bound_node_struct
+typedef struct bound_node_struct_tag
 {
     fmpz * pmax2;
     fmpz * pmax3;
-    bound_node_struct * top;
-    bound_node_struct * diag;
-    bound_node_struct * left;
+    struct bound_node_struct_tag * top;
+    struct bound_node_struct_tag * diag;
+    struct bound_node_struct_tag * left;
     breadcrumb_t crumb;
 } bound_node_struct;
 typedef bound_node_struct * bound_node_ptr;
 typedef bound_node_struct bound_node_t[1];
 
-void
-bound_node_init(bound_node_t x)
-{
-    x->pmax2 = NULL;
-    x->pmax3 = NULL;
-    x->top = NULL;
-    x->diag = NULL;
-    x->left = NULL;
-    x->crumb = 0;
-}
-
+void bound_node_init(bound_node_t x);
 
 typedef struct
 {
@@ -50,13 +43,48 @@ typedef struct
 typedef bound_mat_struct * bound_mat_ptr;
 typedef bound_mat_struct bound_mat_t[1];
 
+void bound_mat_init(bound_mat_t mat, breadcrumb_mat_t mask, slong rank);
+void bound_mat_clear(bound_mat_t mat);
+fmpz * _bound_mat_max3ref(bound_mat_t mat, slong i, slong k);
+fmpz * _bound_mat_max2ref(bound_mat_t mat, slong i, slong k);
+slong bound_mat_ncols(const bound_mat_t mat);
+slong bound_mat_nrows(const bound_mat_t mat);
+
+void _check_equal(fmpz * u, fmpz * v, slong r);
+void _tkf91_dp_verify_symbolically(
+        tkf91_generator_vecs_t h,
+        bound_mat_t b,
+        slong *A, slong *B);
 
 slong
-_breadcrumb_mat_nnz(const breadcrumb_mat_t mat);
+bound_mat_nrows(const bound_mat_t mat)
+{
+    return mat->r;
+}
+
+slong
+bound_mat_ncols(const bound_mat_t mat)
+{
+    return mat->c;
+}
+
+void
+bound_node_init(bound_node_t x)
+{
+    x->pmax2 = NULL;
+    x->pmax3 = NULL;
+    x->top = NULL;
+    x->diag = NULL;
+    x->left = NULL;
+    x->crumb = 0;
+}
+
+slong
+_breadcrumb_mat_nnz(const breadcrumb_mat_t mat)
 {
     breadcrumb_t pattern;
     slong i, j, nnz;
-    pattern = CRUMB_MAX2 | CRUMB_MAX3 | CRUMB_CANDIDATE;
+    pattern = CRUMB_WANT2 | CRUMB_WANT3 | CRUMB_CONTENDER;
     nnz = 0;
     for (i = 0; i < breadcrumb_mat_nrows(mat); i++)
     {
@@ -73,11 +101,11 @@ _breadcrumb_mat_nnz(const breadcrumb_mat_t mat);
 
 
 slong
-_breadcrumb_mat_max_row_nnz(const breadcrumb_mat_t mat);
+_breadcrumb_mat_max_row_nnz(const breadcrumb_mat_t mat)
 {
     breadcrumb_t pattern;
     slong i, j, best, curr;
-    pattern = CRUMB_MAX2 | CRUMB_MAX3 | CRUMB_CANDIDATE;
+    pattern = CRUMB_WANT2 | CRUMB_WANT3 | CRUMB_CONTENDER;
     best = 0;
     curr = 0;
     for (i = 0; i < breadcrumb_mat_nrows(mat); i++)
@@ -98,25 +126,28 @@ _breadcrumb_mat_max_row_nnz(const breadcrumb_mat_t mat);
     return best;
 }
 
-
-fmpz_ptr
-_bound_mat_max2ref(bound_mat_t mat, i, k)
+fmpz *
+_bound_mat_max2ref(bound_mat_t mat, slong i, slong k)
 {
     /* this function is intended to be called only during initialization */
     /* i : row index of the entry */
     /* k : the entry follows k nonzero entries in row i */
-    fmpz_ptr base;
+    slong rank;
+    fmpz * base;
+    rank = mat->rank;
     base = mat->brick_of_fmpz + (i % 2) * mat->max_row_nnz * 2 * rank;
-    return base + k * 2 * rank
+    return base + k * 2 * rank;
 }
 
-fmpz_ptr
-_bound_mat_max3ref(bound_mat_t mat, i, k)
+fmpz *
+_bound_mat_max3ref(bound_mat_t mat, slong i, slong k)
 {
     /* this function is intended to be called only during initialization */
     /* i : row index of the entry */
     /* k : the entry follows k nonzero entries in row i */
-    fmpz_ptr base;
+    slong rank;
+    fmpz * base;
+    rank = mat->rank;
     base = mat->brick_of_fmpz + (i % 2) * mat->max_row_nnz * 2 * rank;
     return base + k * 2 * rank + rank;
 }
@@ -129,11 +160,11 @@ bound_mat_init(bound_mat_t mat, breadcrumb_mat_t mask, slong rank)
     slong idx;
     breadcrumb_t crumb;
     bound_node_ptr p;
-    bound_node_ptr tmp;
+    bound_node_ptr * tmp;
 
     nr = breadcrumb_mat_nrows(mask);
     nc = breadcrumb_mat_ncols(mask);
-    nnz = breadcrumb_mat_nnz(mask);
+    nnz = _breadcrumb_mat_nnz(mask);
     max_row_nnz = _breadcrumb_mat_max_row_nnz(mask);
 
     mat->r = nr;
@@ -170,16 +201,25 @@ bound_mat_init(bound_mat_t mat, breadcrumb_mat_t mask, slong rank)
         for (j = 0; j < nc; j++)
         {
             crumb = *breadcrumb_mat_srcentry(mask, i, j);
-            if (crumb & (CRUMB_CANDIDATE | CRUMB_WANT3 | CRUMB_WANT2))
+            if (crumb & (CRUMB_CONTENDER | CRUMB_WANT3 | CRUMB_WANT2))
             {
                 mat->indices[idx] = j;
                 p = mat->data + idx;
                 tmp[(i % 2) * nc + j] = p;
-                p->pmax2 = _bound_mat_max2ref(mat, i, k)
-                p->pmax3 = _bound_mat_max3ref(mat, i, k)
-                p->top = tmp + ((i-1) % 2) * nc + j;
-                p->diag = tmp + ((i-1) % 2) * nc + (j-1);
-                p->left = tmp + (i % 2) * nc + (j-1);
+                p->pmax2 = _bound_mat_max2ref(mat, i, k);
+                p->pmax3 = _bound_mat_max3ref(mat, i, k);
+                if (0 < i)
+                {
+                    p->top = tmp[((i-1) % 2) * nc + j];
+                }
+                if (0 < i && 0 < j)
+                {
+                    p->diag = tmp[((i-1) % 2) * nc + (j-1)];
+                }
+                if (0 < j)
+                {
+                    p->left = tmp[(i % 2) * nc + (j-1)];
+                }
                 p->crumb = crumb;
                 idx++;
                 k++;
@@ -199,7 +239,8 @@ bound_mat_clear(bound_mat_t mat)
     flint_free(mat->indptr);
     flint_free(mat->indices);
     flint_free(mat->data);
-    _fmpz_vec_clear(mat->brick_of_fmpz);
+    _fmpz_vec_clear(mat->brick_of_fmpz,
+            2 * mat->max_row_nnz * 2 * mat->rank);
 }
 
 
@@ -208,8 +249,7 @@ tkf91_dp_verify_symbolically(
         fmpz_mat_t mat,
         tkf91_generator_indices_t g,
         breadcrumb_mat_t mask,
-        slong *A, size_t szA,
-        slong *B, size_t szB)
+        slong *A, slong *B)
 {
     /* Inputs:
      *   mat : the generator matrix -- mat_ij where i is a generator index
@@ -222,7 +262,7 @@ tkf91_dp_verify_symbolically(
      *          from each cell.
      */
     fmpz_mat_t H, V;
-    slong i, level, prec, rank;
+    slong rank;
     tkf91_generator_vecs_t h;
     bound_mat_t b;
 
@@ -238,7 +278,7 @@ tkf91_dp_verify_symbolically(
     tkf91_generator_vecs_init(h, g, V, rank);
     bound_mat_init(b, mask, rank);
 
-    _tkf91_dp_verify_symbolically(h, b, A, szA, B, szB);
+    _tkf91_dp_verify_symbolically(h, b, A, B);
 
     fmpz_mat_clear(H);
     fmpz_mat_clear(V);
@@ -248,11 +288,23 @@ tkf91_dp_verify_symbolically(
 
 
 void
+_check_equal(fmpz * u, fmpz * v, slong r)
+{
+    flint_printf("verifying... ");
+    if (!_fmpz_vec_equal(u, v, r))
+    {
+        flint_printf("verification failed\n");
+        abort();
+    }
+    flint_printf("OK\n");
+}
+
+
+void
 _tkf91_dp_verify_symbolically(
         tkf91_generator_vecs_t h,
         bound_mat_t b,
-        slong *A, size_t szA,
-        slong *B, size_t szB)
+        slong *A, slong *B)
 {
     /*
      * Use only a forward pass, not a backward pass.
@@ -261,7 +313,7 @@ _tkf91_dp_verify_symbolically(
      * actually correspond to identical integer state vectors.
      */
     slong r;
-    slong nr, nc;
+    slong nr;
 
     bound_node_ptr p0, p1, p2;
 
@@ -273,16 +325,15 @@ _tkf91_dp_verify_symbolically(
     fmpz * m1_buf;
     fmpz * m2_buf;
 
-    m0_buf = _fmpz_vec_init(rank);
-    m1_buf = _fmpz_vec_init(rank);
-    m2_buf = _fmpz_vec_init(rank);
-
     r = tkf91_generator_vecs_rank(h);
     nr = bound_mat_nrows(b);
-    nc = bound_mat_ncols(b);
+
+    m0_buf = _fmpz_vec_init(r);
+    m1_buf = _fmpz_vec_init(r);
+    m2_buf = _fmpz_vec_init(r);
 
     /* iterate over rows of the CSR dynamic programming matrix */
-    slong i, j, k, u;
+    slong i, j, u;
     slong nta, ntb;
     slong start, stop;
     bound_node_ptr node;
@@ -293,13 +344,12 @@ _tkf91_dp_verify_symbolically(
         stop = b->indptr[i+1];
         for (u = start; u < stop; u++)
         {
-            k = u - start;
             j = b->indices[u];
-            node = b->data[u];
+            node = b->data+u;
 
             crumb = node->crumb;
             want2 = crumb & CRUMB_WANT2;
-            want3 = crumb & (CRUMB_CANDIDATE | CRUMB_WANT3);
+            want3 = crumb & (CRUMB_CONTENDER | CRUMB_WANT3);
 
             /*
              * At this point, the vector pointers point to an appropriate
@@ -367,7 +417,7 @@ _tkf91_dp_verify_symbolically(
                         {
                             ntb = B[j - 1];
                             p2 = node->left;
-                            _fmpz_vec_add(m2, p2->pmax2, h->m2_0j_incr+ntb, r);
+                            _fmpz_vec_add(m2, p2->pmax2, h->m2_0j_incr[ntb], r);
                         }
                     }
                     else if (j == 0)
@@ -376,7 +426,7 @@ _tkf91_dp_verify_symbolically(
                         {
                             nta = A[i - 1];
                             p0 = node->top;
-                            _fmpz_vec_add(m0, p0->pmax3, h->m0_i0_incr+nta, r);
+                            _fmpz_vec_add(m0, p0->pmax3, h->m0_i0_incr[nta], r);
                         }
                     }
                 }
@@ -389,19 +439,19 @@ _tkf91_dp_verify_symbolically(
                 if (m0)
                 {
                     p0 = node->top;
-                    _fmpz_vec_add(m0, p0->pmax3, h->c0_incr+nta, r);
+                    _fmpz_vec_add(m0, p0->pmax3, h->c0_incr[nta], r);
                 }
 
                 if (m1)
                 {
                     p1 = node->diag;
-                    _fmpz_vec_add(m1, p1->pmax3, h->c1_incr+nta*4+ntb, r);
+                    _fmpz_vec_add(m1, p1->pmax3, h->c1_incr[nta*4+ntb], r);
                 }
 
                 if (m2)
                 {
                     p2 = node->left;
-                    _fmpz_vec_add(m2, p2->pmax2, h->c2_incr+ntb, r);
+                    _fmpz_vec_add(m2, p2->pmax2, h->c2_incr[ntb], r);
                 }
             }
 
@@ -482,7 +532,7 @@ _tkf91_dp_verify_symbolically(
         }
     }
 
-    _fmpz_vec_clear(m0_buf);
-    _fmpz_vec_clear(m1_buf);
-    _fmpz_vec_clear(m2_buf);
+    _fmpz_vec_clear(m0_buf, r);
+    _fmpz_vec_clear(m1_buf, r);
+    _fmpz_vec_clear(m2_buf, r);
 }

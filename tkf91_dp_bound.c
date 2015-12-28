@@ -457,10 +457,12 @@ tkf91_dp_bound(
         breadcrumb_mat_get_mask(crumb_mat, crumb_mat);
 
         /* print the mask to a file */
+        /*
         FILE *fout;
         fout = fopen("mask.txt", "wt");
         breadcrumb_mat_fprint(fout, crumb_mat);
         fclose(fout);
+        */
 
         /* do the traceback */
         char *sa, *sb;
@@ -472,7 +474,7 @@ tkf91_dp_bound(
         free(sb);
 
         /* symbolic verification */
-        tkf91_dp_verify_symbolically(mat, g, mask, A, szA, B, szB);
+        tkf91_dp_verify_symbolically(mat, g, crumb_mat, A, B);
     }
 
 

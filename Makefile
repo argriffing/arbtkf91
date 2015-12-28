@@ -175,9 +175,9 @@ tkf91_dp_bound.o: tkf91_dp_bound.c \
 		-lflint -lgmp -larb
 
 bound_mat.o: bound_mat.c \
-	breadcrumbs.o bound_mat.o
+	breadcrumbs.o
 	$(CC) bound_mat.c \
-		breadcrumbs.o bound_mat.o \
+		breadcrumbs.o \
 		-c $(CFLAGS) \
 		-lflint -lgmp
 

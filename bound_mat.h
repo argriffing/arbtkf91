@@ -19,8 +19,7 @@ tkf91_dp_verify_symbolically(
         fmpz_mat_t mat,
         tkf91_generator_indices_t g,
         breadcrumb_mat_t mask,
-        slong *A, size_t szA,
-        slong *B, size_t szB)
+        slong *A, slong *B);
 
 
 #ifdef __cplusplus
