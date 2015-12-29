@@ -102,21 +102,21 @@ tmat_get_alignment(char **psa, char **psb,
     char * sa;
     char * sb;
     char tmp;
-    slong len, nrows, ncols, n;
+    slong len, nrows, ncols;
     double max3;
     tnode_ptr cell;
 
     nrows = tmat_nrows(mat);
     ncols = tmat_ncols(mat);
-    n = nrows * ncols;
-    sa = calloc(n, sizeof(char));
-    sb = calloc(n, sizeof(char));
+    sa = calloc(nrows * ncols, sizeof(char));
+    sb = calloc(nrows * ncols, sizeof(char));
     i = nrows - 1;
     j = ncols - 1;
     len = 0;
     while (i > 0 || j > 0)
     {
         cell = tmat_srcentry(mat, i, j);
+        /* flint_printf("%lf %lf %lf\n", cell->m0, cell->m1, cell->m2); */
         max3 = max(cell->m0, max(cell->m1, cell->m2));
         if (cell->m0 == max3)
         {
@@ -405,8 +405,10 @@ tkf91_dynamic_programming_double_tmat(
     double c2_incr[4];
 
     /* values that are cached per row in the main loop */
+    /*
     double c0_incr_nta;
     double c1_incr_nta[4];
+    */
 
     /* start the clock */
     start = clock();
@@ -428,12 +430,14 @@ tkf91_dynamic_programming_double_tmat(
     }
 
     /* redundantly init precomputed values to avoid compiler warning */
+    /*
     nta = 0;
     c0_incr_nta = c0_incr[nta];
     for (ntb = 0; ntb < 4; ntb++)
     {
         c1_incr_nta[ntb] = c1_incr[4*nta + ntb];
     }
+    */
 
     nrows = szA + 1;
     ncols = szB + 1;
@@ -494,25 +498,44 @@ tkf91_dynamic_programming_double_tmat(
         nta = A[i - 1];
 
         /* precompute stuff for this row */
+        /*
         c0_incr_nta = c0_incr[nta];
         for (ntb = 0; ntb < 4; ntb++)
         {
             c1_incr_nta[ntb] = c1_incr[4*nta + ntb];
         }
+        */
 
+        /*
+        tnode_ptr prev_row = tmat->data + (i-1)*ncols;
+        tnode_ptr curr_row = tmat->data + i*ncols;
+        */
         for (j = 1; j < ncols; j++)
         {
-            ntb = B[i - 1];
-            cell = tmat_entry(tmat, i, j);
+            ntb = B[j - 1];
 
+            /*
+            cell = curr_row + j;
+            p0 = prev_row + j;
+            p1 = prev_row + j-1;
+            p2 = curr_row + j-1;
+            */
+            cell = tmat_entry(tmat, i, j);
             p0 = tmat_entry_top(tmat, i, j);
             p1 = tmat_entry_diag(tmat, i, j);
             p2 = tmat_entry_left(tmat, i, j);
+
             p0_max3 = max(p0->m0, max(p0->m1, p0->m2));
             p1_max3 = max(p1->m0, max(p1->m1, p1->m2));
             p2_max2 = max(p2->m1, p2->m2);
+
+            /*
             cell->m0 = p0_max3 + c0_incr_nta;
             cell->m1 = p1_max3 + c1_incr_nta[ntb];
+            cell->m2 = p2_max2 + c2_incr[ntb];
+            */
+            cell->m0 = p0_max3 + c0_incr[nta];
+            cell->m1 = p1_max3 + c1_incr[nta*4 + ntb];
             cell->m2 = p2_max2 + c2_incr[ntb];
         }
     }
