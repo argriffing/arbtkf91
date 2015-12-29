@@ -152,7 +152,7 @@ tkf91_generator_vecs.o: tkf91_generator_vecs.c
 		-lflint -lgmp
 
 tkf91_dp_d.o: tkf91_dp_d.c \
-	breadcrumbs.h
+	breadcrumbs.h printutil.h
 	$(CC) tkf91_dp_d.c \
 		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb

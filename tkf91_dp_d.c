@@ -7,16 +7,7 @@
 #include "tkf91_dp_d.h"
 #include "breadcrumbs.h"
 #include "wavefront_double.h"
-
-static __inline__ void
-_print_elapsed_time(clock_t diff)
-{
-    int usec = (diff * 1000 * 1000) / CLOCKS_PER_SEC;
-    int msec = usec / 1000;
-    int sec = msec / 1000;
-    printf("time taken %d seconds %d milliseconds %d microseconds.\n",
-            sec, msec%1000, usec%1000);
-}
+#include "printutil.h"
 
 static __inline__
 double max(double a, double b)

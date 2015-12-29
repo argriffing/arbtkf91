@@ -23,6 +23,7 @@
 #include "tkf91_dp_d.h"
 #include "tkf91_dp_r.h"
 #include "tkf91_dp_bound.h"
+#include "printutil.h"
 
 
 #define MAXSEQLEN 20000
@@ -131,47 +132,33 @@ _run(tkf91_dp_fn f, const user_params_t p,
     tkf91_generator_indices_t generators;
     fmpz_mat_t mat;
     expr_ptr * expressions_table;
-    clock_t diff, start;
-    int msec;
 
-    /* timing */
-    start = clock();
-    int i, nreps = 10;
+    /* expressions registry and (refining) generator registry */
+    reg_t er;
+    rgen_reg_ptr gr;
 
-    for (i = 0; i < nreps; i++)
-    {
-        /* expressions registry and (refining) generator registry */
-        reg_t er;
-        rgen_reg_ptr gr;
+    reg_init(er);
+    tkf91_rationals_init(r, p->lambda, p->mu, p->tau, p->pi);
+    tkf91_expressions_init(expressions, er, r);
 
-        reg_init(er);
-        tkf91_rationals_init(r, p->lambda, p->mu, p->tau, p->pi);
-        tkf91_expressions_init(expressions, er, r);
+    gr = rgen_reg_new();
+    tkf91_rgenerators_init(generators, gr, r, expressions, A, szA, B, szB);
+    rgen_reg_finalize(gr, er);
+    fmpz_mat_init(mat, rgen_reg_nrows(gr), rgen_reg_ncols(gr));
+    rgen_reg_get_matrix(mat, gr);
 
-        gr = rgen_reg_new();
-        tkf91_rgenerators_init(generators, gr, r, expressions, A, szA, B, szB);
-        rgen_reg_finalize(gr, er);
-        fmpz_mat_init(mat, rgen_reg_nrows(gr), rgen_reg_ncols(gr));
-        rgen_reg_get_matrix(mat, gr);
+    rgen_reg_clear(gr);
+    tkf91_rationals_clear(r);
 
-        rgen_reg_clear(gr);
-        tkf91_rationals_clear(r);
+    expressions_table = reg_vec(er);
 
-        expressions_table = reg_vec(er);
+    f(mat, expressions_table, generators, p->trace_flag, A, szA, B, szB);
 
-        f(mat, expressions_table, generators, p->trace_flag, A, szA, B, szB);
+    fmpz_mat_clear(mat);
+    flint_free(expressions_table);
 
-        fmpz_mat_clear(mat);
-        flint_free(expressions_table);
-
-        reg_clear(er);
-        tkf91_expressions_clear(expressions);
-    }
-
-    /* timing */
-    diff = (clock() - start) / nreps;
-    msec = (diff * 1000) / CLOCKS_PER_SEC;
-    printf("Time taken %d seconds %d milliseconds.\n", msec/1000, msec%1000);
+    reg_clear(er);
+    tkf91_expressions_clear(expressions);
 }
 
 
@@ -208,6 +195,11 @@ bench(tkf91_dp_fn f, const user_params_t params)
 
     slong *A;
     slong *B;
+
+    clock_t start;
+    int i, nreps;
+
+    nreps = 10;
 
     /*
      * Read pairs of sequences from stdin.
@@ -248,7 +240,13 @@ bench(tkf91_dp_fn f, const user_params_t params)
         B = flint_malloc(szB * sizeof(slong));
         _fill_sequence_vector(B, strB, szB);
 
-        _run(f, params, A, szA, B, szB);
+        /* run a few times, and print the average elapsed time */
+        start = clock();
+        for (i = 0; i < nreps; i++)
+        {
+            _run(f, params, A, szA, B, szB);
+        }
+        _print_elapsed_time((clock() - start)/nreps);
 
         flint_free(A);
         flint_free(B);
