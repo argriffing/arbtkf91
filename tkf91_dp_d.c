@@ -9,12 +9,6 @@
 #include "wavefront_double.h"
 #include "printutil.h"
 
-static __inline__
-double max(double a, double b)
-{
-    return a > b ? a : b;
-}
-
 
 typedef struct
 {
@@ -118,7 +112,7 @@ tmat_get_alignment(char **psa, char **psb,
     {
         cell = tmat_srcentry(mat, i, j);
         /* flint_printf("%lf %lf %lf\n", cell->m0, cell->m1, cell->m2); */
-        max3 = max(cell->m0, max(cell->m1, cell->m2));
+        max3 = fmax(cell->m0, fmax(cell->m1, cell->m2));
         if (cell->m0 == max3)
         {
             sa[len] = ACGT[A[i-1]];
@@ -455,7 +449,7 @@ tkf91_dynamic_programming_double_tmat(
         else
         {
             p2 = tmat_entry_left(tmat, i, j);
-            p2_max2 = max(p2->m1, p2->m2);
+            p2_max2 = fmax(p2->m1, p2->m2);
             cell->m2 = p2_max2 + m2_0j_incr[ntb];
         }
     }
@@ -475,7 +469,7 @@ tkf91_dynamic_programming_double_tmat(
         else
         {
             p0 = tmat_entry_top(tmat, i, j);
-            p0_max3 = max(p0->m0, max(p0->m1, p0->m2));
+            p0_max3 = fmax(p0->m0, fmax(p0->m1, p0->m2));
             cell->m0 = p0_max3 + m0_i0_incr[nta];
         }
     }
@@ -507,9 +501,9 @@ tkf91_dynamic_programming_double_tmat(
             p2 = tmat_entry_left(tmat, i, j);
             */
 
-            p0_max3 = max(p0->m0, max(p0->m1, p0->m2));
-            p1_max3 = max(p1->m0, max(p1->m1, p1->m2));
-            p2_max2 = max(p2->m1, p2->m2);
+            p0_max3 = fmax(p0->m0, fmax(p0->m1, p0->m2));
+            p1_max3 = fmax(p1->m0, fmax(p1->m1, p1->m2));
+            p2_max2 = fmax(p2->m1, p2->m2);
 
             cell->m0 = p0_max3 + c0_incr_nta;
             cell->m1 = p1_max3 + c1_incr_nta[ntb];
@@ -526,7 +520,7 @@ tkf91_dynamic_programming_double_tmat(
     /* report the score */
     double max3;
     cell = tmat_entry(tmat, nrows-1, ncols-1);
-    max3 = max(cell->m0, max(cell->m1, cell->m2));
+    max3 = fmax(cell->m0, fmax(cell->m1, cell->m2));
     flint_printf("score: %g\n", exp(max3));
 
     /* stop the clock */
@@ -698,8 +692,8 @@ void tkf91_dynamic_programming_double(
                 m1 = p1->max3 + c1_incr_nta[ntb];
                 m2 = p2->max2 + c2_incr[ntb];
             }
-            max2 = max(m1, m2);
-            max3 = max(m0, max2);
+            max2 = fmax(m1, m2);
+            max3 = fmax(m0, max2);
 
             cell = dmat_entry(dmat, i, j);
             cell->max2 = max2;
