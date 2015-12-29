@@ -164,7 +164,7 @@ tkf91_dp_r.o: tkf91_dp_r.c \
 		-lflint -lgmp -larb
 
 tkf91_dp_bound.o: tkf91_dp_bound.c \
-	breadcrumbs.h bound_mat.h
+	breadcrumbs.h bound_mat.h printutil.h
 	$(CC) tkf91_dp_bound.c \
 		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb

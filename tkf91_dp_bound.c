@@ -10,6 +10,7 @@
 #include "tkf91_dp_bound.h"
 #include "breadcrumbs.h"
 #include "bound_mat.h"
+#include "printutil.h"
 
 
 typedef struct
@@ -325,6 +326,7 @@ tkf91_dp_bound(
         slong *A, size_t szA,
         slong *B, size_t szB)
 {
+    clock_t start;
 
     /* Convert the first few args to generator lower and upper bounds. */
     tkf91_values_t lb;
@@ -350,6 +352,8 @@ tkf91_dp_bound(
     /* define the cellfront matrix */
     cellfront_t cells;
     cellfront_init(cells, nrows, ncols);
+
+    start = clock();
 
     /* iterate over rows of the dynamic programming matrix */
     cell_ptr cell, p0, p1, p2;
@@ -437,6 +441,9 @@ tkf91_dp_bound(
         }
     }
 
+    printf("dynamic programming ");
+    _print_elapsed_time(clock() - start);
+
     /* report the score */
 
     cell = cellfront_entry(cells, nrows - 1, ncols - 1);
@@ -451,23 +458,17 @@ tkf91_dp_bound(
 
     if (trace_flag)
     {
-        clock_t diff, start;
-        int msec;
-
         /*
          * Get the not-ruled-out cells of the dynamic programming table,
          * and get the cells that are not ruled out for contributing
          * information towards the optimal alignment.
          */
-        flint_printf("timing the mask extraction...\n");
         start = clock();
 
         breadcrumb_mat_get_mask(crumb_mat, crumb_mat);
 
-        diff = clock() - start;
-        msec = (diff * 1000) / CLOCKS_PER_SEC;
-        flint_printf("Time taken %d seconds %d milliseconds.\n", msec/1000, msec%1000);
-
+        printf("mask extraction ");
+        _print_elapsed_time(clock() - start);
 
         /* print the mask to a file */
         /*
@@ -480,7 +481,6 @@ tkf91_dp_bound(
 
 
         /* do the traceback */
-        flint_printf("timing the alignment traceback...\n");
         start = clock();
 
         char *sa, *sb;
@@ -491,19 +491,16 @@ tkf91_dp_bound(
         free(sa);
         free(sb);
 
-        diff = clock() - start;
-        msec = (diff * 1000) / CLOCKS_PER_SEC;
-        flint_printf("Time taken %d seconds %d milliseconds.\n", msec/1000, msec%1000);
+        printf("alignment traceback ");
+        _print_elapsed_time(clock() - start);
 
         /* symbolic verification */
-        flint_printf("timing the symbolic verification...\n");
         start = clock();
 
         tkf91_dp_verify_symbolically(mat, g, crumb_mat, A, B);
 
-        diff = clock() - start;
-        msec = (diff * 1000) / CLOCKS_PER_SEC;
-        flint_printf("Time taken %d seconds %d milliseconds.\n", msec/1000, msec%1000);
+        printf("symbolic verification ");
+        _print_elapsed_time(clock() - start);
     }
 
 
