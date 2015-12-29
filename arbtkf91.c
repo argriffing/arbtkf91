@@ -21,6 +21,7 @@
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
 #include "tkf91_dp_d.h"
+#include "tkf91_dp_f.h"
 #include "tkf91_dp_r.h"
 #include "tkf91_dp_bound.h"
 #include "printutil.h"
@@ -291,6 +292,8 @@ main(int argc, char *argv[])
         } else if (strcmp(argv[i], "--precision") == 0) {
             if (strcmp(argv[i + 1], "double") == 0) {
                 f = &tkf91_dp_d;
+            } else if (strcmp(argv[i + 1], "float") == 0) {
+                f = &tkf91_dp_f;
             } else if (strcmp(argv[i + 1], "arbitrary") == 0) {
                 f = &tkf91_dp_r;
             } else if (strcmp(argv[i + 1], "bound") == 0) {
@@ -339,7 +342,7 @@ main(int argc, char *argv[])
 
     if (!f)
     {
-        flint_printf("expected '--precision {double, arbitrary, bound}");
+        flint_printf("expected '--precision {double, float, arbitrary, bound}");
     }
     else
     {

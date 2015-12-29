@@ -33,9 +33,9 @@ typedef struct
 } tmat_struct;
 typedef tmat_struct tmat_t[1];
 
-void tmat_init(tmat_t mat, slong nrows, slong ncols);
-void tmat_clear(tmat_t mat);
-void tmat_get_alignment(char **psa, char **psb,
+static void tmat_init(tmat_t mat, slong nrows, slong ncols);
+static void tmat_clear(tmat_t mat);
+static void tmat_get_alignment(char **psa, char **psb,
         const tmat_t mat, const slong *A, const slong *B);
 
 static __inline__ slong
