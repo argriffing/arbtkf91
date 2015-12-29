@@ -60,7 +60,7 @@ check_femtocas: bin/t-femtocas
 	$(ARB_LD_LIBRARY) $(VALGRIND) valgrind bin/t-femtocas
 
 femtocas.o: femtocas.c
-	$(CC) femtocas.c -c $(ARB_INCLUDES) $(CFLAGS) -lflint -lgmp -larb
+	$(CC) femtocas.c -c $(ARB_INCLUDES) $(CFLAGS)
 
 bin/t-femtocas: tests/t-femtocas.c femtocas.o
 	$(CC) tests/t-femtocas.c femtocas.o \
@@ -75,8 +75,7 @@ check_expressions: bin/t-expressions
 
 expressions.o: expressions.c \
 	femtocas.h
-	$(CC) expressions.c -c $(ARB_INCLUDES) $(CFLAGS) \
-		-lflint -lgmp -larb
+	$(CC) expressions.c -c $(ARB_INCLUDES) $(CFLAGS)
 
 bin/t-expressions: tests/t-expressions.c expressions.o \
 	femtocas.o tkf91_rationals.o
@@ -93,8 +92,7 @@ check_generators: bin/t-generators
 
 generators.o: generators.c \
 	femtocas.h expressions.h
-	$(CC) generators.c -c $(ARB_INCLUDES) $(CFLAGS) \
-		-lflint -lgmp -larb
+	$(CC) generators.c -c $(ARB_INCLUDES) $(CFLAGS)
 
 bin/t-generators: tests/t-generators.c generators.o \
 	tkf91_generators.o tkf91_rationals.o
@@ -109,80 +107,67 @@ bin/t-generators: tests/t-generators.c generators.o \
 
 rgenerators.o: rgenerators.c \
 	femtocas.h expressions.h generators.h
-	$(CC) rgenerators.c -c $(ARB_INCLUDES) $(CFLAGS) \
-		-lflint -lgmp -larb
+	$(CC) rgenerators.c -c $(ARB_INCLUDES) $(CFLAGS)
 
 tkf91_rgenerators.o: tkf91_rgenerators.c \
 	femtocas.h expressions.h generators.h rgenerators.h
-	$(CC) tkf91_rgenerators.c -c $(ARB_INCLUDES) $(CFLAGS) \
-		-lflint -lgmp -larb
+	$(CC) tkf91_rgenerators.c -c $(ARB_INCLUDES) $(CFLAGS)
 
 tkf91_generators.o: tkf91_generators.c \
 	femtocas.h expressions.h generators.h
-	$(CC) tkf91_generators.c -c $(ARB_INCLUDES) $(CFLAGS) \
-		-lflint -lgmp -larb
+	$(CC) tkf91_generators.c -c $(ARB_INCLUDES) $(CFLAGS)
 
 
 # double precision wavefront implementation
 
 wavefront_double.o: wavefront_double.c
-	$(CC) wavefront_double.c -c $(CFLAGS) \
-		-lflint -lgmp
+	$(CC) wavefront_double.c -c $(CFLAGS)
 
 
 # integer vector wavefront implementation
 
 wavefront_hermite.o: wavefront_hermite.c
-	$(CC) wavefront_hermite.c -c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
-		-lflint -lgmp -larb
+	$(CC) wavefront_hermite.c -c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS)
 
 
 # the matrix of breadcrumbs for the traceback stage of dynamic programming
 
 breadcrumbs.o: breadcrumbs.c
-	$(CC) breadcrumbs.c -c $(CFLAGS) \
-		-lflint -lgmp
+	$(CC) breadcrumbs.c -c $(CFLAGS)
 
 vis.o: vis.c breadcrumbs.h
-	$(CC) vis.c -c $(CFLAGS) \
-		-lflint -lgmp -lpng
+	$(CC) vis.c -c $(CFLAGS)
 
 # arbitrary and double precision tkf91 dynamic programming
 
 tkf91_generator_vecs.o: tkf91_generator_vecs.c
 	$(CC) tkf91_generator_vecs.c \
-		-c $(CFLAGS) \
-		-lflint -lgmp
+		-c $(CFLAGS)
 
 tkf91_dp_d.o: tkf91_dp_d.c \
 	breadcrumbs.h printutil.h
 	$(CC) tkf91_dp_d.c \
-		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
-		-lflint -lgmp -larb
+		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS)
 
 tkf91_dp_f.o: tkf91_dp_f.c \
 	printutil.h
 	$(CC) tkf91_dp_f.c \
-		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
-		-lflint -lgmp -larb
+		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS)
 
 tkf91_dp_r.o: tkf91_dp_r.c \
 	breadcrumbs.h tkf91_generator_vecs.h
 	$(CC) tkf91_dp_r.c \
-		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
-		-lflint -lgmp -larb
+		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS)
 
 tkf91_dp_bound.o: tkf91_dp_bound.c \
 	breadcrumbs.h bound_mat.h printutil.h vis.h
 	$(CC) tkf91_dp_bound.c \
-		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
-		-lflint -lgmp -larb
+		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS)
 
 bound_mat.o: bound_mat.c \
 	breadcrumbs.h
 	$(CC) bound_mat.c \
-		-c $(CFLAGS) \
-		-lflint -lgmp
+		-c $(CFLAGS)
 
 
 
