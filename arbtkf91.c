@@ -136,38 +136,42 @@ _run(tkf91_dp_fn f, const user_params_t p,
 
     /* timing */
     start = clock();
+    int i, nreps = 10;
 
-    /* expressions registry and (refining) generator registry */
-    reg_t er;
-    rgen_reg_ptr gr;
+    for (i = 0; i < nreps; i++)
+    {
+        /* expressions registry and (refining) generator registry */
+        reg_t er;
+        rgen_reg_ptr gr;
 
-    reg_init(er);
-    tkf91_rationals_init(r, p->lambda, p->mu, p->tau, p->pi);
-    tkf91_expressions_init(expressions, er, r);
+        reg_init(er);
+        tkf91_rationals_init(r, p->lambda, p->mu, p->tau, p->pi);
+        tkf91_expressions_init(expressions, er, r);
 
-    gr = rgen_reg_new();
-    tkf91_rgenerators_init(generators, gr, r, expressions, A, szA, B, szB);
-    rgen_reg_finalize(gr, er);
-    fmpz_mat_init(mat, rgen_reg_nrows(gr), rgen_reg_ncols(gr));
-    rgen_reg_get_matrix(mat, gr);
+        gr = rgen_reg_new();
+        tkf91_rgenerators_init(generators, gr, r, expressions, A, szA, B, szB);
+        rgen_reg_finalize(gr, er);
+        fmpz_mat_init(mat, rgen_reg_nrows(gr), rgen_reg_ncols(gr));
+        rgen_reg_get_matrix(mat, gr);
 
-    rgen_reg_clear(gr);
-    tkf91_rationals_clear(r);
+        rgen_reg_clear(gr);
+        tkf91_rationals_clear(r);
 
-    expressions_table = reg_vec(er);
+        expressions_table = reg_vec(er);
 
-    f(mat, expressions_table, generators, p->trace_flag, A, szA, B, szB);
+        f(mat, expressions_table, generators, p->trace_flag, A, szA, B, szB);
+
+        fmpz_mat_clear(mat);
+        flint_free(expressions_table);
+
+        reg_clear(er);
+        tkf91_expressions_clear(expressions);
+    }
 
     /* timing */
-    diff = clock() - start;
+    diff = (clock() - start) / nreps;
     msec = (diff * 1000) / CLOCKS_PER_SEC;
     printf("Time taken %d seconds %d milliseconds.\n", msec/1000, msec%1000);
-
-    fmpz_mat_clear(mat);
-    flint_free(expressions_table);
-
-    reg_clear(er);
-    tkf91_expressions_clear(expressions);
 }
 
 

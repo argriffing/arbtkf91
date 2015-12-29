@@ -8,6 +8,16 @@
 #include "breadcrumbs.h"
 #include "wavefront_double.h"
 
+static __inline__ void
+_print_elapsed_time(clock_t diff)
+{
+    int usec = (diff * 1000 * 1000) / CLOCKS_PER_SEC;
+    int msec = usec / 1000;
+    int sec = msec / 1000;
+    printf("time taken %d seconds %d milliseconds %d microseconds.\n",
+            sec, msec%1000, usec%1000);
+}
+
 static __inline__
 double max(double a, double b)
 {
@@ -391,8 +401,7 @@ tkf91_dynamic_programming_double_tmat(
     slong i, j;
     tnode_ptr cell, p0, p1, p2;
     slong nta, ntb;
-    clock_t diff, start;
-    int msec;
+    clock_t start;
 
     /* dynamic programming 'generators' as local variables */
     double m1_00;
@@ -405,10 +414,8 @@ tkf91_dynamic_programming_double_tmat(
     double c2_incr[4];
 
     /* values that are cached per row in the main loop */
-    /*
     double c0_incr_nta;
-    double c1_incr_nta[4];
-    */
+    double * c1_incr_nta;
 
     /* start the clock */
     start = clock();
@@ -428,16 +435,6 @@ tkf91_dynamic_programming_double_tmat(
         }
         c2_incr[i] = _doublify(g->c2_incr[i], m);
     }
-
-    /* redundantly init precomputed values to avoid compiler warning */
-    /*
-    nta = 0;
-    c0_incr_nta = c0_incr[nta];
-    for (ntb = 0; ntb < 4; ntb++)
-    {
-        c1_incr_nta[ntb] = c1_incr[4*nta + ntb];
-    }
-    */
 
     nrows = szA + 1;
     ncols = szB + 1;
@@ -498,45 +495,40 @@ tkf91_dynamic_programming_double_tmat(
         nta = A[i - 1];
 
         /* precompute stuff for this row */
-        /*
         c0_incr_nta = c0_incr[nta];
-        for (ntb = 0; ntb < 4; ntb++)
-        {
-            c1_incr_nta[ntb] = c1_incr[4*nta + ntb];
-        }
-        */
+        c1_incr_nta = c1_incr + 4*nta;
 
-        /*
         tnode_ptr prev_row = tmat->data + (i-1)*ncols;
         tnode_ptr curr_row = tmat->data + i*ncols;
-        */
         for (j = 1; j < ncols; j++)
         {
             ntb = B[j - 1];
 
-            /*
             cell = curr_row + j;
             p0 = prev_row + j;
             p1 = prev_row + j-1;
             p2 = curr_row + j-1;
-            */
+
+            /*
             cell = tmat_entry(tmat, i, j);
             p0 = tmat_entry_top(tmat, i, j);
             p1 = tmat_entry_diag(tmat, i, j);
             p2 = tmat_entry_left(tmat, i, j);
+            */
 
             p0_max3 = max(p0->m0, max(p0->m1, p0->m2));
             p1_max3 = max(p1->m0, max(p1->m1, p1->m2));
             p2_max2 = max(p2->m1, p2->m2);
 
-            /*
             cell->m0 = p0_max3 + c0_incr_nta;
             cell->m1 = p1_max3 + c1_incr_nta[ntb];
             cell->m2 = p2_max2 + c2_incr[ntb];
-            */
+
+            /*
             cell->m0 = p0_max3 + c0_incr[nta];
             cell->m1 = p1_max3 + c1_incr[nta*4 + ntb];
             cell->m2 = p2_max2 + c2_incr[ntb];
+            */
         }
     }
 
@@ -547,11 +539,8 @@ tkf91_dynamic_programming_double_tmat(
     flint_printf("score: %g\n", exp(max3));
 
     /* stop the clock */
-    diff = clock() - start;
-    msec = (diff * 1000) / CLOCKS_PER_SEC;
     printf("pre-traceback dynamic programming ");
-    printf("time taken %d seconds %d milliseconds.\n",
-            msec/1000, msec%1000);
+    _print_elapsed_time(clock() - start);
 
 
     /* do the traceback */
@@ -570,11 +559,8 @@ tkf91_dynamic_programming_double_tmat(
         free(sa);
         free(sb);
 
-        diff = clock() - start;
-        msec = (diff * 1000) / CLOCKS_PER_SEC;
         printf("traceback ");
-        printf("time taken %d seconds %d milliseconds.\n",
-                msec/1000, msec%1000);
+        _print_elapsed_time(clock() - start);
     }
 
 
@@ -584,11 +570,8 @@ tkf91_dynamic_programming_double_tmat(
 
     tmat_clear(tmat);
 
-    diff = clock() - start;
-    msec = (diff * 1000) / CLOCKS_PER_SEC;
     printf("cleanup ");
-    printf("time taken %d seconds %d milliseconds.\n",
-            msec/1000, msec%1000);
+    _print_elapsed_time(clock() - start);
 }
 
 
@@ -611,8 +594,7 @@ void tkf91_dynamic_programming_double(
     slong i, j;
     dnode_ptr cell, p0, p1, p2;
     slong nta, ntb;
-    clock_t diff, start;
-    int msec;
+    clock_t start;
 
     /* dynamic programming 'generators' as local variables */
     double m1_00;
@@ -754,11 +736,8 @@ void tkf91_dynamic_programming_double(
     flint_printf("score: %g\n", exp(cell->max3));
 
     /* stop the clock */
-    diff = clock() - start;
-    msec = (diff * 1000) / CLOCKS_PER_SEC;
     printf("pre-traceback dynamic programming ");
-    printf("time taken %d seconds %d milliseconds.\n",
-            msec/1000, msec%1000);
+    _print_elapsed_time(clock() - start);
 
 
     /* do the traceback */
@@ -777,11 +756,8 @@ void tkf91_dynamic_programming_double(
         free(sa);
         free(sb);
 
-        diff = clock() - start;
-        msec = (diff * 1000) / CLOCKS_PER_SEC;
         printf("traceback ");
-        printf("time taken %d seconds %d milliseconds.\n",
-                msec/1000, msec%1000);
+        _print_elapsed_time(clock() - start);
     }
 
 
@@ -795,11 +771,8 @@ void tkf91_dynamic_programming_double(
         breadcrumb_mat_clear(crumb_mat);
     }
 
-    diff = clock() - start;
-    msec = (diff * 1000) / CLOCKS_PER_SEC;
     printf("cleanup ");
-    printf("time taken %d seconds %d milliseconds.\n",
-            msec/1000, msec%1000);
+    _print_elapsed_time(clock() - start);
 }
 
 

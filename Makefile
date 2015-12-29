@@ -16,7 +16,7 @@ WARNINGS=-Wall  -Wunused-parameter -Wredundant-decls  -Wreturn-type  -Wswitch-de
 #WARNINGS=-W -Wall -Wextra -pedantic -fpermissive
 
 
-CFLAGS+= $(WARNINGS) -O3 $(DEFS) $(GLOBAL_DEFS) -march=native
+CFLAGS+= $(WARNINGS) -O3 $(DEFS) $(GLOBAL_DEFS) -march=native -ffast-math
 CFLAGS+= -g
 #CFLAGS+= -std=c++11
 
@@ -73,8 +73,9 @@ bin/t-femtocas: tests/t-femtocas.c femtocas.o
 check_expressions: bin/t-expressions
 	$(ARB_LD_LIBRARY) $(VALGRIND) bin/t-expressions
 
-expressions.o: expressions.c
-	$(CC) expressions.c -c $(ARB_INCLUDES) $(CFLAGS) femtocas.o \
+expressions.o: expressions.c \
+	femtocas.h
+	$(CC) expressions.c -c $(ARB_INCLUDES) $(CFLAGS) \
 		-lflint -lgmp -larb
 
 bin/t-expressions: tests/t-expressions.c expressions.o \
@@ -90,9 +91,9 @@ bin/t-expressions: tests/t-expressions.c expressions.o \
 check_generators: bin/t-generators
 	$(ARB_LD_LIBRARY) $(VALGRIND) bin/t-generators
 
-generators.o: generators.c
+generators.o: generators.c \
+	femtocas.h expressions.h
 	$(CC) generators.c -c $(ARB_INCLUDES) $(CFLAGS) \
-		femtocas.o expressions.o \
 		-lflint -lgmp -larb
 
 bin/t-generators: tests/t-generators.c generators.o \
@@ -107,21 +108,18 @@ bin/t-generators: tests/t-generators.c generators.o \
 # more generators stuff
 
 rgenerators.o: rgenerators.c \
-	femtocas.o expressions.o generators.o
+	femtocas.h expressions.h generators.h
 	$(CC) rgenerators.c -c $(ARB_INCLUDES) $(CFLAGS) \
-		femtocas.o expressions.o generators.o \
 		-lflint -lgmp -larb
 
 tkf91_rgenerators.o: tkf91_rgenerators.c \
-	femtocas.o expressions.o generators.o rgenerators.o
+	femtocas.h expressions.h generators.h rgenerators.h
 	$(CC) tkf91_rgenerators.c -c $(ARB_INCLUDES) $(CFLAGS) \
-		femtocas.o expressions.o rgenerators.o \
 		-lflint -lgmp -larb
 
 tkf91_generators.o: tkf91_generators.c \
-	femtocas.o expressions.o generators.o
+	femtocas.h expressions.h generators.h
 	$(CC) tkf91_generators.c -c $(ARB_INCLUDES) $(CFLAGS) \
-		femtocas.o expressions.o generators.o \
 		-lflint -lgmp -larb
 
 
@@ -154,30 +152,26 @@ tkf91_generator_vecs.o: tkf91_generator_vecs.c
 		-lflint -lgmp
 
 tkf91_dp_d.o: tkf91_dp_d.c \
-	breadcrumbs.o
+	breadcrumbs.h
 	$(CC) tkf91_dp_d.c \
-		breadcrumbs.o \
 		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb
 
 tkf91_dp_r.o: tkf91_dp_r.c \
-	breadcrumbs.o tkf91_generator_vecs.o
+	breadcrumbs.h tkf91_generator_vecs.h
 	$(CC) tkf91_dp_r.c \
-		breadcrumbs.o tkf91_generator_vecs.o \
 		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb
 
 tkf91_dp_bound.o: tkf91_dp_bound.c \
-	breadcrumbs.o bound_mat.o
+	breadcrumbs.h bound_mat.h
 	$(CC) tkf91_dp_bound.c \
-		breadcrumbs.o bound_mat.o \
 		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb
 
 bound_mat.o: bound_mat.c \
-	breadcrumbs.o
+	breadcrumbs.h
 	$(CC) bound_mat.c \
-		breadcrumbs.o \
 		-c $(CFLAGS) \
 		-lflint -lgmp
 
