@@ -11,6 +11,7 @@
 #include "breadcrumbs.h"
 #include "bound_mat.h"
 #include "printutil.h"
+#include "vis.h"
 
 
 typedef struct
@@ -478,6 +479,8 @@ tkf91_dp_bound(
         fclose(fout);
         */
 
+        /* create the tableau png image */
+        write_tableau_image("tableau.png", crumb_mat, "tkf91 tableau");
 
 
         /* do the traceback */
