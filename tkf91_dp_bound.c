@@ -12,6 +12,7 @@
 #include "bound_mat.h"
 #include "printutil.h"
 #include "vis.h"
+#include "count_solutions.h"
 
 
 typedef struct
@@ -324,6 +325,7 @@ tkf91_dp_bound(
         fmpz_mat_t mat, expr_ptr * expressions_table,
         tkf91_generator_indices_t g,
         int trace_flag,
+        int png_flag,
         slong *A, size_t szA,
         slong *B, size_t szB)
 {
@@ -480,7 +482,15 @@ tkf91_dp_bound(
         */
 
         /* create the tableau png image */
-        write_tableau_image("tableau.png", crumb_mat, "tkf91 tableau");
+        if (png_flag)
+        {
+            start = clock();
+
+            write_tableau_image("tableau.png", crumb_mat, "tkf91 tableau");
+
+            printf("creating tableau png image ");
+            _print_elapsed_time(clock() - start);
+        }
 
 
         /* do the traceback */
@@ -497,13 +507,27 @@ tkf91_dp_bound(
         printf("alignment traceback ");
         _print_elapsed_time(clock() - start);
 
-        /* symbolic verification */
         start = clock();
-
         tkf91_dp_verify_symbolically(mat, g, crumb_mat, A, B);
-
         printf("symbolic verification ");
         _print_elapsed_time(clock() - start);
+
+        {
+            fmpz_t solution_count;
+            fmpz_init(solution_count);
+
+            start = clock();
+
+            count_solutions(solution_count, crumb_mat);
+            flint_printf("number of optimal solutions:\n");
+            fmpz_print(solution_count);
+            flint_printf("\n");
+
+            printf("counting solutions ");
+            _print_elapsed_time(clock() - start);
+
+            fmpz_clear(solution_count);
+        }
     }
 
 

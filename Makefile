@@ -160,14 +160,15 @@ tkf91_dp_r.o: tkf91_dp_r.c \
 		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS)
 
 tkf91_dp_bound.o: tkf91_dp_bound.c \
-	breadcrumbs.h bound_mat.h printutil.h vis.h
+	breadcrumbs.h bound_mat.h printutil.h vis.h count_solutions.h
 	$(CC) tkf91_dp_bound.c \
 		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS)
 
-bound_mat.o: bound_mat.c \
-	breadcrumbs.h
-	$(CC) bound_mat.c \
-		-c $(CFLAGS)
+bound_mat.o: bound_mat.c breadcrumbs.h
+	$(CC) bound_mat.c -c $(CFLAGS)
+
+count_solutions.o: count_solutions.c count_solutions.h breadcrumbs.h
+	$(CC) count_solutions.c -c $(CFLAGS)
 
 
 
@@ -178,7 +179,7 @@ bin/arbtkf91: arbtkf91.c \
 	generators.o tkf91_generators.o \
 	rgenerators.o tkf91_rgenerators.o \
 	wavefront_double.o wavefront_hermite.o breadcrumbs.o \
-	tkf91_generator_vecs.o vis.o \
+	tkf91_generator_vecs.o vis.o count_solutions.o \
 	tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o bound_mat.o
 	$(CC) arbtkf91.c \
 		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
@@ -187,7 +188,7 @@ bin/arbtkf91: arbtkf91.c \
 		wavefront_double.o wavefront_hermite.o breadcrumbs.o \
 		tkf91_generator_vecs.o vis.o \
 		tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o \
-		bound_mat.o \
+		bound_mat.o count_solutions.o \
 		-o bin/arbtkf91 \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb -lm -lpng

@@ -90,7 +90,7 @@ int write_tableau_image(
     png_infop info_ptr;
     int code, width, height;
     png_byte r, g, b;
-    breadcrumb_t d;
+    breadcrumb_t curr, top, diag, left;
 
     fout = NULL;
     png_ptr = NULL;
@@ -156,6 +156,7 @@ int write_tableau_image(
     png_write_info(png_ptr, info_ptr);
 
     /* write image data one row at a time */
+    breadcrumb_t want_any = (CRUMB_WANT2 | CRUMB_WANT3 | CRUMB_CONTENDER);
     int i, j, di, dj;
     buf_t buf;
     buf_init(buf, nrows, ncols);
@@ -166,7 +167,11 @@ int write_tableau_image(
 
         for (j = 0; j < ncols; j++)
         {
-            d = *breadcrumb_mat_srcentry(mat, i, j);
+            curr = *breadcrumb_mat_srcentry(mat, i, j);
+            top = diag = left = 0;
+            if (i) top = *breadcrumb_mat_srcentry(mat, i-1, j);
+            if (i && j) diag = *breadcrumb_mat_srcentry(mat, i-1, j-1);
+            if (j) left = *breadcrumb_mat_srcentry(mat, i, j-1);
 
             /*
              * Draw this tableau cell and its connections to its
@@ -174,11 +179,11 @@ int write_tableau_image(
              */
 
             /* draw the cell itself, without connections */
-            if (d & CRUMB_CONTENDER) {
+            if (curr & CRUMB_CONTENDER) {
                 r = 255; g = 0; b = 0;
-            } else if (d & CRUMB_WANT3) {
+            } else if (curr & CRUMB_WANT3) {
                 r = 0; g = 0; b = 255;
-            } else if (d & CRUMB_WANT2) {
+            } else if (curr & CRUMB_WANT2) {
                 r = 0; g = 255; b = 0;
             } else {
                 r = 0; g = 80; b = 0;
@@ -187,6 +192,63 @@ int write_tableau_image(
                 for (dj = 2; dj < 5; dj++) {
                     buf_set_rgb(buf, j, di, dj, r, g, b);
                 }
+            }
+
+            /* top connections */
+            if ((curr & want_any) && (top & want_any))
+            {
+                r = 0; b = 0; g = 0;
+                if (curr & CRUMB_TOP)
+                {
+                    r = 0; g = 255; b = 0;
+                }
+                if ((top & CRUMB_CONTENDER) && (curr & CRUMB_CONTENDER))
+                {
+                    if (curr & CRUMB_TOP)
+                    {
+                        r = 255; g = 0; b = 0;
+                    }
+                }
+                buf_set_rgb(buf, j, 0, 3, r, g, b);
+                buf_set_rgb(buf, j, 1, 3, r, g, b);
+            }
+
+            /* left connections */
+            if ((curr & want_any) && (left & want_any))
+            {
+                r = 0; b = 0; g = 0;
+                if (curr & CRUMB_LEFT2)
+                {
+                    r = 0; g = 255; b = 0;
+                }
+                if ((left & CRUMB_CONTENDER) && (curr & CRUMB_CONTENDER))
+                {
+                    if (curr & CRUMB_LEFT)
+                    {
+                        r = 255; g = 0; b = 0;
+                    }
+                }
+                buf_set_rgb(buf, j, 3, 0, r, g, b);
+                buf_set_rgb(buf, j, 3, 1, r, g, b);
+            }
+
+            /* diagonal connections */
+            if ((curr & want_any) && (diag & want_any))
+            {
+                r = 0; b = 0; g = 0;
+                if (curr & CRUMB_DIAG2)
+                {
+                    r = 0; g = 255; b = 0;
+                }
+                if ((diag & CRUMB_CONTENDER) && (curr & CRUMB_CONTENDER))
+                {
+                    if (curr & CRUMB_DIAG)
+                    {
+                        r = 255; g = 0; b = 0;
+                    }
+                }
+                buf_set_rgb(buf, j, 0, 0, r, g, b);
+                buf_set_rgb(buf, j, 1, 1, r, g, b);
             }
         }
 
@@ -210,17 +272,6 @@ end:
 }
 
 /*
-
-
-            # cell color
-            if d & CRUMB_CONTENDER:
-                image[i, j, 2:, 2:, IRED] = BRIGHT
-            elif d & CRUMB_WANT3:
-                image[i, j, 2:, 2:, IBLUE] = BRIGHT
-            elif d & CRUMB_WANT2:
-                image[i, j, 2:, 2:, IGREEN] = BRIGHT
-            else:
-                image[i, j, 2:, 2:, IGREEN] = DIM
 
             # connections among potentially informative nodes
             #

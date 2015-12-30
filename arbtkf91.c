@@ -33,6 +33,7 @@
 typedef struct
 {
     int trace_flag;
+    int png_flag;
     fmpq_t lambda;
     fmpq_t mu;
     fmpq_t tau;
@@ -49,6 +50,7 @@ void user_params_print(const user_params_t p);
 typedef void (*tkf91_dp_fn)(
         fmpz_mat_t, expr_ptr *,
         tkf91_generator_indices_t,
+        int,
         int,
         slong *, size_t,
         slong *, size_t);
@@ -88,6 +90,7 @@ user_params_init(user_params_t p)
 {
     slong i;
     p->trace_flag = 0;
+    p->png_flag = 0;
     fmpq_init(p->lambda);
     fmpq_init(p->mu);
     fmpq_init(p->tau);
@@ -153,7 +156,9 @@ _run(tkf91_dp_fn f, const user_params_t p,
 
     expressions_table = reg_vec(er);
 
-    f(mat, expressions_table, generators, p->trace_flag, A, szA, B, szB);
+    f(mat, expressions_table, generators,
+            p->trace_flag, p->png_flag,
+            A, szA, B, szB);
 
     fmpz_mat_clear(mat);
     flint_free(expressions_table);
@@ -287,6 +292,8 @@ main(int argc, char *argv[])
     {
         if (strcmp(argv[i], "--bench") == 0) {
             flint_sscanf(argv[i + 1], "%d", &bench_flag);
+        } else if (strcmp(argv[i], "--png") == 0) {
+            flint_sscanf(argv[i + 1], "%d", &p->png_flag);
         } else if (strcmp(argv[i], "--trace") == 0) {
             flint_sscanf(argv[i + 1], "%d", &(p->trace_flag));
         } else if (strcmp(argv[i], "--precision") == 0) {

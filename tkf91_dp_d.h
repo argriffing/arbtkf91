@@ -17,6 +17,7 @@ void tkf91_dp_d(
         fmpz_mat_t mat, expr_ptr * expressions_table,
         tkf91_generator_indices_t g,
         int trace_flag,
+        int png_flag,
         slong *A, size_t szA,
         slong *B, size_t szB);
 
