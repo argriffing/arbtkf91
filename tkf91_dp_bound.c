@@ -6,7 +6,9 @@
 #include <time.h>
 
 #include "mag.h"
+#include "arb_mat.h"
 
+#include "tkf91_dp.h"
 #include "tkf91_dp_bound.h"
 #include "breadcrumbs.h"
 #include "bound_mat.h"
@@ -322,10 +324,9 @@ cellfront_clear(cellfront_t x)
 
 void
 tkf91_dp_bound(
+        solution_t sol, const request_t req,
         fmpz_mat_t mat, expr_ptr * expressions_table,
         tkf91_generator_indices_t g,
-        int trace_flag,
-        int png_flag,
         slong *A, size_t szA,
         slong *B, size_t szB)
 {
@@ -347,7 +348,7 @@ tkf91_dp_bound(
     breadcrumb_mat_t crumb_mat;
     breadcrumb_ptr pcrumb;
 
-    if (trace_flag)
+    if (req->trace)
     {
         breadcrumb_mat_init(crumb_mat, nrows, ncols);
     }
@@ -434,7 +435,7 @@ tkf91_dp_bound(
             cell_fill(cell, lb_m0, lb_m1, lb_m2, ub_m0, ub_m1, ub_m2);
 
             /* optionally fill the table for traceback */
-            if (trace_flag)
+            if (req->trace)
             {
                 pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
 
@@ -444,8 +445,7 @@ tkf91_dp_bound(
         }
     }
 
-    printf("dynamic programming ");
-    _print_elapsed_time(clock() - start);
+    _fprint_elapsed(stderr, "dynamic programming", clock() - start);
 
     /* report the score */
 
@@ -459,7 +459,7 @@ tkf91_dp_bound(
     mag_print(&(cell->ub3));
     flint_printf("\n");
 
-    if (trace_flag)
+    if (req->trace)
     {
         /*
          * Get the not-ruled-out cells of the dynamic programming table,
@@ -467,45 +467,25 @@ tkf91_dp_bound(
          * information towards the optimal alignment.
          */
         start = clock();
-
         breadcrumb_mat_get_mask(crumb_mat, crumb_mat);
-
-        printf("mask extraction ");
-        _print_elapsed_time(clock() - start);
-
-        /* print the mask to a file */
-        /*
-        FILE *fout;
-        fout = fopen("mask.txt", "wt");
-        breadcrumb_mat_fprint(fout, crumb_mat);
-        fclose(fout);
-        */
+        _fprint_elapsed(stderr, "mask extraction", clock() - start);
 
         /* create the tableau png image */
-        if (png_flag)
+        if (req->png_filename)
         {
             start = clock();
-
-            write_tableau_image("tableau.png", crumb_mat, "tkf91 tableau");
-
-            printf("creating tableau png image ");
-            _print_elapsed_time(clock() - start);
+            write_tableau_image(req->png_filename, crumb_mat, "tkf91 tableau");
+            _fprint_elapsed(stderr, "create tableau png", clock() - start);
         }
-
 
         /* do the traceback */
         start = clock();
 
-        char *sa, *sb;
-        breadcrumb_mat_get_alignment(&sa, &sb, crumb_mat, A, B);
-        flint_printf("%s\n", sa);
-        flint_printf("%s\n", sb);
-        flint_printf("\n");
-        free(sa);
-        free(sb);
+        breadcrumb_mat_get_alignment(
+                sol->A, sol->B, &(sol->len),
+                crumb_mat, A, B);
 
-        printf("alignment traceback ");
-        _print_elapsed_time(clock() - start);
+        _fprint_elapsed(stderr, "alignment traceback", clock() - start);
 
         start = clock();
         tkf91_dp_verify_symbolically(mat, g, crumb_mat, A, B);
@@ -523,8 +503,7 @@ tkf91_dp_bound(
             fmpz_print(solution_count);
             flint_printf("\n");
 
-            printf("counting solutions ");
-            _print_elapsed_time(clock() - start);
+            _fprint_elapsed(stderr, "counting solutions", clock() - start);
 
             fmpz_clear(solution_count);
         }
@@ -532,7 +511,7 @@ tkf91_dp_bound(
 
 
     cellfront_clear(cells);
-    if (trace_flag)
+    if (req->trace)
     {
         breadcrumb_mat_clear(crumb_mat);
     }

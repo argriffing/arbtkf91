@@ -40,7 +40,7 @@ extern "C" {
 
 void breadcrumb_mat_init(breadcrumb_mat_t mat, slong nrows, slong ncols);
 void breadcrumb_mat_clear(breadcrumb_mat_t mat);
-void breadcrumb_mat_get_alignment(char **psa, char **psb,
+void breadcrumb_mat_get_alignment(char *sa, char *sb, slong *plen,
         breadcrumb_mat_t mat, const slong *A, const slong *B);
 void breadcrumb_mat_get_mask(breadcrumb_mat_t mask, const breadcrumb_mat_t mat);
 void breadcrumb_mat_fprint(FILE *stream, const breadcrumb_mat_t mat);

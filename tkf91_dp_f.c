@@ -4,6 +4,9 @@
 
 #include <time.h>
 
+#include "arb_mat.h"
+
+#include "tkf91_dp.h"
 #include "tkf91_dp_f.h"
 #include "printutil.h"
 
@@ -27,7 +30,7 @@ typedef tmat_struct tmat_t[1];
 
 static void tmat_init(tmat_t mat, slong nrows, slong ncols);
 static void tmat_clear(tmat_t mat);
-static void tmat_get_alignment(char **psa, char **psb,
+static void tmat_get_alignment(solution_t sol,
         const tmat_t mat, const slong *A, const slong *B);
 
 static __inline__ slong
@@ -87,8 +90,8 @@ tmat_clear(tmat_t mat)
 }
 
 void
-tmat_get_alignment(char **psa, char **psb,
-        const tmat_t mat, const slong *A, const slong *B)
+tmat_get_alignment(
+        solution_t sol, const tmat_t mat, const slong *A, const slong *B)
 {
     slong i, j;
     char ACGT[4] = "ACGT";
@@ -99,17 +102,17 @@ tmat_get_alignment(char **psa, char **psb,
     float max3;
     tnode_ptr cell;
 
+    sa = sol->A;
+    sb = sol->B;
+
     nrows = tmat_nrows(mat);
     ncols = tmat_ncols(mat);
-    sa = calloc(nrows * ncols, sizeof(char));
-    sb = calloc(nrows * ncols, sizeof(char));
     i = nrows - 1;
     j = ncols - 1;
     len = 0;
     while (i > 0 || j > 0)
     {
         cell = tmat_srcentry(mat, i, j);
-        /* flint_printf("%lf %lf %lf\n", cell->m0, cell->m1, cell->m2); */
         max3 = fmaxf(cell->m0, fmaxf(cell->m1, cell->m2));
         if (cell->m0 == max3)
         {
@@ -144,21 +147,9 @@ tmat_get_alignment(char **psa, char **psb,
         tmp = sa[i]; sa[i] = sa[j]; sa[j] = tmp;
         tmp = sb[i]; sb[i] = sb[j]; sb[j] = tmp;
     }
-    *psa = sa;
-    *psb = sb;
+
+    sol->len = len;
 }
-
-
-
-
-
-
-void tkf91_dynamic_programming_float(
-        const tkf91_generator_indices_t g,
-        const arb_mat_t m,
-        int trace_flag,
-        slong *A, slong szA,
-        slong *B, slong szB);
 
 
 static __inline__ float
@@ -178,17 +169,17 @@ _floatify(slong i, const arb_mat_t m)
 
 void
 tkf91_dynamic_programming_float_tmat(
+        solution_t sol, const request_t req,
         const tkf91_generator_indices_t g,
         const arb_mat_t m,
-        int trace_flag,
         slong *A, slong szA,
         slong *B, slong szB);
 
 void
 tkf91_dynamic_programming_float_tmat(
+        solution_t sol, const request_t req,
         const tkf91_generator_indices_t g,
         const arb_mat_t m,
-        int trace_flag,
         slong *A, slong szA,
         slong *B, slong szB)
 {
@@ -316,45 +307,24 @@ tkf91_dynamic_programming_float_tmat(
         }
     }
 
-    /* report the score */
-    float max3;
+    /* compute the log probability of the optimal alignment */
+    float logp;
     cell = tmat_entry(tmat, nrows-1, ncols-1);
-    max3 = fmaxf(cell->m0, fmaxf(cell->m1, cell->m2));
-    flint_printf("score: %f\n", exp(max3));
+    logp = fmaxf(cell->m0, fmaxf(cell->m1, cell->m2));
+    arb_set_d(sol->log_probability, (double) logp);
+    _fprint_elapsed(stderr, "forward dynamic programming", clock() - start);
 
-    /* stop the clock */
-    printf("pre-traceback dynamic programming ");
-    _print_elapsed_time(clock() - start);
-
-
-    /* do the traceback */
-    if (trace_flag)
+    /* do the traceback if requested */
+    if (req->trace)
     {
-
-        /* restart the clock for traceback */
         start = clock();
-
-        char *sa, *sb;
-        tmat_get_alignment(&sa, &sb, tmat, A, B);
-        flint_printf("%s\n", sa);
-        flint_printf("%s\n", sb);
-        flint_printf("\n");
-        free(sa);
-        free(sb);
-
-        printf("traceback ");
-        _print_elapsed_time(clock() - start);
+        tmat_get_alignment(sol, tmat, A, B);
+        _fprint_elapsed(stderr, "traceback", clock() - start);
     }
 
-
-
-    /* restart the clock for cleanup */
     start = clock();
-
     tmat_clear(tmat);
-
-    printf("cleanup ");
-    _print_elapsed_time(clock() - start);
+    _fprint_elapsed(stderr, "cleanup", clock() - start);
 }
 
 
@@ -363,10 +333,9 @@ tkf91_dynamic_programming_float_tmat(
 
 void
 tkf91_dp_f(
+        solution_t sol, const request_t req,
         fmpz_mat_t mat, expr_ptr * expressions_table,
         tkf91_generator_indices_t g,
-        int trace_flag,
-        int png_flag,
         slong *A, size_t szA,
         slong *B, size_t szB)
 {
@@ -400,7 +369,7 @@ tkf91_dp_f(
     arb_mat_mul(generator_logs, G, expression_logs, prec);
 
     tkf91_dynamic_programming_float_tmat(
-            g, generator_logs, trace_flag, A, szA, B, szB);
+            sol, req, g, generator_logs, A, szA, B, szB);
 
     arb_clear(x);
     arb_mat_clear(G);

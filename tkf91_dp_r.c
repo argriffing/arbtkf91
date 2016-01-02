@@ -8,6 +8,9 @@
 
 #include <time.h>
 
+#include "arb_mat.h"
+
+#include "tkf91_dp.h"
 #include "tkf91_dp_r.h"
 #include "breadcrumbs.h"
 #include "wavefront_hermite.h"
@@ -144,12 +147,16 @@ _get_max3_checked(
     return best;
 }
 
-void tkf91_dynamic_programming_hermite(tkf91_generator_vecs_t g,
+void tkf91_dynamic_programming_hermite(
+        solution_t sol, const request_t req,
+        tkf91_generator_vecs_t g,
         arb_ptr v, slong rank, slong prec,
         slong *A, slong szA,
         slong *B, slong szB);
 
-void tkf91_dynamic_programming_hermite(tkf91_generator_vecs_t g,
+void tkf91_dynamic_programming_hermite(
+        solution_t sol, const request_t req,
+        tkf91_generator_vecs_t g,
         arb_ptr v, slong rank, slong prec,
         slong *A, slong szA,
         slong *B, slong szB)
@@ -385,23 +392,12 @@ void tkf91_dynamic_programming_hermite(tkf91_generator_vecs_t g,
     l = nrows - 1 + j - i;
     cell = hwave_mat_entry(wave, k, l);
     best = _get_max3_checked(cell->m+0, cell->m+1, cell->m+2, rank);
-    arb_t arbscore;
-    arb_init(arbscore);
-    _arb_vec_dot_fmpz_vec(arbscore, v, best->vec, rank, prec);
-    arb_exp(arbscore, arbscore, prec);
-    flint_printf("score: ");
-    arb_printd(arbscore, 15);
-    flint_printf("\n");
-    arb_clear(arbscore);
+    _arb_vec_dot_fmpz_vec(sol->log_probability, v, best->vec, rank, prec);
 
     /* do the traceback */
-    char *sa, *sb;
-    breadcrumb_mat_get_alignment(&sa, &sb, crumb_mat, A, B);
-    flint_printf("%s\n", sa);
-    flint_printf("%s\n", sb);
-    flint_printf("\n");
-    free(sa);
-    free(sb);
+    breadcrumb_mat_get_alignment(
+            sol->A, sol->B, &(sol->len),
+            crumb_mat, A, B);
 
     /* clear the tables */
     hwave_mat_clear(wave);
@@ -411,10 +407,9 @@ void tkf91_dynamic_programming_hermite(tkf91_generator_vecs_t g,
 
 void
 tkf91_dp_r(
+        solution_t sol, const request_t req,
         fmpz_mat_t mat, expr_ptr * expressions_table,
         tkf91_generator_indices_t g,
-        int trace_flag,
-        int png_flag,
         slong *A, size_t szA,
         slong *B, size_t szB)
 {
@@ -424,7 +419,6 @@ tkf91_dp_r(
      *   expressions_table : map from expression index to expression object
      *   g : a struct with tkf91 generator indices
      */
-    UNUSED(trace_flag); /* TODO use this */
 
     arb_t x;
     fmpz_mat_t H, V;
@@ -448,8 +442,8 @@ tkf91_dp_r(
     fmpz_mat_init(V, fmpz_mat_nrows(mat), fmpz_mat_nrows(mat));
     _fmpz_mat_hnf_inverse_transform(H, V, &rank, mat);
 
-    flint_printf("matrix rank ");
-    flint_printf("revealed by the Hermite normal form: %wd\n", rank);
+    flint_fprintf(stderr, "matrix rank revealed by the ");
+    flint_fprintf(stderr, "Hermite normal form: %wd\n", rank);
 
     /*
      * 'vecify' a structure with tkf91 generators,
@@ -498,14 +492,14 @@ tkf91_dp_r(
      */
     arb_ptr v;
     v = _arb_vec_init(rank);
-    flint_printf("quasi generator logarithms:\n");
+    flint_fprintf(stderr, "quasi generator logarithms:\n");
     for (i = 0; i < rank; i++)
     {
         arb_set(v+i, arb_mat_entry(quasi_generator_logs, i, 0));
-        arb_printd(v+i, 15);
-        flint_printf("\n");
+        arb_fprintd(stderr, v+i, 15);
+        flint_fprintf(stderr, "\n");
     }
-    flint_printf("\n");
+    flint_fprintf(stderr, "\n");
 
     /*
      * Begin checking some invariants.
@@ -568,10 +562,10 @@ tkf91_dp_r(
     arb_mat_clear(quasi_generator_logs);
 
     /* do the thing */
-    tkf91_dynamic_programming_hermite(h, v, rank, prec, A, szA, B, szB);
+    tkf91_dynamic_programming_hermite(
+            sol, req, h, v, rank, prec, A, szA, B, szB);
 
     /* clear the remaining variables */
     _arb_vec_clear(v, rank);
     tkf91_generator_vecs_clear(h);
 }
-

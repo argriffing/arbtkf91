@@ -20,15 +20,17 @@ breadcrumb_mat_clear(breadcrumb_mat_t mat)
 }
 
 void
-breadcrumb_mat_get_alignment(char **psa, char **psb,
+breadcrumb_mat_get_alignment(char *sa, char *sb, slong *plen,
         breadcrumb_mat_t mat, const slong *A, const slong *B)
 {
-    /* do the traceback */
+    /*
+     * Do the traceback.
+     * The character arrays sa and sb are assumed to have been
+     * already allocated.
+     */
     slong i, j;
     char ACGT[4] = "ACGT";
     slong n = mat->nrows + mat->ncols;
-    char *sa = calloc(n, sizeof(char));
-    char *sb = calloc(n, sizeof(char));
     slong len = 0;
     i = mat->nrows - 1;
     j = mat->ncols - 1;
@@ -70,8 +72,7 @@ breadcrumb_mat_get_alignment(char **psa, char **psb,
         tmp = sa[i]; sa[i] = sa[j]; sa[j] = tmp;
         tmp = sb[i]; sb[i] = sb[j]; sb[j] = tmp;
     }
-    *psa = sa;
-    *psb = sb;
+    *plen = len;
 }
 
 

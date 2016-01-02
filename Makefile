@@ -118,12 +118,6 @@ tkf91_generators.o: tkf91_generators.c \
 	$(CC) tkf91_generators.c -c $(ARB_INCLUDES) $(CFLAGS)
 
 
-# double precision wavefront implementation
-
-wavefront_double.o: wavefront_double.c
-	$(CC) wavefront_double.c -c $(CFLAGS)
-
-
 # integer vector wavefront implementation
 
 wavefront_hermite.o: wavefront_hermite.c
@@ -145,27 +139,30 @@ tkf91_generator_vecs.o: tkf91_generator_vecs.c
 		-c $(CFLAGS)
 
 tkf91_dp_d.o: tkf91_dp_d.c \
-	breadcrumbs.h printutil.h
+	breadcrumbs.h printutil.h tkf91_dp.h
 	$(CC) tkf91_dp_d.c \
-		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS)
+		-c $(ARB_INCLUDES) $(CFLAGS)
 
 tkf91_dp_f.o: tkf91_dp_f.c \
-	printutil.h
+	printutil.h tkf91_dp.h
 	$(CC) tkf91_dp_f.c \
-		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS)
+		-c $(ARB_INCLUDES) $(CFLAGS)
 
 tkf91_dp_r.o: tkf91_dp_r.c \
-	breadcrumbs.h tkf91_generator_vecs.h
+	breadcrumbs.h tkf91_generator_vecs.h tkf91_dp.h
 	$(CC) tkf91_dp_r.c \
-		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS)
+		-c $(ARB_INCLUDES) $(CFLAGS)
 
 tkf91_dp_bound.o: tkf91_dp_bound.c \
-	breadcrumbs.h bound_mat.h printutil.h vis.h count_solutions.h
+	breadcrumbs.h bound_mat.h printutil.h vis.h count_solutions.h tkf91_dp.h
 	$(CC) tkf91_dp_bound.c \
-		-c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS)
+		-c $(ARB_INCLUDES) $(CFLAGS)
 
 bound_mat.o: bound_mat.c breadcrumbs.h
 	$(CC) bound_mat.c -c $(CFLAGS)
+
+tkf91_dp.o: tkf91_dp.c
+	$(CC) tkf91_dp.c -c $(ARB_INCLUDES) $(CFLAGS)
 
 count_solutions.o: count_solutions.c count_solutions.h breadcrumbs.h
 	$(CC) count_solutions.c -c $(CFLAGS)
@@ -178,15 +175,15 @@ bin/arbtkf91: arbtkf91.c \
 	femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 	generators.o tkf91_generators.o \
 	rgenerators.o tkf91_rgenerators.o \
-	wavefront_double.o wavefront_hermite.o breadcrumbs.o \
-	tkf91_generator_vecs.o vis.o count_solutions.o \
+	wavefront_hermite.o breadcrumbs.o \
+	tkf91_dp.o tkf91_generator_vecs.o vis.o count_solutions.o \
 	tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o bound_mat.o
 	$(CC) arbtkf91.c \
 		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 		generators.o tkf91_generators.o \
 		rgenerators.o tkf91_rgenerators.o \
-		wavefront_double.o wavefront_hermite.o breadcrumbs.o \
-		tkf91_generator_vecs.o vis.o \
+		wavefront_hermite.o breadcrumbs.o \
+		tkf91_dp.o tkf91_generator_vecs.o vis.o \
 		tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o \
 		bound_mat.o count_solutions.o \
 		-o bin/arbtkf91 \

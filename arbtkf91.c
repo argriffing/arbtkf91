@@ -45,21 +45,11 @@ void user_params_init(user_params_t p);
 void user_params_clear(user_params_t p);
 void user_params_print(const user_params_t p);
 
-
-/* function pointer typedef for the dynamic programming function */
-typedef void (*tkf91_dp_fn)(
-        fmpz_mat_t, expr_ptr *,
-        tkf91_generator_indices_t,
-        int,
-        int,
-        slong *, size_t,
-        slong *, size_t);
-
 void _fill_sequence_vector(slong *v, const char *str, slong n);
 void bench(tkf91_dp_fn f, const user_params_t params);
 void run(tkf91_dp_fn f, const user_params_t params,
         const char *strA, const char *strB);
-void _run(tkf91_dp_fn f, const user_params_t p,
+void _run(tkf91_dp_fn f, solution_t sol, const user_params_t p,
         slong *A, size_t szA, slong *B, size_t szB);
 
 
@@ -128,7 +118,7 @@ user_params_print(const user_params_t p)
 
 
 void
-_run(tkf91_dp_fn f, const user_params_t p,
+_run(tkf91_dp_fn f, solution_t sol, const user_params_t p,
         slong *A, size_t szA, slong *B, size_t szB)
 {
     tkf91_rationals_t r;
@@ -136,6 +126,19 @@ _run(tkf91_dp_fn f, const user_params_t p,
     tkf91_generator_indices_t generators;
     fmpz_mat_t mat;
     expr_ptr * expressions_table;
+    char png_filename[] = "tableau.png";
+    request_t req;
+
+    /* init request object */
+    if (p->png_flag)
+    {
+        req->png_filename = png_filename;
+    }
+    else
+    {
+        req->png_filename = NULL;
+    }
+    req->trace = p->trace_flag;
 
     /* expressions registry and (refining) generator registry */
     reg_t er;
@@ -156,9 +159,7 @@ _run(tkf91_dp_fn f, const user_params_t p,
 
     expressions_table = reg_vec(er);
 
-    f(mat, expressions_table, generators,
-            p->trace_flag, p->png_flag,
-            A, szA, B, szB);
+    f(sol, req, mat, expressions_table, generators, A, szA, B, szB);
 
     fmpz_mat_clear(mat);
     flint_free(expressions_table);
@@ -176,6 +177,7 @@ run(tkf91_dp_fn f, const user_params_t params,
     slong *A;
     slong *B;
     size_t szA, szB;
+    solution_t sol;
 
     szA = strlen(strA);
     A = flint_malloc(szA * sizeof(slong));
@@ -185,10 +187,15 @@ run(tkf91_dp_fn f, const user_params_t params,
     B = flint_malloc(szB * sizeof(slong));
     _fill_sequence_vector(B, strB, szB);
 
-    _run(f, params, A, szA, B, szB);
+    solution_init(sol, szA + szB);
+
+    _run(f, sol, params, A, szA, B, szB);
+
+    solution_print(sol);
 
     flint_free(A);
     flint_free(B);
+    solution_clear(sol);
 }
 
 
@@ -198,6 +205,7 @@ bench(tkf91_dp_fn f, const user_params_t params)
     char strA[MAXSEQLEN];
     char strB[MAXSEQLEN];
     size_t szA, szB;
+    solution_t sol;
 
     slong *A;
     slong *B;
@@ -246,16 +254,20 @@ bench(tkf91_dp_fn f, const user_params_t params)
         B = flint_malloc(szB * sizeof(slong));
         _fill_sequence_vector(B, strB, szB);
 
+        /* init the solution object */
+        solution_init(sol, szA + szB);
+
         /* run a few times, and print the average elapsed time */
         start = clock();
         for (i = 0; i < nreps; i++)
         {
-            _run(f, params, A, szA, B, szB);
+            _run(f, sol, params, A, szA, B, szB);
         }
-        _print_elapsed_time((clock() - start)/nreps);
+        _fprint_elapsed(stdout, "benchmark", (clock() - start)/nreps);
 
         flint_free(A);
         flint_free(B);
+        solution_clear(sol);
     }
 }
 
