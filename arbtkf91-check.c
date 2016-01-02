@@ -23,11 +23,44 @@
 #include "runjson.h"
 
 
-/*main(int argc, char *argv[])*/
-int
-main(void)
+json_t *run(void * userdata, json_t *j_in);
+
+json_t *run(void * userdata, json_t *j_in)
 {
+    if (userdata)
+    {
+        fprintf(stderr, "error: unexpected userdata\n");
+        abort();
+    }
+
+    json_t *root;
+    json_t *j_out;
+
+    root = j_in;
+
+    if (!json_is_array(root))
+    {
+        fprintf(stdout, "root is not an array\n");
+    }
+    else
+    {
+        fprintf(stdout, "root is an array!\n");
+    }
+
+    /* j_out = json_pack("i", 42); */
+    j_out = json_pack("[ssb]", "foo", "bar", 1);
+    return j_out;
+}
+
+
+int main(void)
+{
+    json_hom_t hom;
+    hom->userdata = NULL;
+    hom->clear = NULL;
+    hom->f = run;
+    int result = run_json_script(hom);
 
     flint_cleanup();
-    return 0;
+    return result;
 }
