@@ -31,7 +31,7 @@ CHECKS=check_factor_refine \
        check_expressions \
        check_generators
 
-all: bin/arbtkf91
+all: bin/arbtkf91 bin/arbtkf91-check
 
 # force the test scripts to be built by listing them as requirements
 tests: $(TEST_EXECUTABLES)
@@ -168,6 +168,12 @@ count_solutions.o: count_solutions.c count_solutions.h breadcrumbs.h
 	$(CC) count_solutions.c -c $(CFLAGS)
 
 
+# a json thing
+
+runjson.o: runjson.c runjson.h
+	$(CC) runjson.c -c $(CFLAGS)
+
+
 
 # the main executable
 
@@ -189,6 +195,27 @@ bin/arbtkf91: arbtkf91.c \
 		-o bin/arbtkf91 \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb -lm -lpng
+
+bin/arbtkf91-check: arbtkf91-check.c \
+	femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
+	generators.o tkf91_generators.o \
+	rgenerators.o tkf91_rgenerators.o \
+	wavefront_hermite.o breadcrumbs.o \
+	tkf91_dp.o tkf91_generator_vecs.o count_solutions.o \
+	tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o bound_mat.o \
+	runjson.o vis.o
+	$(CC) arbtkf91-check.c \
+		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
+		generators.o tkf91_generators.o \
+		rgenerators.o tkf91_rgenerators.o \
+		wavefront_hermite.o breadcrumbs.o \
+		tkf91_dp.o tkf91_generator_vecs.o \
+		tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o \
+		bound_mat.o count_solutions.o \
+		runjson.o vis.o \
+		-o bin/arbtkf91-check \
+		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+		-lflint -lgmp -larb -lm -lpng -ljansson
 
 
 # run an example
@@ -278,6 +305,7 @@ example2d: bin/arbtkf91
 clean:
 	rm -f *.o
 	rm -f bin/arbtkf91
+	rm -f bin/arbtkf91-check
 	rm -f bin/t-factor_refine
 	rm -f bin/t-femtocas
 	rm -f bin/t-expressions
