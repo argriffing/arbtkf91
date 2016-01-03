@@ -194,3 +194,52 @@ breadcrumb_mat_set(breadcrumb_mat_t mat, const breadcrumb_mat_t src)
 
     memcpy(mat->data, src->data, nrows * ncols * sizeof(breadcrumb_t));
 }
+
+void
+breadcrumb_mat_check_alignment(
+        int *p_is_optimal, int *p_is_canonical,
+        const breadcrumb_mat_t mat, const slong *A, const slong *B, const len);
+{
+    slong i, j, k;
+    char ACGT[4] = "ACGT";
+    slong n = mat->nrows + mat->ncols;
+    i = mat->nrows - 1;
+    j = mat->ncols - 1;
+    breadcrumb_t crumb;
+
+    *p_is_optimal = 1;
+    *p_is_canonical = 1;
+
+    k = len-1;
+    while (i > 0 || j > 0)
+    {
+        crumb = *breadcrumb_mat_entry(mat, i, j);
+        if (crumb & CRUMB_TOP)
+        {
+
+            sa[len] = ACGT[A[i-1]];
+            sb[len] = '-';
+            i--;
+        }
+        else if (crumb & CRUMB_DIAG)
+        {
+            sa[len] = ACGT[A[i-1]];
+            sb[len] = ACGT[B[j-1]];
+            i--;
+            j--;
+        }
+        else if (crumb & CRUMB_LEFT)
+        {
+            sa[len] = '-';
+            sb[len] = ACGT[B[j-1]];
+            j--;
+        }
+        else
+        {
+            flint_printf("lost the thread ");
+            flint_printf("in the dynamic programing traceback\n");
+            abort();
+        }
+        k++;
+    }
+}
