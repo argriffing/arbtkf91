@@ -32,7 +32,7 @@ CHECKS=check_factor_refine \
        check_generators \
        check_arbtkf91_check
 
-all: bin/arbtkf91 bin/arbtkf91-check bin/arbtkf91-bench
+all: bin/arbtkf91 bin/arbtkf91-check bin/arbtkf91-bench bin/arbtkf91-align
 
 # force the test scripts to be built by listing them as requirements
 tests: $(TEST_EXECUTABLES)
@@ -251,6 +251,27 @@ bin/arbtkf91-bench: arbtkf91-bench.c \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb -lm -lpng -ljansson
 
+bin/arbtkf91-align: arbtkf91-align.c \
+	femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
+	generators.o tkf91_generators.o \
+	rgenerators.o tkf91_rgenerators.o \
+	wavefront_hermite.o breadcrumbs.o \
+	tkf91_dp.o tkf91_generator_vecs.o count_solutions.o \
+	tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o bound_mat.o \
+	runjson.o jsonutil.o model_params.o vis.o
+	$(CC) arbtkf91-align.c \
+		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
+		generators.o tkf91_generators.o \
+		rgenerators.o tkf91_rgenerators.o \
+		wavefront_hermite.o breadcrumbs.o \
+		tkf91_dp.o tkf91_generator_vecs.o \
+		tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o \
+		bound_mat.o count_solutions.o \
+		runjson.o jsonutil.o model_params.o vis.o \
+		-o bin/arbtkf91-align \
+		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+		-lflint -lgmp -larb -lm -lpng -ljansson
+
 
 # run an example
 
@@ -341,6 +362,7 @@ clean:
 	rm -f bin/arbtkf91
 	rm -f bin/arbtkf91-check
 	rm -f bin/arbtkf91-bench
+	rm -f bin/arbtkf91-align
 	rm -f bin/t-factor_refine
 	rm -f bin/t-femtocas
 	rm -f bin/t-expressions
