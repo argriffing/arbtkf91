@@ -30,7 +30,6 @@ breadcrumb_mat_get_alignment(char *sa, char *sb, slong *plen,
      */
     slong i, j;
     char ACGT[4] = "ACGT";
-    slong n = mat->nrows + mat->ncols;
     slong len = 0;
     i = mat->nrows - 1;
     j = mat->ncols - 1;
@@ -198,14 +197,12 @@ breadcrumb_mat_set(breadcrumb_mat_t mat, const breadcrumb_mat_t src)
 void
 breadcrumb_mat_check_alignment(
         int *p_is_optimal, int *p_is_canonical,
-        const breadcrumb_mat_t mat, const slong *A, const slong *B, const len);
+        const breadcrumb_mat_t mat, const slong *A, const slong *B, slong len)
 {
     slong i, j, k;
-    char ACGT[4] = "ACGT";
-    slong n = mat->nrows + mat->ncols;
     i = mat->nrows - 1;
     j = mat->ncols - 1;
-    breadcrumb_t crumb;
+    breadcrumb_t full, canonical, observed;
 
     *p_is_optimal = 1;
     *p_is_canonical = 1;
@@ -213,26 +210,37 @@ breadcrumb_mat_check_alignment(
     k = len-1;
     while (i > 0 || j > 0)
     {
-        crumb = *breadcrumb_mat_entry(mat, i, j);
-        if (crumb & CRUMB_TOP)
+        observed = 0;
+        if (A[k] > -1 && B[k] == -1)
         {
+            observed = CRUMB_TOP;
+        }
+        else if (A[k] > -1 && B[k] > -1)
+        {
+            observed = CRUMB_DIAG;
+        }
+        else if (A[k] == -1 && B[k] > -1)
+        {
+            observed = CRUMB_LEFT;
+        }
+        else
+        {
+            flint_printf("unexpected alignment column\n");
+            abort();
+        }
 
-            sa[len] = ACGT[A[i-1]];
-            sb[len] = '-';
-            i--;
-        }
-        else if (crumb & CRUMB_DIAG)
+        full = *breadcrumb_mat_entry(mat, i, j);
+        if (full & CRUMB_TOP)
         {
-            sa[len] = ACGT[A[i-1]];
-            sb[len] = ACGT[B[j-1]];
-            i--;
-            j--;
+            canonical = CRUMB_TOP;
         }
-        else if (crumb & CRUMB_LEFT)
+        else if (full & CRUMB_DIAG)
         {
-            sa[len] = '-';
-            sb[len] = ACGT[B[j-1]];
-            j--;
+            canonical = CRUMB_DIAG;
+        }
+        else if (full & CRUMB_LEFT)
+        {
+            canonical = CRUMB_LEFT;
         }
         else
         {
@@ -240,6 +248,30 @@ breadcrumb_mat_check_alignment(
             flint_printf("in the dynamic programing traceback\n");
             abort();
         }
-        k++;
+
+        if (observed != canonical)
+        {
+            *p_is_canonical = 0;
+        }
+        if (!(observed & full))
+        {
+            *p_is_optimal = 0;
+            return;
+        }
+
+        if (observed == CRUMB_TOP)
+        {
+            i--;
+        }
+        else if (observed == CRUMB_DIAG)
+        {
+            i--;
+            j--;
+        }
+        else if (observed == CRUMB_LEFT)
+        {
+            j--;
+        }
+        k--;
     }
 }

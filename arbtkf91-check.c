@@ -180,7 +180,7 @@ user_params_print(const user_params_t p)
 
 void
 solve(solution_t sol, const user_params_t p,
-        slong *A, slong szA, slong *B, slong szB);
+        const sequence_pair_t sequences);
 
 
 
@@ -367,9 +367,13 @@ json_t *run(void * userdata, json_t *j_in)
     /* do enough of the traceback to get the solution mask */
     flint_printf("length of sequence A: %wd\n", sequences->len_A);
     flint_printf("length of sequence B: %wd\n", sequences->len_B);
-    solve(sol, p,
-            sequences->A, sequences->len_A, sequences->B, sequences->len_B);
+    solve(sol, p, sequences);
 
+    int optimal;
+    int canonical;
+    breadcrumb_mat_check_alignment(
+            &optimal, &canonical, sol->pmask,
+            aln->A, aln->B, aln->len);
 
     char * solution_count_string;
     char * _solution_count_string = NULL;
@@ -382,8 +386,8 @@ json_t *run(void * userdata, json_t *j_in)
     }
 
     j_out = json_pack("{s:s, s:s, s:s}",
-            "alignment_is_optimal", "wut",
-            "alignment_is_canonical", "wut",
+            "alignment_is_optimal", (optimal ? "yes" : "no"),
+            "alignment_is_canonical", (canonical ? "yes" : "no"),
             "number_of_optimal_alignments", solution_count_string);
 
     solution_clear(sol);
@@ -400,7 +404,7 @@ json_t *run(void * userdata, json_t *j_in)
 
 void
 solve(solution_t sol, const user_params_t p,
-        slong *A, slong szA, slong *B, slong szB)
+        const sequence_pair_t sequences)
 {
     tkf91_rationals_t r;
     tkf91_expressions_t expressions;
@@ -408,6 +412,10 @@ solve(solution_t sol, const user_params_t p,
     fmpz_mat_t mat;
     expr_ptr * expressions_table;
     request_t req;
+    slong *A = sequences->A;
+    slong szA = sequences->len_A;
+    slong *B = sequences->B;
+    slong szB = sequences->len_B;
 
     /* expressions registry and (refining) generator registry */
     reg_t er;
