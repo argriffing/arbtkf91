@@ -1,0 +1,11 @@
+{
+"pa_n" : 25, "pa_d" : 1,
+"pc_n" : 25, "pc_d" : 1,
+"pg_n" : 25, "pg_d" : 1,
+"pt_n" : 25, "pt_d" : 1,
+"lambda_n" : 1, "lambda_d" : 1,
+"mu_n" : 2, "mu_d" : 1,
+"tau_n" : 1, "tau_d" : 10,
+"sequence_a" : "acg-t",
+"sequence_b" : "ac-gt"
+}
