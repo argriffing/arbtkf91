@@ -7,6 +7,6 @@
 "lambda_n" : 1, "lambda_d" : 1,
 "mu_n" : 2, "mu_d" : 1,
 "tau_n" : 1, "tau_d" : 10,
-"sequence_a" : "caacgttttaaaaaaattttt",
-"sequence_b" : "acgttttaaaaaaatttt"
+"sequence_a" : "ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA",
+"sequence_b" : "AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA"
 }
