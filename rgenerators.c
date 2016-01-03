@@ -332,16 +332,20 @@ rgen_reg_finalize(rgen_reg_ptr g, reg_ptr reg)
         }
     }
 
+    /*
     flint_printf("before refinement:\n");
     fmpz_factor_print(unrefined);
     flint_printf("\n");
+    */
 
     fmpz_factor_refine(g->refinement->fac, unrefined);
     fmpz_factor_clear(unrefined);
 
+    /*
     flint_printf("after refinement:\n");
     fmpz_factor_print(g->refinement->fac);
     flint_printf("\n");
+    */
 
     /*
      * Create an array of uninitialized expression pointers

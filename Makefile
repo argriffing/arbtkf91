@@ -29,7 +29,8 @@ TEST_EXECUTABLES=bin/t-factor_refine \
 CHECKS=check_factor_refine \
        check_femtocas \
        check_expressions \
-       check_generators
+       check_generators \
+       check_arbtkf91_check
 
 all: bin/arbtkf91 bin/arbtkf91-check
 
@@ -39,6 +40,15 @@ tests: $(TEST_EXECUTABLES)
 # run the test scripts
 check: $(CHECKS)
 
+
+# a regression test
+
+check_arbtkf91_check: bin/arbtkf91-check
+	bin/arbtkf91-check < tests/data/a_in.json > tmp.json
+	python tests/compare_json.py tests/data/a_out.json tmp.json
+	#
+	bin/arbtkf91-check < tests/data/b_in.json > tmp.json
+	python tests/compare_json.py tests/data/b_out.json tmp.json
 
 # factor refine
 

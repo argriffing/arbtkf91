@@ -104,13 +104,13 @@ sequence_pair_init(sequence_pair_t x, alignment_t aln)
         if (aln->A[i] >= 0)
         {
             value = aln->A[i];
-            flint_printf("A[%wd] : %wd\n", x->len_A, value);
+            /* flint_printf("A[%wd] : %wd\n", x->len_A, value); */
             x->A[(x->len_A)++] = value;
         }
         if (aln->B[i] >= 0)
         {
             value = aln->B[i];
-            flint_printf("B[%wd] : %wd\n", x->len_B, value);
+            /* flint_printf("B[%wd] : %wd\n", x->len_B, value); */
             x->B[(x->len_B)++] = aln->B[i];
         }
     }
@@ -340,7 +340,7 @@ json_t *run(void * userdata, json_t *j_in)
     _json_object_get_fmpq(p->mu, args, "mu_n", "mu_d");
     _json_object_get_fmpq(p->tau, args, "tau_n", "tau_d");
 
-    user_params_print(p);
+    /* user_params_print(p); */
 
     /* read the two aligned sequences */
     A = _json_object_get_sequence(&len_A, args, "sequence_a");
@@ -365,8 +365,10 @@ json_t *run(void * userdata, json_t *j_in)
     sol->pmask = crumb_mat;
 
     /* do enough of the traceback to get the solution mask */
+    /*
     flint_printf("length of sequence A: %wd\n", sequences->len_A);
     flint_printf("length of sequence B: %wd\n", sequences->len_B);
+    */
     solve(sol, p, sequences);
 
     int optimal;

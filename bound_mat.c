@@ -272,8 +272,10 @@ tkf91_dp_verify_symbolically(
     fmpz_mat_init(V, fmpz_mat_nrows(mat), fmpz_mat_nrows(mat));
     _fmpz_mat_hnf_inverse_transform(H, V, &rank, mat);
 
+    /*
     flint_printf("matrix rank ");
     flint_printf("determined from the Hermite normal form: %wd\n", rank);
+    */
 
     tkf91_generator_vecs_init(h, g, V, rank);
     bound_mat_init(b, mask, rank);

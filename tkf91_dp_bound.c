@@ -321,7 +321,6 @@ cellfront_clear(cellfront_t x)
 
 
 
-
 void
 tkf91_dp_bound(
         solution_t sol, const request_t req,
@@ -331,6 +330,12 @@ tkf91_dp_bound(
         slong *B, size_t szB)
 {
     clock_t start;
+    int verbose = 0;
+    FILE * file = NULL;
+    if (verbose)
+    {
+        file = stderr;
+    }
 
     /* Convert the first few args to generator lower and upper bounds. */
     tkf91_values_t lb;
@@ -450,30 +455,36 @@ tkf91_dp_bound(
         }
     }
 
-    _fprint_elapsed(stderr, "dynamic programming", clock() - start);
+    _fprint_elapsed(file, "dynamic programming", clock() - start);
 
-    if (req->trace)
+    if (verbose)
     {
-        flint_printf("mask before tracing:\n");
-        breadcrumb_mat_fprint(stdout, crumb_mat);
-        flint_printf("\n");
-    }
-    else
-    {
-        flint_printf("not showing mask before tracing\n");
+        if (req->trace)
+        {
+            flint_fprintf(stdout, "mask before tracing:\n");
+            breadcrumb_mat_fprint(stdout, crumb_mat);
+            flint_fprintf(stdout, "\n");
+        }
+        else
+        {
+            flint_fprintf(stdout, "not showing mask before tracing\n");
+        }
     }
 
     /* report the score */
 
     cell = cellfront_entry(cells, nrows - 1, ncols - 1);
 
-    flint_printf("best alignment lower bound probability: ");
-    mag_print(&(cell->lb3));
-    flint_printf("\n");
+    if (verbose)
+    {
+        flint_printf("best alignment lower bound probability: ");
+        mag_print(&(cell->lb3));
+        flint_printf("\n");
 
-    flint_printf("best alignment upper bound probability: ");
-    mag_print(&(cell->ub3));
-    flint_printf("\n");
+        flint_printf("best alignment upper bound probability: ");
+        mag_print(&(cell->ub3));
+        flint_printf("\n");
+    }
 
     if (req->trace)
     {
@@ -484,14 +495,14 @@ tkf91_dp_bound(
          */
         start = clock();
         breadcrumb_mat_get_mask(crumb_mat, crumb_mat);
-        _fprint_elapsed(stderr, "mask extraction", clock() - start);
+        _fprint_elapsed(file, "mask extraction", clock() - start);
 
         /* create the tableau png image */
         if (req->png_filename)
         {
             start = clock();
             write_tableau_image(req->png_filename, crumb_mat, "tkf91 tableau");
-            _fprint_elapsed(stderr, "create tableau png", clock() - start);
+            _fprint_elapsed(file, "create tableau png", clock() - start);
         }
 
         /* do the traceback */
@@ -501,31 +512,19 @@ tkf91_dp_bound(
                 sol->A, sol->B, &(sol->len),
                 crumb_mat, A, B);
 
-        _fprint_elapsed(stderr, "alignment traceback", clock() - start);
+        _fprint_elapsed(file, "alignment traceback", clock() - start);
 
         start = clock();
         tkf91_dp_verify_symbolically(mat, g, crumb_mat, A, B);
-        printf("symbolic verification ");
-        _print_elapsed_time(clock() - start);
+        _fprint_elapsed(file, "symbolic verification", clock() - start);
 
         {
             fmpz_t solution_count;
             fmpz_init(solution_count);
 
-            /*
-            flint_printf("printing mask again before counting solutions:\n");
-            breadcrumb_mat_fprint(stdout, crumb_mat);
-            flint_printf("\n");
-            */
-
             start = clock();
             count_solutions(solution_count, crumb_mat);
-            /*
-            flint_printf("number of optimal solutions:\n");
-            fmpz_print(solution_count);
-            flint_printf("\n");
-            */
-            _fprint_elapsed(stderr, "counting solutions", clock() - start);
+            _fprint_elapsed(file, "counting solutions", clock() - start);
 
             fmpz_set(sol->best_tie_count, solution_count);
             sol->has_best_tie_count = 1;

@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "flint/flint.h"
 
@@ -229,7 +230,7 @@ breadcrumb_mat_check_alignment(
             abort();
         }
 
-        full = *breadcrumb_mat_entry(mat, i, j);
+        full = *breadcrumb_mat_srcentry(mat, i, j);
         if (full & CRUMB_TOP)
         {
             canonical = CRUMB_TOP;
