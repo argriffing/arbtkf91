@@ -16,8 +16,8 @@ void tkf91_rgenerators_init(
         rgen_reg_ptr g,
         tkf91_rationals_t r,
         tkf91_expressions_t p,
-        slong *A, slong Alen,
-        slong *B, slong Blen);
+        const slong *A, slong Alen,
+        const slong *B, slong Blen);
 void tkf91_rgenerators_clear(tkf91_generator_indices_t x);
 
 #ifdef __cplusplus

@@ -151,16 +151,18 @@ void tkf91_dynamic_programming_hermite(
         solution_t sol, const request_t req,
         tkf91_generator_vecs_t g,
         arb_ptr v, slong rank, slong prec,
-        slong *A, slong szA,
-        slong *B, slong szB);
+        const slong *A, slong szA,
+        const slong *B, slong szB);
 
 void tkf91_dynamic_programming_hermite(
         solution_t sol, const request_t req,
         tkf91_generator_vecs_t g,
         arb_ptr v, slong rank, slong prec,
-        slong *A, slong szA,
-        slong *B, slong szB)
+        const slong *A, slong szA,
+        const slong *B, slong szB)
 {
+    UNUSED(req);
+
     /*
      * Define the matrix to be used for the traceback.
      * The number of rows is one greater than the length of the first sequence,
@@ -409,9 +411,9 @@ void
 tkf91_dp_r(
         solution_t sol, const request_t req,
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        tkf91_generator_indices_t g,
-        slong *A, size_t szA,
-        slong *B, size_t szB)
+        const tkf91_generator_indices_t g,
+        const slong *A, size_t szA,
+        const slong *B, size_t szB)
 {
     /* Inputs:
      *   mat : the generator matrix -- mat_ij where i is a generator index

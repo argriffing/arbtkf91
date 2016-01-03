@@ -54,7 +54,8 @@ void _check_equal(fmpz * u, fmpz * v, slong r);
 void _tkf91_dp_verify_symbolically(
         tkf91_generator_vecs_t h,
         bound_mat_t b,
-        slong *A, slong *B);
+        const slong *A,
+        const slong *B);
 
 slong
 bound_mat_nrows(const bound_mat_t mat)
@@ -247,9 +248,10 @@ bound_mat_clear(bound_mat_t mat)
 void
 tkf91_dp_verify_symbolically(
         fmpz_mat_t mat,
-        tkf91_generator_indices_t g,
+        const tkf91_generator_indices_t g,
         breadcrumb_mat_t mask,
-        slong *A, slong *B)
+        const slong *A,
+        const slong *B)
 {
     /* Inputs:
      *   mat : the generator matrix -- mat_ij where i is a generator index
@@ -310,7 +312,8 @@ void
 _tkf91_dp_verify_symbolically(
         tkf91_generator_vecs_t h,
         bound_mat_t b,
-        slong *A, slong *B)
+        const slong *A,
+        const slong *B)
 {
     /*
      * Use only a forward pass, not a backward pass.

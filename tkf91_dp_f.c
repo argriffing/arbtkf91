@@ -172,16 +172,16 @@ tkf91_dynamic_programming_float_tmat(
         solution_t sol, const request_t req,
         const tkf91_generator_indices_t g,
         const arb_mat_t m,
-        slong *A, slong szA,
-        slong *B, slong szB);
+        const slong *A, slong szA,
+        const slong *B, slong szB);
 
 void
 tkf91_dynamic_programming_float_tmat(
         solution_t sol, const request_t req,
         const tkf91_generator_indices_t g,
         const arb_mat_t m,
-        slong *A, slong szA,
-        slong *B, slong szB)
+        const slong *A, slong szA,
+        const slong *B, slong szB)
 {
     slong nrows, ncols;
     tmat_t tmat;
@@ -335,9 +335,9 @@ void
 tkf91_dp_f(
         solution_t sol, const request_t req,
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        tkf91_generator_indices_t g,
-        slong *A, size_t szA,
-        slong *B, size_t szB)
+        const tkf91_generator_indices_t g,
+        const slong *A, size_t szA,
+        const slong *B, size_t szB)
 {
     slong level = 8;
     slong prec = 1 << level;

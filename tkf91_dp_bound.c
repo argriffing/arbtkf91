@@ -32,13 +32,14 @@ typedef tkf91_values_struct tkf91_values_t[1];
 
 
 void tkf91_values_init(tkf91_values_t h,
-        tkf91_generator_indices_t g, mag_ptr m);
+        const tkf91_generator_indices_t g,
+        mag_ptr m);
 
 void tkf91_values_clear(tkf91_values_t h);
 
 void _bounds_init(tkf91_values_t lb, tkf91_values_t ub,
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        tkf91_generator_indices_t g);
+        const tkf91_generator_indices_t g);
 
 
 static __inline__ void
@@ -57,7 +58,7 @@ _arb_mat_get_col(arb_ptr v, const arb_mat_t mat, slong j)
 void
 tkf91_values_init(
         tkf91_values_t h,
-        tkf91_generator_indices_t g,
+        const tkf91_generator_indices_t g,
         mag_ptr m)
 {
     slong i, j;
@@ -102,7 +103,7 @@ tkf91_values_clear(tkf91_values_t h)
 void
 _bounds_init(tkf91_values_t lb, tkf91_values_t ub,
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        tkf91_generator_indices_t g)
+        const tkf91_generator_indices_t g)
 {
     slong nr, nc, level, prec;
     arb_mat_t G, U, V;
@@ -325,9 +326,9 @@ void
 tkf91_dp_bound(
         solution_t sol, const request_t req,
         fmpz_mat_t mat, expr_ptr * expressions_table,
-        tkf91_generator_indices_t g,
-        slong *A, size_t szA,
-        slong *B, size_t szB)
+        const tkf91_generator_indices_t g,
+        const slong *A, size_t szA,
+        const slong *B, size_t szB)
 {
     clock_t start;
     int verbose = 0;

@@ -17,9 +17,10 @@ extern "C" {
 void
 tkf91_dp_verify_symbolically(
         fmpz_mat_t mat,
-        tkf91_generator_indices_t g,
+        const tkf91_generator_indices_t g,
         breadcrumb_mat_t mask,
-        slong *A, slong *B);
+        const slong *A,
+        const slong *B);
 
 
 #ifdef __cplusplus

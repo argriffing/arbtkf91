@@ -69,9 +69,10 @@ typedef request_struct request_t[1];
 /* function pointer typedef for the dynamic programming function */
 typedef void (*tkf91_dp_fn)(
         solution_t, const request_t,
-        fmpz_mat_t, expr_ptr *, tkf91_generator_indices_t,
-        slong *, size_t,
-        slong *, size_t);
+        fmpz_mat_t, expr_ptr *,
+        const tkf91_generator_indices_t,
+        const slong *, size_t,
+        const slong *, size_t);
 
 
 #ifdef __cplusplus

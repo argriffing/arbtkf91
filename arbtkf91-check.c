@@ -42,11 +42,11 @@
 #include "jansson.h"
 
 #include "runjson.h"
+#include "jsonutil.h"
 #include "tkf91_dp_bound.h"
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
-
-
+#include "model_params.h"
 
 
 typedef struct
@@ -71,8 +71,8 @@ alignment_init(alignment_t x, slong *A, slong *B, slong len)
 void
 alignment_clear(alignment_t x)
 {
-    free(x->A);
-    free(x->B);
+    flint_free(x->A);
+    flint_free(x->B);
 }
 
 
@@ -125,185 +125,11 @@ sequence_pair_clear(sequence_pair_t x)
 
 
 
-typedef struct
-{
-    fmpq_t lambda;
-    fmpq_t mu;
-    fmpq_t tau;
-    fmpq pi[4];
-} user_params_struct;
-typedef user_params_struct user_params_t[1];
-
-void user_params_init(user_params_t p);
-void user_params_clear(user_params_t p);
-void user_params_print(const user_params_t p);
-
-void
-user_params_init(user_params_t p)
-{
-    slong i;
-    fmpq_init(p->lambda);
-    fmpq_init(p->mu);
-    fmpq_init(p->tau);
-    for (i = 0; i < 4; i++)
-    {
-        fmpq_init(p->pi+i);
-    }
-}
-
-void
-user_params_clear(user_params_t p)
-{
-    slong i;
-    fmpq_clear(p->lambda);
-    fmpq_clear(p->mu);
-    fmpq_clear(p->tau);
-    for (i = 0; i < 4; i++)
-    {
-        fmpq_clear(p->pi+i);
-    }
-}
-
-void
-user_params_print(const user_params_t p)
-{
-    flint_printf("lambda: "); fmpq_print(p->lambda); flint_printf("\n");
-    flint_printf("mu: "); fmpq_print(p->mu); flint_printf("\n");
-    flint_printf("tau: "); fmpq_print(p->tau); flint_printf("\n");
-    flint_printf("pa: "); fmpq_print(p->pi+0); flint_printf("\n");
-    flint_printf("pc: "); fmpq_print(p->pi+1); flint_printf("\n");
-    flint_printf("pg: "); fmpq_print(p->pi+2); flint_printf("\n");
-    flint_printf("pt: "); fmpq_print(p->pi+3); flint_printf("\n");
-}
-
 
 
 void
-solve(solution_t sol, const user_params_t p,
+solve(solution_t sol, const model_params_t p,
         const sequence_pair_t sequences);
-
-
-
-void _fill_sequence_vector(slong *v, const char *str, slong n);
-
-void
-_fill_sequence_vector(slong *v, const char *str, slong n)
-{
-    /* treat N as A following the questionable choice
-     * in a reference implementation */
-    int i;
-    for (i = 0; i < n; i++)
-    {
-        switch(str[i])
-        {
-            case 'N' :
-            case 'n' :
-            case 'A' :
-            case 'a' :
-                v[i] = 0;
-                break;
-            case 'C' :
-            case 'c' :
-                v[i] = 1;
-                break;
-            case 'G' :
-            case 'g' :
-                v[i] = 2;
-                break;
-            case 'T' :
-            case 't' :
-                v[i] = 3;
-                break;
-            case '-' :
-                v[i] = -1;
-                break;
-            default:
-                       {
-                           fprintf(stderr, "unrecognized nucleotide\n");
-                           abort();
-                       }
-        }
-    }
-}
-
-
-
-static slong *
-_json_object_get_sequence(slong *plen, const json_t *object, const char *key);
-
-slong *
-_json_object_get_sequence(slong *plen, const json_t *object, const char *key)
-{
-    /* (a, c, g, t, -) -> (0, 1, 2, 3, -1) */
-    json_t *tmp;
-    const char *value;
-    size_t len;
-    slong *s;
-
-    tmp = json_object_get(object, key);
-    if (!tmp)
-    {
-        fprintf(stderr, "error: input does not contain '%s'\n", key);
-        abort();
-    }
-    if (!json_is_string(tmp))
-    {
-        fprintf(stderr, "error: '%s' is not a json string\n", key);
-        abort();
-    }
-
-    value = json_string_value(tmp);
-    len = json_string_length(tmp);
-
-    s = malloc(len * sizeof(slong));
-    _fill_sequence_vector(s, value, len);
-
-    *plen = (slong) len;
-    return s;
-}
-
-
-
-
-static slong _json_object_get_si(const json_t *object, const char *key);
-
-slong
-_json_object_get_si(const json_t *object, const char *key)
-{
-    json_t *tmp;
-    json_int_t value;
-
-    tmp = json_object_get(object, key);
-    if (!tmp)
-    {
-        fprintf(stderr, "error: input does not contain '%s'\n", key);
-        abort();
-    }
-    if (!json_is_integer(tmp))
-    {
-        fprintf(stderr, "error: '%s' is not a json integer\n", key);
-        abort();
-    }
-
-    value = json_integer_value(tmp);
-    return (slong) value;
-}
-
-
-
-static void _json_object_get_fmpq(fmpq_t res, const json_t *object,
-        const char *key_n, const char *key_d);
-
-void
-_json_object_get_fmpq(fmpq_t res, const json_t *object,
-        const char *key_n, const char *key_d)
-{
-    slong n, d;
-    n = _json_object_get_si(object, key_n);
-    d = _json_object_get_si(object, key_d);
-    fmpq_set_si(res, n, d);
-}
-
 
 
 json_t *run(void * userdata, json_t *j_in);
@@ -312,7 +138,7 @@ json_t *run(void * userdata, json_t *j_in)
 {
     json_t *args;
     json_t *j_out;
-    user_params_t p;
+    model_params_t p;
     alignment_t aln;
     sequence_pair_t sequences;
     slong len_A, len_B;
@@ -321,7 +147,7 @@ json_t *run(void * userdata, json_t *j_in)
     solution_t sol;
     breadcrumb_mat_t crumb_mat;
 
-    user_params_init(p);
+    model_params_init(p);
 
     if (userdata)
     {
@@ -340,7 +166,7 @@ json_t *run(void * userdata, json_t *j_in)
     _json_object_get_fmpq(p->mu, args, "mu_n", "mu_d");
     _json_object_get_fmpq(p->tau, args, "tau_n", "tau_d");
 
-    /* user_params_print(p); */
+    /* model_params_print(p); */
 
     /* read the two aligned sequences */
     A = _json_object_get_sequence(&len_A, args, "sequence_a");
@@ -393,7 +219,7 @@ json_t *run(void * userdata, json_t *j_in)
             "number_of_optimal_alignments", solution_count_string);
 
     solution_clear(sol);
-    user_params_clear(p);
+    model_params_clear(p);
     alignment_clear(aln);
     sequence_pair_clear(sequences);
     flint_free(_solution_count_string);
@@ -405,7 +231,7 @@ json_t *run(void * userdata, json_t *j_in)
 
 
 void
-solve(solution_t sol, const user_params_t p,
+solve(solution_t sol, const model_params_t p,
         const sequence_pair_t sequences)
 {
     tkf91_rationals_t r;
