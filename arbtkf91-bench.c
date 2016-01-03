@@ -36,6 +36,8 @@
 
 #include "runjson.h"
 #include "jsonutil.h"
+#include "tkf91_dp_f.h"
+#include "tkf91_dp_d.h"
 #include "tkf91_dp_bound.h"
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
@@ -44,7 +46,7 @@
 
 
 void
-solve(solution_t sol, const model_params_t p,
+solve(tkf91_dp_fn f, solution_t sol, const model_params_t p,
         const slong *A, slong len_A, const slong *B, slong len_B);
 
 
@@ -95,17 +97,19 @@ json_t *run(void * userdata, json_t *j_in)
     }
 
     /* dispatch */
+    tkf91_dp_fn f = NULL;
     if (strcmp(precision_str, "float") == 0)
     {
-        ;
+        f = tkf91_dp_f;
     }
     else if (strcmp(precision_str, "double") == 0)
     {
-        ;
+        f = tkf91_dp_d;
     }
     else if (strcmp(precision_str, "exact") == 0)
     {
         ;
+        f = tkf91_dp_bound;
     }
     else
     {
@@ -122,7 +126,7 @@ json_t *run(void * userdata, json_t *j_in)
     {
         start = clock();
         solution_init(sol, len_A + len_B);
-        solve(sol, p, A, len_A, B, len_B);
+        solve(f, sol, p, A, len_A, B, len_B);
         if (i < samples - 1)
         {
             solution_clear(sol);
@@ -148,7 +152,7 @@ json_t *run(void * userdata, json_t *j_in)
 
 
 void
-solve(solution_t sol, const model_params_t p,
+solve(tkf91_dp_fn f, solution_t sol, const model_params_t p,
         const slong *A, slong szA, const slong *B, slong szB)
 {
     tkf91_rationals_t r;
@@ -181,9 +185,7 @@ solve(solution_t sol, const model_params_t p,
     req->png_filename = NULL;
     req->trace = 1;
 
-    tkf91_dp_bound(
-            sol, req, mat, expressions_table, generators,
-            A, szA, B, szB);
+    f(sol, req, mat, expressions_table, generators, A, szA, B, szB);
 
     fmpz_mat_clear(mat);
     flint_free(expressions_table);

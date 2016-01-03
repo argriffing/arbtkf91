@@ -190,6 +190,12 @@ tkf91_dynamic_programming_float_tmat(
     tnode_ptr cell, p0, p1, p2;
     slong nta, ntb;
     clock_t start;
+    int verbose = 0;
+    FILE * file = NULL;
+    if (verbose)
+    {
+        file = stderr;
+    }
 
     /* dynamic programming 'generators' as local variables */
     float m1_00;
@@ -312,19 +318,19 @@ tkf91_dynamic_programming_float_tmat(
     cell = tmat_entry(tmat, nrows-1, ncols-1);
     logp = fmaxf(cell->m0, fmaxf(cell->m1, cell->m2));
     arb_set_d(sol->log_probability, (double) logp);
-    _fprint_elapsed(stderr, "forward dynamic programming", clock() - start);
+    _fprint_elapsed(file, "forward dynamic programming", clock() - start);
 
     /* do the traceback if requested */
     if (req->trace)
     {
         start = clock();
         tmat_get_alignment(sol, tmat, A, B);
-        _fprint_elapsed(stderr, "traceback", clock() - start);
+        _fprint_elapsed(file, "traceback", clock() - start);
     }
 
     start = clock();
     tmat_clear(tmat);
-    _fprint_elapsed(stderr, "cleanup", clock() - start);
+    _fprint_elapsed(file, "cleanup", clock() - start);
 }
 
 
