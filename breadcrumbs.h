@@ -30,32 +30,13 @@ typedef struct
     slong ncols;
 } breadcrumb_mat_struct;
 typedef breadcrumb_mat_struct breadcrumb_mat_t[1];
+typedef breadcrumb_mat_struct * breadcrumb_mat_ptr;
 
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-
-
-void breadcrumb_mat_init(breadcrumb_mat_t mat, slong nrows, slong ncols);
-void breadcrumb_mat_clear(breadcrumb_mat_t mat);
-void breadcrumb_mat_get_alignment(char *sa, char *sb, slong *plen,
-        breadcrumb_mat_t mat, const slong *A, const slong *B);
-void breadcrumb_mat_get_mask(breadcrumb_mat_t mask, const breadcrumb_mat_t mat);
-void breadcrumb_mat_fprint(FILE *stream, const breadcrumb_mat_t mat);
-
-static __inline__ breadcrumb_ptr
-breadcrumb_mat_srcentry(const breadcrumb_mat_t mat, slong i, slong j)
-{
-    return mat->data + i * mat->ncols + j;
-}
-
-static __inline__ breadcrumb_ptr
-breadcrumb_mat_entry(breadcrumb_mat_t mat, slong i, slong j)
-{
-    return mat->data + i * mat->ncols + j;
-}
 
 static __inline__ slong
 breadcrumb_mat_nrows(const breadcrumb_mat_t mat)
@@ -67,6 +48,43 @@ static __inline__ slong
 breadcrumb_mat_ncols(const breadcrumb_mat_t mat)
 {
     return mat->ncols;
+}
+
+
+void breadcrumb_mat_init(breadcrumb_mat_t mat, slong nrows, slong ncols);
+void breadcrumb_mat_clear(breadcrumb_mat_t mat);
+void breadcrumb_mat_set(breadcrumb_mat_t mat, const breadcrumb_mat_t src);
+void breadcrumb_mat_get_alignment(char *sa, char *sb, slong *plen,
+        breadcrumb_mat_t mat, const slong *A, const slong *B);
+void breadcrumb_mat_get_mask(breadcrumb_mat_t mask, const breadcrumb_mat_t mat);
+void breadcrumb_mat_fprint(FILE *stream, const breadcrumb_mat_t mat);
+
+static __inline__ breadcrumb_ptr
+breadcrumb_mat_srcentry(const breadcrumb_mat_t mat, slong i, slong j)
+{
+    slong nrows = breadcrumb_mat_nrows(mat);
+    slong ncols = breadcrumb_mat_ncols(mat);
+    if (i < 0 || i >= nrows || j < 0 || j > nrows)
+    {
+        flint_printf("traceback tableau indexing fail\n");
+        flint_printf("i:%wd j:%wd nrows:%wd ncols:%wd\n", i, j, nrows, ncols);
+        abort();
+    }
+    return mat->data + i * mat->ncols + j;
+}
+
+static __inline__ breadcrumb_ptr
+breadcrumb_mat_entry(breadcrumb_mat_t mat, slong i, slong j)
+{
+    slong nrows = breadcrumb_mat_nrows(mat);
+    slong ncols = breadcrumb_mat_ncols(mat);
+    if (i < 0 || i >= nrows || j < 0 || j > nrows)
+    {
+        flint_printf("traceback tableau indexing fail\n");
+        flint_printf("i:%wd j:%wd nrows:%wd ncols:%wd\n", i, j, nrows, ncols);
+        abort();
+    }
+    return mat->data + i * mat->ncols + j;
 }
 
 

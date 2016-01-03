@@ -54,7 +54,7 @@ count_solutions(fmpz_t res, const breadcrumb_mat_t mat)
     fmpz * p;
 
     nrows = breadcrumb_mat_nrows(mat);
-    ncols = breadcrumb_mat_nrows(mat);
+    ncols = breadcrumb_mat_ncols(mat);
     max_row_nnz = _breadcrumb_mat_max_row_nnz(mat);
 
     counts = _fmpz_vec_init(2 * max_row_nnz);

@@ -42,6 +42,10 @@
 #include "jansson.h"
 
 #include "runjson.h"
+#include "tkf91_dp_bound.h"
+#include "tkf91_rgenerators.h"
+#include "tkf91_generator_indices.h"
+
 
 
 
@@ -89,6 +93,7 @@ void
 sequence_pair_init(sequence_pair_t x, alignment_t aln)
 {
     slong i;
+    slong value;
     x->A = malloc(aln->len * sizeof(slong));
     x->B = malloc(aln->len * sizeof(slong));
     x->len_A = 0;
@@ -98,11 +103,15 @@ sequence_pair_init(sequence_pair_t x, alignment_t aln)
     {
         if (aln->A[i] >= 0)
         {
-            x->A[x->len_A++] = aln->A[i];
+            value = aln->A[i];
+            flint_printf("A[%wd] : %wd\n", x->len_A, value);
+            x->A[(x->len_A)++] = value;
         }
         if (aln->B[i] >= 0)
         {
-            x->B[x->len_B++] = aln->B[i];
+            value = aln->B[i];
+            flint_printf("B[%wd] : %wd\n", x->len_B, value);
+            x->B[(x->len_B)++] = aln->B[i];
         }
     }
 }
@@ -127,6 +136,7 @@ typedef user_params_struct user_params_t[1];
 
 void user_params_init(user_params_t p);
 void user_params_clear(user_params_t p);
+void user_params_print(const user_params_t p);
 
 void
 user_params_init(user_params_t p)
@@ -153,6 +163,25 @@ user_params_clear(user_params_t p)
         fmpq_clear(p->pi+i);
     }
 }
+
+void
+user_params_print(const user_params_t p)
+{
+    flint_printf("lambda: "); fmpq_print(p->lambda); flint_printf("\n");
+    flint_printf("mu: "); fmpq_print(p->mu); flint_printf("\n");
+    flint_printf("tau: "); fmpq_print(p->tau); flint_printf("\n");
+    flint_printf("pa: "); fmpq_print(p->pi+0); flint_printf("\n");
+    flint_printf("pc: "); fmpq_print(p->pi+1); flint_printf("\n");
+    flint_printf("pg: "); fmpq_print(p->pi+2); flint_printf("\n");
+    flint_printf("pt: "); fmpq_print(p->pi+3); flint_printf("\n");
+}
+
+
+
+void
+solve(solution_t sol, const user_params_t p,
+        slong *A, slong szA, slong *B, slong szB);
+
 
 
 void _fill_sequence_vector(slong *v, const char *str, slong n);
@@ -289,6 +318,8 @@ json_t *run(void * userdata, json_t *j_in)
     slong len_A, len_B;
     slong *A;
     slong *B;
+    solution_t sol;
+    breadcrumb_mat_t crumb_mat;
 
     user_params_init(p);
 
@@ -309,6 +340,8 @@ json_t *run(void * userdata, json_t *j_in)
     _json_object_get_fmpq(p->mu, args, "mu_n", "mu_d");
     _json_object_get_fmpq(p->tau, args, "tau_n", "tau_d");
 
+    user_params_print(p);
+
     /* read the two aligned sequences */
     A = _json_object_get_sequence(&len_A, args, "sequence_a");
     B = _json_object_get_sequence(&len_B, args, "sequence_b");
@@ -322,19 +355,94 @@ json_t *run(void * userdata, json_t *j_in)
     alignment_init(aln, A, B, len_A);
     sequence_pair_init(sequences, aln);
 
-    /* TODO do something with the sequences... */
+    /* init the tableau mask */
+    breadcrumb_mat_init(crumb_mat, sequences->len_A + 1, sequences->len_B + 1);
 
-    user_params_clear(p);
-    alignment_clear(aln);
-    sequence_pair_clear(sequences);
+    /* init the solution object */
+    solution_init(sol, sequences->len_A + sequences->len_B);
+
+    /* connect the tableau mask to the solution object */
+    sol->pmask = crumb_mat;
+
+    /* do enough of the traceback to get the solution mask */
+    flint_printf("length of sequence A: %wd\n", sequences->len_A);
+    flint_printf("length of sequence B: %wd\n", sequences->len_B);
+    solve(sol, p,
+            sequences->A, sequences->len_A, sequences->B, sequences->len_B);
+
+
+    char * solution_count_string;
+    char * _solution_count_string = NULL;
+    char undetermined[] = "undetermined";
+    solution_count_string = undetermined;
+    if (sol->has_best_tie_count)
+    {
+        _solution_count_string = fmpz_get_str(NULL, 10, sol->best_tie_count);
+        solution_count_string = _solution_count_string;
+    }
 
     j_out = json_pack("{s:s, s:s, s:s}",
             "alignment_is_optimal", "wut",
             "alignment_is_canonical", "wut",
-            "number_of_optimal_alignments", "wut");
+            "number_of_optimal_alignments", solution_count_string);
+
+    solution_clear(sol);
+    user_params_clear(p);
+    alignment_clear(aln);
+    sequence_pair_clear(sequences);
+    flint_free(_solution_count_string);
+    breadcrumb_mat_clear(crumb_mat);
 
     return j_out;
 }
+
+
+
+void
+solve(solution_t sol, const user_params_t p,
+        slong *A, slong szA, slong *B, slong szB)
+{
+    tkf91_rationals_t r;
+    tkf91_expressions_t expressions;
+    tkf91_generator_indices_t generators;
+    fmpz_mat_t mat;
+    expr_ptr * expressions_table;
+    request_t req;
+
+    /* expressions registry and (refining) generator registry */
+    reg_t er;
+    rgen_reg_ptr gr;
+
+    reg_init(er);
+    tkf91_rationals_init(r, p->lambda, p->mu, p->tau, p->pi);
+    tkf91_expressions_init(expressions, er, r);
+
+    gr = rgen_reg_new();
+    tkf91_rgenerators_init(generators, gr, r, expressions, A, szA, B, szB);
+    rgen_reg_finalize(gr, er);
+    fmpz_mat_init(mat, rgen_reg_nrows(gr), rgen_reg_ncols(gr));
+    rgen_reg_get_matrix(mat, gr);
+
+    rgen_reg_clear(gr);
+    tkf91_rationals_clear(r);
+
+    expressions_table = reg_vec(er);
+
+    /* init request object */
+    req->png_filename = NULL;
+    req->trace = 1;
+
+    tkf91_dp_bound(
+            sol, req, mat, expressions_table, generators,
+            A, szA, B, szB);
+
+    fmpz_mat_clear(mat);
+    flint_free(expressions_table);
+
+    reg_clear(er);
+    tkf91_expressions_clear(expressions);
+}
+
 
 
 int main(void)

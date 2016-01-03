@@ -88,6 +88,13 @@ breadcrumb_mat_get_mask(breadcrumb_mat_t mask, const breadcrumb_mat_t mat)
     nr = breadcrumb_mat_nrows(mat);
     nc = breadcrumb_mat_ncols(mat);
 
+    if (breadcrumb_mat_nrows(mask) != nr ||
+        breadcrumb_mat_ncols(mask) != nc)
+    {
+        flint_printf("traceback table dimensions mismatch\n");
+        abort();
+    }
+
     /* initialize the mask so that only the lower right entry is "on" */
     for (i = 0; i < nr; i++)
     {
@@ -168,4 +175,22 @@ breadcrumb_mat_fprint(FILE *stream, const breadcrumb_mat_t mat)
             flint_fprintf(stream, "%wd %wd %d\n", i, j, crumb);
         }
     }
+}
+
+void
+breadcrumb_mat_set(breadcrumb_mat_t mat, const breadcrumb_mat_t src)
+{
+    slong nrows, ncols;
+
+    nrows = breadcrumb_mat_nrows(src);
+    ncols = breadcrumb_mat_ncols(src);
+
+    if (breadcrumb_mat_nrows(mat) != nrows ||
+        breadcrumb_mat_ncols(mat) != ncols)
+    {
+        flint_printf("traceback table dimensions mismatch\n");
+        abort();
+    }
+
+    memcpy(mat->data, src->data, nrows * ncols * sizeof(breadcrumb_t));
 }

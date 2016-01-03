@@ -348,6 +348,11 @@ tkf91_dp_bound(
     breadcrumb_mat_t crumb_mat;
     breadcrumb_ptr pcrumb;
 
+    /*
+     * TODO for efficiency do not duplicate
+     * crumb_mat and sol->pmask.
+     */
+
     if (req->trace)
     {
         breadcrumb_mat_init(crumb_mat, nrows, ncols);
@@ -447,6 +452,17 @@ tkf91_dp_bound(
 
     _fprint_elapsed(stderr, "dynamic programming", clock() - start);
 
+    if (req->trace)
+    {
+        flint_printf("mask before tracing:\n");
+        breadcrumb_mat_fprint(stdout, crumb_mat);
+        flint_printf("\n");
+    }
+    else
+    {
+        flint_printf("not showing mask before tracing\n");
+    }
+
     /* report the score */
 
     cell = cellfront_entry(cells, nrows - 1, ncols - 1);
@@ -496,21 +512,35 @@ tkf91_dp_bound(
             fmpz_t solution_count;
             fmpz_init(solution_count);
 
-            start = clock();
+            /*
+            flint_printf("printing mask again before counting solutions:\n");
+            breadcrumb_mat_fprint(stdout, crumb_mat);
+            flint_printf("\n");
+            */
 
+            start = clock();
             count_solutions(solution_count, crumb_mat);
+            /*
             flint_printf("number of optimal solutions:\n");
             fmpz_print(solution_count);
             flint_printf("\n");
-
+            */
             _fprint_elapsed(stderr, "counting solutions", clock() - start);
+
+            fmpz_set(sol->best_tie_count, solution_count);
+            sol->has_best_tie_count = 1;
 
             fmpz_clear(solution_count);
         }
     }
 
-
     cellfront_clear(cells);
+
+    if (req->trace && sol->pmask)
+    {
+        breadcrumb_mat_set(sol->pmask, crumb_mat);
+    }
+
     if (req->trace)
     {
         breadcrumb_mat_clear(crumb_mat);

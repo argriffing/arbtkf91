@@ -10,13 +10,14 @@
 void
 solution_init(solution_t x, slong aln_maxlen)
 {
-    x->A = flint_malloc(sizeof(char) * (aln_maxlen+1));
-    x->B = flint_malloc(sizeof(char) * (aln_maxlen+1));
+    x->A = flint_calloc(aln_maxlen + 1, sizeof(char));
+    x->B = flint_calloc(aln_maxlen + 1, sizeof(char));
     x->len = -1;
     arb_init(x->log_probability);
     fmpz_init(x->best_tie_count);
     x->has_best_tie_count = 0;
     x->optimality_flag = 0;
+    x->pmask = NULL;
 }
 
 void
