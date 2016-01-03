@@ -1,7 +1,8 @@
 /*
  * Align sequences.
  * Input and output uses json.
- * The output is in the format expected by the 'arbtkf91-check' tool.
+ * The output has all of the terms expected by the 'arbtkf91-check' tool,
+ * and it also has a "verified" boolean.
  *
  * input:
  * {
@@ -27,7 +28,8 @@
  * "mu_n" : integer, "mu_d" : integer,
  * "tau_n" : integer, "tau_d" : integer,
  * "sequence_a" : string,
- * "sequence_b" : string
+ * "sequence_b" : string,
+ * "verified" : bool
  * }
  *
  */
@@ -132,6 +134,7 @@ json_t *run(void * userdata, json_t *j_in)
     /* put the aligned sequences into the output object */
     json_object_set_new(j_out, "sequence_a", json_string(sol->A));
     json_object_set_new(j_out, "sequence_b", json_string(sol->B));
+    json_object_set_new(j_out, "verified", json_boolean(sol->optimality_flag));
 
     flint_free(A);
     flint_free(B);

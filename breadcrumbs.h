@@ -65,28 +65,34 @@ void breadcrumb_mat_check_alignment(
 static __inline__ breadcrumb_ptr
 breadcrumb_mat_srcentry(const breadcrumb_mat_t mat, slong i, slong j)
 {
+    /* TODO remove this slow debugging code */
+    /*
     slong nrows = breadcrumb_mat_nrows(mat);
     slong ncols = breadcrumb_mat_ncols(mat);
-    if (i < 0 || i >= nrows || j < 0 || j > nrows)
+    if (i < 0 || i >= nrows || j < 0 || j >= ncols)
     {
-        flint_printf("traceback tableau indexing fail\n");
+        flint_printf("tableau srcentry fail\n");
         flint_printf("i:%wd j:%wd nrows:%wd ncols:%wd\n", i, j, nrows, ncols);
         abort();
     }
+    */
     return mat->data + i * mat->ncols + j;
 }
 
 static __inline__ breadcrumb_ptr
 breadcrumb_mat_entry(breadcrumb_mat_t mat, slong i, slong j)
 {
+    /* TODO remove this slow debugging code */
+    /*
     slong nrows = breadcrumb_mat_nrows(mat);
     slong ncols = breadcrumb_mat_ncols(mat);
-    if (i < 0 || i >= nrows || j < 0 || j > nrows)
+    if (i < 0 || i >= nrows || j < 0 || j >= ncols)
     {
-        flint_printf("traceback tableau indexing fail\n");
+        flint_printf("tableau entry fail\n");
         flint_printf("i:%wd j:%wd nrows:%wd ncols:%wd\n", i, j, nrows, ncols);
         abort();
     }
+    */
     return mat->data + i * mat->ncols + j;
 }
 

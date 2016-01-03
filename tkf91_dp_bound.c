@@ -516,8 +516,10 @@ tkf91_dp_bound(
         _fprint_elapsed(file, "alignment traceback", clock() - start);
 
         start = clock();
-        tkf91_dp_verify_symbolically(mat, g, crumb_mat, A, B);
+        int verified = 0;
+        tkf91_dp_verify_symbolically(&verified, mat, g, crumb_mat, A, B);
         _fprint_elapsed(file, "symbolic verification", clock() - start);
+        sol->optimality_flag = verified;
 
         {
             fmpz_t solution_count;

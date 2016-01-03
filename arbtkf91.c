@@ -67,7 +67,8 @@ _fill_sequence_vector(slong *v, const char *str, slong n)
             case 'T' : v[i] = 3; break;
             default:
                        {
-                           flint_printf("unrecognized nucleotide\n");
+                           fprintf(stderr, "unrecognized nucleotide ");
+                           fprintf(stderr, "ascii %d\n", (int) str[i]);
                            abort();
                        }
         }

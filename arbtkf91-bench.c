@@ -23,6 +23,7 @@
  * "elapsed_ticks" : [integer, integer, ..., integer],
  * "sequence_a" : string,
  * "sequence_b" : string,
+ * "verified" : bool
  * }
  *
  */
@@ -135,11 +136,12 @@ json_t *run(void * userdata, json_t *j_in)
         json_array_append_new(elapsed_ticks, json_integer((json_int_t) diff));
     }
 
-    j_out = json_pack("{s:i, s:o, s:s, s:s}",
+    j_out = json_pack("{s:i, s:o, s:s, s:s, s:b}",
             "ticks_per_second", (json_int_t) CLOCKS_PER_SEC,
             "elapsed_ticks", elapsed_ticks,
             "sequence_a", sol->A,
-            "sequence_b", sol->B);
+            "sequence_b", sol->B,
+            "verified", sol->optimality_flag);
 
     flint_free(A);
     flint_free(B);

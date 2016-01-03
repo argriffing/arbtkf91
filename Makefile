@@ -136,7 +136,7 @@ wavefront_hermite.o: wavefront_hermite.c
 
 # the matrix of breadcrumbs for the traceback stage of dynamic programming
 
-breadcrumbs.o: breadcrumbs.c
+breadcrumbs.o: breadcrumbs.c breadcrumbs.h
 	$(CC) breadcrumbs.c -c $(CFLAGS)
 
 vis.o: vis.c breadcrumbs.h

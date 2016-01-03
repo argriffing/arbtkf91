@@ -13,8 +13,6 @@ _fill_sequence_vector(slong *v, const char *str, slong n)
     {
         switch(str[i])
         {
-            case 'N' :
-            case 'n' :
             case 'A' :
             case 'a' :
                 v[i] = 0;
@@ -35,10 +33,17 @@ _fill_sequence_vector(slong *v, const char *str, slong n)
                 v[i] = -1;
                 break;
             default:
-                       {
-                           fprintf(stderr, "unrecognized nucleotide\n");
-                           abort();
-                       }
+                /* ambiguous nucleotides will be treated as A */
+                if (isalpha(str[i]))
+                {
+                    v[i] = 0;
+                }
+                else
+                {
+                    fprintf(stderr, "unrecognized nucleotide ");
+                    fprintf(stderr, "ascii %d\n", (int) str[i]);
+                    abort();
+                }
         }
     }
 }

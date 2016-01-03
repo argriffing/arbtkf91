@@ -50,8 +50,8 @@ fmpz * _bound_mat_max2ref(bound_mat_t mat, slong i, slong k);
 slong bound_mat_ncols(const bound_mat_t mat);
 slong bound_mat_nrows(const bound_mat_t mat);
 
-void _check_equal(fmpz * u, fmpz * v, slong r);
 void _tkf91_dp_verify_symbolically(
+        int *verified,
         tkf91_generator_vecs_t h,
         bound_mat_t b,
         const slong *A,
@@ -247,6 +247,7 @@ bound_mat_clear(bound_mat_t mat)
 
 void
 tkf91_dp_verify_symbolically(
+        int *verified,
         fmpz_mat_t mat,
         const tkf91_generator_indices_t g,
         breadcrumb_mat_t mask,
@@ -282,7 +283,7 @@ tkf91_dp_verify_symbolically(
     tkf91_generator_vecs_init(h, g, V, rank);
     bound_mat_init(b, mask, rank);
 
-    _tkf91_dp_verify_symbolically(h, b, A, B);
+    _tkf91_dp_verify_symbolically(verified, h, b, A, B);
 
     fmpz_mat_clear(H);
     fmpz_mat_clear(V);
@@ -292,24 +293,8 @@ tkf91_dp_verify_symbolically(
 
 
 void
-_check_equal(fmpz * u, fmpz * v, slong r)
-{
-    /*
-    flint_printf("verifying... ");
-    */
-    if (!_fmpz_vec_equal(u, v, r))
-    {
-        flint_printf("verification failed\n");
-        abort();
-    }
-    /*
-    flint_printf("OK\n");
-    */
-}
-
-
-void
 _tkf91_dp_verify_symbolically(
+        int *verified,
         tkf91_generator_vecs_t h,
         bound_mat_t b,
         const slong *A,
@@ -333,6 +318,8 @@ _tkf91_dp_verify_symbolically(
     fmpz * m0_buf;
     fmpz * m1_buf;
     fmpz * m2_buf;
+
+    *verified = 1;
 
     r = tkf91_generator_vecs_rank(h);
     nr = bound_mat_nrows(b);
@@ -488,22 +475,22 @@ _tkf91_dp_verify_symbolically(
             {
                 if ((crumb & CRUMB_DIAG2) && (crumb & CRUMB_LEFT2))
                 {
-                    _check_equal(m1, m2, r);
+                    if (!_fmpz_vec_equal(m1, m2, r)) goto fail;
                 }
             }
             if (want3)
             {
                 if ((crumb & CRUMB_TOP) && (crumb & CRUMB_DIAG))
                 {
-                    _check_equal(m0, m1, r);
+                    if (!_fmpz_vec_equal(m0, m1, r)) goto fail;
                 }
                 if ((crumb & CRUMB_DIAG) && (crumb & CRUMB_LEFT))
                 {
-                    _check_equal(m1, m2, r);
+                    if (!_fmpz_vec_equal(m1, m2, r)) goto fail;
                 }
                 if ((crumb & CRUMB_LEFT) && (crumb & CRUMB_TOP))
                 {
-                    _check_equal(m2, m0, r);
+                    if (!_fmpz_vec_equal(m2, m0, r)) goto fail;
                 }
             }
 
@@ -540,6 +527,14 @@ _tkf91_dp_verify_symbolically(
             }
         }
     }
+
+    goto cleanup;
+
+fail:
+
+    *verified = 0;
+
+cleanup:
 
     _fmpz_vec_clear(m0_buf, r);
     _fmpz_vec_clear(m1_buf, r);

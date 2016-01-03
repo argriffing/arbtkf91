@@ -16,6 +16,7 @@ extern "C" {
 
 void
 tkf91_dp_verify_symbolically(
+        int *verified,
         fmpz_mat_t mat,
         const tkf91_generator_indices_t g,
         breadcrumb_mat_t mask,
