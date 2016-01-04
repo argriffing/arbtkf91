@@ -3,6 +3,7 @@
  *
  * input:
  * {
+ * "image_filename" : string,
  * "pa_n" : integer, "pa_d" : integer,
  * "pc_n" : integer, "pc_d" : integer,
  * "pg_n" : integer, "pg_d" : integer,
@@ -33,7 +34,7 @@
 
 
 void
-solve(tkf91_dp_fn f, solution_t sol, const model_params_t p,
+solve(solution_t sol, const char * image_filenmae, const model_params_t p,
         const slong *A, slong len_A, const slong *B, slong len_B);
 
 
@@ -71,8 +72,12 @@ json_t *run(void * userdata, json_t *j_in)
     A = _json_object_get_sequence(&len_A, args, "sequence_a");
     B = _json_object_get_sequence(&len_B, args, "sequence_b");
 
+    /* read the requested image filename */
+    const char * image_filename;
+    image_filename = _json_object_get_string(args, "image_filename");
+
     solution_init(sol, len_A + len_B);
-    solve(tkf91_dp_bound, sol, p, A, len_A, B, len_B);
+    solve(sol, image_filename, p, A, len_A, B, len_B);
 
     flint_free(A);
     flint_free(B);
@@ -85,7 +90,7 @@ json_t *run(void * userdata, json_t *j_in)
 
 
 void
-solve(tkf91_dp_fn f, solution_t sol, const model_params_t p,
+solve(solution_t sol, const char * image_filename, const model_params_t p,
         const slong *A, slong szA, const slong *B, slong szB)
 {
     tkf91_rationals_t r;
@@ -115,10 +120,11 @@ solve(tkf91_dp_fn f, solution_t sol, const model_params_t p,
     expressions_table = reg_vec(er);
 
     /* init request object */
-    req->png_filename = "tableau.png";
+    req->png_filename = image_filename;
     req->trace = 1;
 
-    f(sol, req, mat, expressions_table, generators, A, szA, B, szB);
+    tkf91_dp_bound(sol, req, mat, expressions_table, generators,
+            A, szA, B, szB);
 
     fmpz_mat_clear(mat);
     flint_free(expressions_table);

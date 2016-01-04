@@ -60,7 +60,7 @@ solution_print(const solution_t x)
  */
 typedef struct
 {
-    char * png_filename;
+    const char * png_filename;
     int trace;
 } request_struct;
 typedef request_struct request_t[1];

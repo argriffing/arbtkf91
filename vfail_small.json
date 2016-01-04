@@ -1,6 +1,5 @@
 {
 	"precision": "exact",
-	"samples": 10,
 	"pa_n": 27, "pa_d": 100,
 	"pg_n": 26, "pg_d": 100,
 	"pc_n": 24, "pc_d": 100,
