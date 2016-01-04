@@ -1,0 +1,49 @@
+"""
+Run programs that other people have written.
+
+./tkf91 --sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA --sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA --lambda 1 --mu 2 --tau 0.1 --pa 0.25 --pc 0.25 --pg 0.25 --pt 0.25
+
+"""
+from __future__ import print_function, division
+
+import os
+from subprocess import Popen, PIPE
+
+from data_source import gen_files, gen_sequence_pairs
+
+
+def align_pair(align, model_params, a, b):
+    d = model_params.copy()
+    d.update({"sequence-1" : a, "sequence-2" : b})
+    args = [align]
+    for k, v in d.items():
+        args.extend(['--'+k, v])
+    p = Popen(args, stdout=PIPE, stdin=PIPE, stderr=PIPE)
+    return p.communicate()
+
+
+def main():
+    align = os.path.realpath('../../stamatakis/tkf91_scaling/tkf91')
+    model_params = {
+            "pa" : "0.27",
+            "pc" : "0.24",
+            "pg" : "0.26",
+            "pt" : "0.23",
+            "lambda" : "1",
+            "mu" : "2",
+            "tau" : "0.1",
+            }
+    for name, fin in gen_files():
+        print(name)
+        with open("out-" + name, "wt") as fout:
+            with open("err-" + name, "wt") as ferr:
+                for a, b in gen_sequence_pairs(fin, force_acgt=True):
+                    out, err = align_pair(align, model_params, a, b)
+                    print(out, file=fout)
+                    print(err, file=ferr)
+                    fout.flush()
+                    ferr.flush()
+
+
+if __name__ == '__main__':
+    main()

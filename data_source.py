@@ -14,8 +14,20 @@ __all__ = ['gen_files', 'gen_sequence_pairs']
 
 mypath = os.path.realpath('../../stamatakis/benchMark_data')
 
+def _normalized_seq(s):
+    return ''.join(_normalized_chr(c) for c in s)
 
-def gen_sequence_pairs(fin):
+def _normalized_chr(c):
+    if c in 'ACGT':
+        return c
+    elif c.isalpha:
+        return 'A'
+    else:
+        msg = ('weird character:', c)
+        raise Exception(msg)
+
+
+def gen_sequence_pairs(fin, force_acgt=False):
     # yield (10 choose 2) = 45 nucleotide sequence pairs
     fasta_objects = list(SeqIO.parse(fin, 'fasta'))
     sequences = [str(x.seq) for x in fasta_objects]
@@ -29,6 +41,9 @@ def gen_sequence_pairs(fin):
         for j in range(i):
             a = selection[i]
             b = selection[j]
+            if force_acgt:
+                a = _normalized_seq(a)
+                b = _normalized_seq(b)
             yield a, b
             k += 1
     assert_equal(k, 45)
