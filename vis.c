@@ -265,73 +265,9 @@ int write_tableau_image(
 end:
     if (fout != NULL) fclose(fout);
     if (info_ptr != NULL) png_free_data(png_ptr, info_ptr, PNG_FREE_ALL, -1);
+    if (info_ptr != NULL) png_destroy_info_struct(png_ptr, &info_ptr);
     if (png_ptr != NULL) png_destroy_write_struct(&png_ptr, (png_infopp)NULL);
     buf_clear(buf);
 
     return code;
 }
-
-/*
-
-            # connections among potentially informative nodes
-            #
-            # diag connection
-            if i > 0 and j > 0:
-                if data[i, j] & (CRUMB_WANT2 | CRUMB_WANT3) and data[i-1, j-1] & (CRUMB_WANT2 | CRUMB_WANT3):
-                    if d & CRUMB_DIAG2:
-                        image[i, j, 0, 0, IBLUE] = BRIGHT
-                        image[i, j, 1, 1, IBLUE] = BRIGHT
-            #
-            # left connection
-            if j > 0:
-                if data[i, j] & (CRUMB_WANT2 | CRUMB_WANT3) and data[i, j-1] & (CRUMB_WANT2 | CRUMB_WANT3):
-                    if d & CRUMB_LEFT2:
-                        image[i, j, 3, :2, IBLUE] = BRIGHT
-
-            # connections among potentially visited nodes
-            #
-            # top connection
-            if i > 0:
-                if data[i, j] & CRUMB_CONTENDER and data[i-1, j] & CRUMB_CONTENDER:
-                    if d & CRUMB_TOP:
-                        image[i, j, :2, 3, IRED] = BRIGHT
-            #
-            # diag connection
-            if i > 0 and j > 0:
-                if data[i, j] & CRUMB_CONTENDER and data[i-1, j-1] & CRUMB_CONTENDER:
-                    if d & CRUMB_DIAG:
-                        image[i, j, 0, 0, IRED] = BRIGHT
-                        image[i, j, 1, 1, IRED] = BRIGHT
-            #
-            # left connection
-            if j > 0:
-                if data[i, j] & CRUMB_CONTENDER and data[i, j-1] & CRUMB_CONTENDER:
-                    if d & CRUMB_LEFT:
-                        image[i, j, 3, :2, IRED] = BRIGHT
-
-    print 'yielding rgb triples...'
-    for i in range(nr):
-        print i
-        for k in range(5):
-            for j in range(nc):
-                for l in range(5):
-                    if j == 0 and l < 2: continue
-                    if i == 0 and k < 2: continue
-                    yield tuple(image[i, j, k, l].tolist())
-
-
-
-def main():
-    lines = sys.stdin.readlines()
-    rcv_triples = [tuple(int(s) for s in line.split()) for line in lines]
-    nr, nc = get_shape(rcv_triples)
-    rgb_triples = list(gen_rgb_triples(rcv_triples, nr, nc))
-    width = nc * 5 - 2
-    height = nr * 5 - 2
-    im = Image.new("RGB", (width, height))
-    im.putdata(rgb_triples)
-    im.save('trace.png', 'png')
-
-main()
-
-*/

@@ -334,6 +334,24 @@ _check_equal(fmpz * a, fmpz * b, slong r, arb_ptr v)
     return 1;
 }
 
+void _report(const char * name, fmpz * a, slong r);
+
+void
+_report(const char * name, fmpz * a, slong r)
+{
+    flint_printf(name);
+    flint_printf(" integer vector : ");
+    if (a)
+    {
+        _fmpz_vec_print(a, r);
+    }
+    else
+    {
+        flint_printf("unavailable");
+    }
+    flint_printf("\n");
+}
+
 
 void
 _tkf91_dp_verify_symbolically(
@@ -387,6 +405,11 @@ _tkf91_dp_verify_symbolically(
             j = b->indices[u];
             node = b->data+u;
 
+            /* debug */
+            /*
+            flint_printf("csr iteration i=%wd j=%wd\n", i, j);
+            */
+
             crumb = node->crumb;
             want2 = crumb & CRUMB_WANT2;
             want3 = crumb & (CRUMB_CONTENDER | CRUMB_WANT3);
@@ -435,19 +458,45 @@ _tkf91_dp_verify_symbolically(
                 m2 = m2_buf;
             }
 
+            /* the buffers are always available to the base cases */
+            if (i == 0 && j == 0)
+            {
+                m1 = m1_buf;
+            }
+            else if (i == 1 && j == 0)
+            {
+                m0 = m0_buf;
+            }
+            else if (i == 0 && j == 1)
+            {
+                m2 = m2_buf;
+            }
+
+            /* debugging */
+            if (want2 && !m1 && !m2)
+            {
+                flint_printf("want2 but neither m1 nor m2 is available\n");
+                abort();
+            }
+            if (want3 && !m0 && !m1 && !m2)
+            {
+                flint_printf("want3 but none of m0, m1, m2 are available\n");
+                abort();
+            }
+
             if (i < 1 || j < 1)
             {
                 if (i == 0 && j == 0)
                 {
-                    if (m1) _fmpz_vec_set(m1, h->m1_00, r);
+                    _fmpz_vec_set(m1, h->m1_00, r);
                 }
                 else if (i == 1 && j == 0)
                 {
-                    if (m0) _fmpz_vec_set(m0, h->m0_10, r);
+                    _fmpz_vec_set(m0, h->m0_10, r);
                 }
                 else if (i == 0 && j == 1)
                 {
-                    if (m2) _fmpz_vec_set(m2, h->m2_01, r);
+                    _fmpz_vec_set(m2, h->m2_01, r);
                 }
                 else
                 {
@@ -554,6 +603,13 @@ _tkf91_dp_verify_symbolically(
                 }
             }
 
+            /* debug */
+            /*
+            _report("m0", m0, r);
+            _report("m1", m1, r);
+            _report("m2", m2, r);
+            */
+
             /*
              * Update the pmax2 and pmax3 vectors.
              * It is not required to take a maximum because we just
@@ -585,6 +641,10 @@ _tkf91_dp_verify_symbolically(
                     _fmpz_vec_set(node->pmax3, m2, r);
                 }
             }
+            /*
+            _report("pmax2", node->pmax2, r);
+            _report("pmax3", node->pmax3, r);
+            */
         }
     }
 

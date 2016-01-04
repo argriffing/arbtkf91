@@ -32,8 +32,8 @@ def analysis(bench, fin):
             tau_n=1, tau_d=10)
     
     base = model_params.copy()
-    base['precision'] = 'high'
-    base['samples'] = 1
+    base['precision'] = 'exact'
+    base['samples'] = 10
 
     total_ticks = 0
     k = 0
