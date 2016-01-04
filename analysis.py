@@ -22,11 +22,22 @@ def analysis(bench, fin):
     selection = [sequences[i] for i in indices]
     assert_equal(len(selection), requested)
 
+    """
     model_params = dict(
             pa_n=27, pa_d=100,
             pc_n=24, pc_d=100,
             pg_n=26, pg_d=100,
             pt_n=23, pt_d=100,
+            lambda_n=1, lambda_d=1,
+            mu_n=2, mu_d=1,
+            tau_n=1, tau_d=10)
+    """
+
+    model_params = dict(
+            pa_n=25, pa_d=100,
+            pc_n=25, pc_d=100,
+            pg_n=25, pg_d=100,
+            pt_n=25, pt_d=100,
             lambda_n=1, lambda_d=1,
             mu_n=2, mu_d=1,
             tau_n=1, tau_d=10)
