@@ -17,21 +17,6 @@
 #include "tkf91_generator_vecs.h"
 
 
-void
-_arb_vec_dot_fmpz_vec(
-        arb_t res, arb_srcptr vec1, const fmpz * vec2, slong len2, slong prec);
-
-void
-_arb_vec_dot_fmpz_vec(
-        arb_t res, arb_srcptr vec1, const fmpz * vec2, slong len2, slong prec)
-{
-    slong i;
-    arb_zero(res);
-    for (i = 0; i < len2; i++)
-    {
-        arb_addmul_fmpz(res, vec1+i, vec2+i, prec);
-    }
-}
 
 
 void
@@ -422,12 +407,9 @@ tkf91_dp_r(
      *   g : a struct with tkf91 generator indices
      */
 
-    arb_t x;
     fmpz_mat_t H, V;
-    slong i, level, prec, rank;
+    slong level, prec, rank;
     tkf91_generator_vecs_t h;
-
-    arb_init(x);
 
     /*
      * For now, use an arbitrary precision.
@@ -435,7 +417,7 @@ tkf91_dp_r(
      * we could decide to adjust it dynamically if it is detected
      * to be insufficient.
      */
-    level = 6;
+    level = 8;
     prec = 1 << level;
 
     /* Compute a Hermite decomposition of the generator matrix. */
@@ -444,8 +426,10 @@ tkf91_dp_r(
     fmpz_mat_init(V, fmpz_mat_nrows(mat), fmpz_mat_nrows(mat));
     _fmpz_mat_hnf_inverse_transform(H, V, &rank, mat);
 
+    /*
     flint_fprintf(stderr, "matrix rank revealed by the ");
     flint_fprintf(stderr, "Hermite normal form: %wd\n", rank);
+    */
 
     /*
      * 'vecify' a structure with tkf91 generators,
@@ -453,55 +437,10 @@ tkf91_dp_r(
      */
     tkf91_generator_vecs_init(h, g, V, rank);
 
-    /*
-     * Initialize an arbitrary precision matrix.
-     * This will be part of the calculation H*log(y)
-     * which gives the score of each quasi-generator.
-     */
-    arb_mat_t arbH;
-    arb_mat_init(arbH, fmpz_mat_nrows(H), fmpz_mat_ncols(H));
-    arb_mat_set_fmpz_mat(arbH, H);
-
-    /*
-     * Compute the expression logs.
-     * This is like a log(y) column vector.
-     */
-    arb_mat_t expression_logs;
-    arb_mat_init(expression_logs, fmpz_mat_ncols(mat), 1);
-    for (i = 0; i < fmpz_mat_ncols(mat); i++)
-    {
-        expr_eval(x, expressions_table[i], level);
-        arb_log(arb_mat_entry(expression_logs, i, 0), x, prec);
-
-        /*
-        flint_printf("expression %wd : ", i);
-        arb_printd(x, 15);
-        flint_printf("\n");
-        */
-    }
-
-    /*
-     * Compute the quasi-generator logs H*log(y).
-     */
-    arb_mat_t quasi_generator_logs;
-    arb_mat_init(quasi_generator_logs, fmpz_mat_nrows(mat), 1);
-    arb_mat_mul(quasi_generator_logs, arbH, expression_logs, prec);
-
-    /*
-     * Create an arb row vector by taking the first r elements
-     * from the quasi_generator_logs column vector,
-     * where r is the matrix rank of the generator matrix.
-     */
     arb_ptr v;
     v = _arb_vec_init(rank);
-    flint_fprintf(stderr, "quasi generator logarithms:\n");
-    for (i = 0; i < rank; i++)
-    {
-        arb_set(v+i, arb_mat_entry(quasi_generator_logs, i, 0));
-        arb_fprintd(stderr, v+i, 15);
-        flint_fprintf(stderr, "\n");
-    }
-    flint_fprintf(stderr, "\n");
+    compute_hlogy(v, H, expressions_table, rank, level);
+
 
     /*
      * Begin checking some invariants.
@@ -511,16 +450,20 @@ tkf91_dp_r(
      * This will be part of the calculation G*log(y)
      * which gives the score of each generator.
      */
+    /*
     arb_mat_t arbG;
     arb_mat_init(arbG, fmpz_mat_nrows(mat), fmpz_mat_ncols(mat));
     arb_mat_set_fmpz_mat(arbG, mat);
+    */
 
     /*
      * Compute the generator logs G*log(y).
      */
+    /*
     arb_mat_t generator_logs;
     arb_mat_init(generator_logs, fmpz_mat_nrows(mat), 1);
     arb_mat_mul(generator_logs, arbG, expression_logs, prec);
+    */
 
     /*
     flint_printf("log probability for each generator:\n");
@@ -554,18 +497,19 @@ tkf91_dp_r(
     */
 
     /* clear temporary variables */
-    arb_clear(x);
     fmpz_mat_clear(H);
     fmpz_mat_clear(V);
-    arb_mat_clear(arbH);
+    /*
     arb_mat_clear(arbG);
-    arb_mat_clear(expression_logs);
     arb_mat_clear(generator_logs);
-    arb_mat_clear(quasi_generator_logs);
+    */
 
     /* do the thing */
     tkf91_dynamic_programming_hermite(
             sol, req, h, v, rank, prec, A, szA, B, szB);
+
+    /* this will have aborted if not optimal so set optimality to true */
+    sol->optimality_flag = 1;
 
     /* clear the remaining variables */
     _arb_vec_clear(v, rank);

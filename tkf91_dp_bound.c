@@ -517,7 +517,10 @@ tkf91_dp_bound(
 
         start = clock();
         int verified = 0;
-        tkf91_dp_verify_symbolically(&verified, mat, g, crumb_mat, A, B);
+        tkf91_dp_verify_symbolically(
+                &verified, mat, g, crumb_mat,
+                expressions_table,
+                A, B);
         _fprint_elapsed(file, "symbolic verification", clock() - start);
         sol->optimality_flag = verified;
 

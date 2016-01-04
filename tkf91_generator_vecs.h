@@ -5,6 +5,9 @@
 #include "flint/fmpz.h"
 #include "flint/fmpz_mat.h"
 
+#include "arb.h"
+
+#include "expressions.h"
 #include "tkf91_generator_indices.h"
 
 
@@ -39,6 +42,11 @@ extern "C" {
 #endif
 
 
+void
+_arb_vec_dot_fmpz_vec(
+        arb_t res, arb_srcptr vec1, const fmpz * vec2, slong len2, slong prec);
+
+
 void _fmpz_mat_hnf_inverse_transform(
         fmpz_mat_t H, fmpz_mat_t V, slong * prank, const fmpz_mat_t A);
 
@@ -57,6 +65,21 @@ void tkf91_generator_vecs_init(
         slong rank);
 
 void tkf91_generator_vecs_clear(tkf91_generator_vecs_t h);
+
+/*
+ * Compute log probabilities corresponding to linear integer combinations
+ * of the basis expressions.
+ * This function could be used for verification stages of alignment algorithms
+ * that are based on (mag_t low, mag_t high) or arb_t intervals.
+ *
+ * H : the Hermite normal form of G, where G is
+ *     the (#generators x #expressions) matrix of integer exponents.
+ * expressions_table : array of basis expression objects
+ * rank : rank of G and H
+ * level : log2 of the bits of precision for intermediate calculations
+ */
+void compute_hlogy(arb_ptr res, const fmpz_mat_t H,
+        expr_ptr * expressions_table, slong rank, slong level);
 
 
 #ifdef __cplusplus

@@ -20,6 +20,7 @@ tkf91_dp_verify_symbolically(
         fmpz_mat_t mat,
         const tkf91_generator_indices_t g,
         breadcrumb_mat_t mask,
+        expr_ptr * expressions_table,
         const slong *A,
         const slong *B);
 

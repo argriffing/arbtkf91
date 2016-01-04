@@ -6,7 +6,7 @@
  *
  * input:
  * {
- * "precision" : "float" | "double" | "exact",
+ * "precision" : "float" | "double" | "high", "exact",
  * "pa_n" : integer, "pa_d" : integer,
  * "pc_n" : integer, "pc_d" : integer,
  * "pg_n" : integer, "pg_d" : integer,
@@ -45,6 +45,7 @@
 #include "jsonutil.h"
 #include "tkf91_dp_f.h"
 #include "tkf91_dp_d.h"
+#include "tkf91_dp_r.h"
 #include "tkf91_dp_bound.h"
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
@@ -106,15 +107,18 @@ json_t *run(void * userdata, json_t *j_in)
     {
         f = tkf91_dp_d;
     }
+    else if (strcmp(precision_str, "high") == 0)
+    {
+        f = tkf91_dp_r;
+    }
     else if (strcmp(precision_str, "exact") == 0)
     {
-        ;
         f = tkf91_dp_bound;
     }
     else
     {
         printf("expected the precision string to be one of ");
-        printf("{'float' | 'double' | 'exact'}\n");
+        printf("{\"float\" | \"double\" | \"exact\" | \"high\"}\n");
         abort();
     }
 

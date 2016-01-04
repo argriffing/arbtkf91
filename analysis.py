@@ -32,19 +32,21 @@ def analysis(bench, fin):
             tau_n=1, tau_d=10)
     
     base = model_params.copy()
-    base['precision'] = 'double'
-    base['samples'] = 10
+    base['precision'] = 'high'
+    base['samples'] = 1
 
     total_ticks = 0
     k = 0
     for i in range(requested):
         for j in range(i):
-            # align selection i to select j
-            print('aligning', i, 'to', j, '...')
+            a = selection[i]
+            b = selection[j]
+
             d = base.copy()
-            d['sequence_a'] = selection[i]
-            d['sequence_b'] = selection[j]
+            d['sequence_a'] = a
+            d['sequence_b'] = b
             s_in = json.dumps(d)
+
             args = [bench]
             p = Popen(args, stdout=PIPE, stdin=PIPE, stderr=PIPE)
             data = p.communicate(input=s_in)
@@ -58,6 +60,11 @@ def analysis(bench, fin):
                 print(stderr_data)
                 raise
             print('verified:', out['verified'])
+            if not out['verified']:
+                print('input and output corresponding to verification failure:')
+                print(s_in)
+                print(stdout_data)
+                raise Exception('verification failed')
             #print('json stuff:')
             #print(out)
             k += 1

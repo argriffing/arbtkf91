@@ -146,7 +146,7 @@ vis.o: vis.c breadcrumbs.h
 
 tkf91_generator_vecs.o: tkf91_generator_vecs.c
 	$(CC) tkf91_generator_vecs.c \
-		-c $(CFLAGS)
+		-c $(ARB_INCLUDES) $(CFLAGS)
 
 tkf91_dp_d.o: tkf91_dp_d.c \
 	breadcrumbs.h printutil.h tkf91_dp.h
@@ -169,7 +169,7 @@ tkf91_dp_bound.o: tkf91_dp_bound.c \
 		-c $(ARB_INCLUDES) $(CFLAGS)
 
 bound_mat.o: bound_mat.c breadcrumbs.h
-	$(CC) bound_mat.c -c $(CFLAGS)
+	$(CC) bound_mat.c -c $(ARB_INCLUDES) $(CFLAGS)
 
 tkf91_dp.o: tkf91_dp.c
 	$(CC) tkf91_dp.c -c $(ARB_INCLUDES) $(CFLAGS)

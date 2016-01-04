@@ -1,8 +1,22 @@
 #include "flint/fmpz.h"
 #include "flint/fmpz_mat.h"
 
+#include "arb_mat.h"
+
 #include "tkf91_generator_indices.h"
 #include "tkf91_generator_vecs.h"
+
+void
+_arb_vec_dot_fmpz_vec(
+        arb_t res, arb_srcptr vec1, const fmpz * vec2, slong len2, slong prec)
+{
+    slong i;
+    arb_zero(res);
+    for (i = 0; i < len2; i++)
+    {
+        arb_addmul_fmpz(res, vec1+i, vec2+i, prec);
+    }
+}
 
 fmpz * _vecify(slong i, const fmpz_mat_t M);
 
@@ -139,4 +153,68 @@ _fmpz_mat_hnf_inverse_transform(
 
     fmpz_clear(den);
     fmpz_mat_clear(U);
+}
+
+void
+compute_hlogy(arb_ptr res, const fmpz_mat_t H,
+        expr_ptr * expressions_table, slong rank, slong level)
+{
+    /* res : initialized arb vector with length equal to rank */
+
+    arb_mat_t arbH;
+    arb_mat_t expression_logs;
+    arb_mat_t quasi_generator_logs;
+    arb_t x;
+    slong prec;
+    int i;
+    slong nrows, ncols;
+
+    prec = 1 << level;
+    nrows = fmpz_mat_nrows(H);
+    ncols = fmpz_mat_ncols(H);
+
+    /*
+     * Initialize an arbitrary precision matrix.
+     * This will be part of the calculation H*log(y)
+     * which gives the score of each quasi-generator.
+     */
+    arb_mat_init(arbH, nrows, ncols);
+    arb_mat_set_fmpz_mat(arbH, H);
+
+    /*
+     * Compute the expression logs.
+     * This is like a log(y) column vector.
+     */
+    arb_init(x);
+    arb_mat_init(expression_logs, ncols, 1);
+    for (i = 0; i < ncols; i++)
+    {
+        expr_eval(x, expressions_table[i], level);
+        arb_log(arb_mat_entry(expression_logs, i, 0), x, prec);
+    }
+
+    /*
+     * Compute the column vector of quasi-generator logs H*log(y).
+     */
+    arb_mat_init(quasi_generator_logs, nrows, 1);
+    arb_mat_mul(quasi_generator_logs, arbH, expression_logs, prec);
+
+    /*
+     * Create an arb row vector by taking the first r elements
+     * from the quasi_generator_logs column vector,
+     * where r is the matrix rank of the generator matrix.
+     */
+    /*flint_fprintf(stderr, "quasi generator logarithms:\n");*/
+    for (i = 0; i < rank; i++)
+    {
+        arb_set(res+i, arb_mat_entry(quasi_generator_logs, i, 0));
+        /*arb_fprintd(stderr, v+i, 15);*/
+        /*flint_fprintf(stderr, "\n");*/
+    }
+    /*flint_fprintf(stderr, "\n");*/
+
+    arb_mat_clear(arbH);
+    arb_mat_clear(expression_logs);
+    arb_mat_clear(quasi_generator_logs);
+    arb_clear(x);
 }

@@ -53,6 +53,7 @@ slong bound_mat_nrows(const bound_mat_t mat);
 void _tkf91_dp_verify_symbolically(
         int *verified,
         tkf91_generator_vecs_t h,
+        arb_ptr v,
         bound_mat_t b,
         const slong *A,
         const slong *B);
@@ -251,6 +252,7 @@ tkf91_dp_verify_symbolically(
         fmpz_mat_t mat,
         const tkf91_generator_indices_t g,
         breadcrumb_mat_t mask,
+        expr_ptr * expressions_table,
         const slong *A,
         const slong *B)
 {
@@ -268,6 +270,10 @@ tkf91_dp_verify_symbolically(
     slong rank;
     tkf91_generator_vecs_t h;
     bound_mat_t b;
+    arb_ptr v;
+    slong level;
+
+    level = 8;
 
     /* Compute a Hermite decomposition of the generator matrix. */
     /* U*mat = H ; U^-1 = V ; rank = rank(H) */
@@ -283,8 +289,12 @@ tkf91_dp_verify_symbolically(
     tkf91_generator_vecs_init(h, g, V, rank);
     bound_mat_init(b, mask, rank);
 
-    _tkf91_dp_verify_symbolically(verified, h, b, A, B);
+    v = _arb_vec_init(rank);
+    compute_hlogy(v, H, expressions_table, rank, level);
 
+    _tkf91_dp_verify_symbolically(verified, h, v, b, A, B);
+
+    _arb_vec_clear(v, rank);
     fmpz_mat_clear(H);
     fmpz_mat_clear(V);
     tkf91_generator_vecs_clear(h);
@@ -292,10 +302,44 @@ tkf91_dp_verify_symbolically(
 }
 
 
+int _check_equal(fmpz * a, fmpz * b, slong r, arb_ptr v);
+
+int
+_check_equal(fmpz * a, fmpz * b, slong r, arb_ptr v)
+{
+    if (!_fmpz_vec_equal(a, b, r))
+    {
+        flint_printf("expected two vectors to be equal, but they aren't\n");
+
+        arb_t x, y;
+        arb_init(x);
+        arb_init(y);
+        _arb_vec_dot_fmpz_vec(x, v, a, r, 1 << 8);
+        _arb_vec_dot_fmpz_vec(y, v, b, r, 1 << 8);
+
+        _fmpz_vec_print(a, r);
+        flint_printf(" : ");
+        arb_print(x);
+        flint_printf("\n");
+
+        _fmpz_vec_print(b, r);
+        flint_printf(" : ");
+        arb_print(y);
+        flint_printf("\n");
+
+        flint_printf("overlap? %d\n", arb_overlaps(x, v));
+
+        return 0;
+    }
+    return 1;
+}
+
+
 void
 _tkf91_dp_verify_symbolically(
         int *verified,
         tkf91_generator_vecs_t h,
+        arb_ptr v,
         bound_mat_t b,
         const slong *A,
         const slong *B)
@@ -475,22 +519,22 @@ _tkf91_dp_verify_symbolically(
             {
                 if ((crumb & CRUMB_DIAG2) && (crumb & CRUMB_LEFT2))
                 {
-                    if (!_fmpz_vec_equal(m1, m2, r)) goto fail;
+                    if (!_check_equal(m1, m2, r, v)) goto fail;
                 }
             }
             if (want3)
             {
                 if ((crumb & CRUMB_TOP) && (crumb & CRUMB_DIAG))
                 {
-                    if (!_fmpz_vec_equal(m0, m1, r)) goto fail;
+                    if (!_check_equal(m0, m1, r, v)) goto fail;
                 }
                 if ((crumb & CRUMB_DIAG) && (crumb & CRUMB_LEFT))
                 {
-                    if (!_fmpz_vec_equal(m1, m2, r)) goto fail;
+                    if (!_check_equal(m1, m2, r, v)) goto fail;
                 }
                 if ((crumb & CRUMB_LEFT) && (crumb & CRUMB_TOP))
                 {
-                    if (!_fmpz_vec_equal(m2, m0, r)) goto fail;
+                    if (!_check_equal(m2, m0, r, v)) goto fail;
                 }
             }
 
