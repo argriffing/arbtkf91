@@ -51,7 +51,7 @@ def main():
     for name, fin in gen_files():
         print(name)
         sequence_pairs = list(gen_sequence_pairs(fin, force_acgt=True))
-        for precision in 'float', 'double':
+        for precision in 'float', 'double', 'exact':
             print('precision:', precision)
             ncanon = 0
             nopt = 0
