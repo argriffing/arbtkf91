@@ -89,6 +89,16 @@ tmat_clear(tmat_t mat)
     flint_free(mat->data);
 }
 
+static __inline__ int
+_almost_equal(float a, float b, float rtol)
+{
+    if (a == 0 || b==0)
+    {
+        return b == 0 && b == 0;
+    }
+    return fabsf(b - a) / fminf(fabsf(b), fabsf(a)) < rtol;
+}
+
 void
 tmat_get_alignment(
         solution_t sol, const tmat_t mat, const slong *A, const slong *B)
@@ -101,6 +111,7 @@ tmat_get_alignment(
     slong len, nrows, ncols;
     float max3;
     tnode_ptr cell;
+    float rtol = 1e-6;
 
     sa = sol->A;
     sb = sol->B;
@@ -114,20 +125,20 @@ tmat_get_alignment(
     {
         cell = tmat_srcentry(mat, i, j);
         max3 = fmaxf(cell->m0, fmaxf(cell->m1, cell->m2));
-        if (cell->m0 == max3)
+        if (_almost_equal(cell->m0, max3, rtol))
         {
             sa[len] = ACGT[A[i-1]];
             sb[len] = '-';
             i--;
         }
-        else if (cell->m1 == max3)
+        else if (_almost_equal(cell->m1, max3, rtol))
         {
             sa[len] = ACGT[A[i-1]];
             sb[len] = ACGT[B[j-1]];
             i--;
             j--;
         }
-        else if (cell->m2 == max3)
+        else if (_almost_equal(cell->m2, max3, rtol))
         {
             sa[len] = '-';
             sb[len] = ACGT[B[j-1]];
