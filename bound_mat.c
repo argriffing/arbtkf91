@@ -519,22 +519,38 @@ _tkf91_dp_verify_symbolically(
             {
                 if ((crumb & CRUMB_DIAG2) && (crumb & CRUMB_LEFT2))
                 {
-                    if (!_check_equal(m1, m2, r, v)) goto fail;
+                    if (!_check_equal(m1, m2, r, v)) {
+                        flint_printf("fail: want2 m1 vs m2\n");
+                        flint_printf("i=%wd j=%wd\n", i, j);
+                        goto fail;
+                    }
                 }
             }
             if (want3)
             {
                 if ((crumb & CRUMB_TOP) && (crumb & CRUMB_DIAG))
                 {
-                    if (!_check_equal(m0, m1, r, v)) goto fail;
+                    if (!_check_equal(m0, m1, r, v)) {
+                        flint_printf("fail: want3 m0 vs m1\n");
+                        flint_printf("i=%wd j=%wd\n", i, j);
+                        goto fail;
+                    }
                 }
                 if ((crumb & CRUMB_DIAG) && (crumb & CRUMB_LEFT))
                 {
-                    if (!_check_equal(m1, m2, r, v)) goto fail;
+                    if (!_check_equal(m1, m2, r, v)) {
+                        flint_printf("fail: want3 m1 vs m2\n");
+                        flint_printf("i=%wd j=%wd\n", i, j);
+                        goto fail;
+                    }
                 }
                 if ((crumb & CRUMB_LEFT) && (crumb & CRUMB_TOP))
                 {
-                    if (!_check_equal(m2, m0, r, v)) goto fail;
+                    if (!_check_equal(m2, m0, r, v)) {
+                        flint_printf("fail: want3 m2 vs m0\n");
+                        flint_printf("i=%wd j=%wd\n", i, j);
+                        goto fail;
+                    }
                 }
             }
 

@@ -23,21 +23,31 @@ char *jsonwrap(void *userdata, const char *s_in)
     if (!j_in) {
         fprintf(stderr, "json error in %s: on json line %d: %s\n",
             name, error.line, error.text);
-        return 0;
+        return NULL;
     }
 
     /* call the underlying function to get a new jansson object */
     j_out = p->f(p->userdata, j_in);
     if (!j_out) {
+        /*
         fprintf(stderr, "error: failed to get json object output\n");
-        return 0;
+        return NULL;
+        */
     }
 
     /* convert the output jansson object to a string */
-    s_out = json_dumps(j_out, flags);
-    if (!s_out) {
-        fprintf(stderr, "error: failed to dump the json object to a string\n");
-        return 0;
+    if (j_out)
+    {
+        s_out = json_dumps(j_out, flags);
+        if (!s_out) {
+            fprintf(stderr, "error: failed to dump ");
+            fprintf(stderr, "the json object to a string\n");
+            return NULL;
+        }
+    }
+    else
+    {
+        s_out = NULL;
     }
 
     /* attempt to free the input and output json objects */
@@ -115,19 +125,23 @@ run_string_script(string_hom_t hom)
 
   /* call the string interface wrapper */
   s_out = hom->f(hom->userdata, s_in);
+  /*
   if (!s_out) {
     fprintf(stderr, "error: %s: failed to get a response\n", name);
     return -1;
   }
+  */
 
   /* free the input string */
   free(s_in);
 
   /* write the string to stdout */
-  puts(s_out);
-
   /* free the string allocated by the script function */
-  free(s_out);
+  if (s_out)
+  {
+      puts(s_out);
+      free(s_out);
+  }
 
   /* return zero if no error */
   return 0;

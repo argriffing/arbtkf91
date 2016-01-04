@@ -1,5 +1,5 @@
 {
-	"precision": "exact",
+	"precision": "double",
 	"samples": 10,
 	"pa_n": 27, "pa_d": 100,
 	"pg_n": 26, "pg_d": 100,
