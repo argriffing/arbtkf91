@@ -1,3 +1,6 @@
+#include <ctype.h>
+#include <stdio.h>
+
 #include "jsonutil.h"
 
 

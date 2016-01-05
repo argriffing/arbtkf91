@@ -82,8 +82,8 @@ buf_zero(buf_t buf)
 
 
 
-int write_tableau_image(
-        char * filename, const breadcrumb_mat_t mat, char * title)
+int write_tableau_image(const char * filename,
+        const breadcrumb_mat_t mat, const char * title)
 {
     FILE *fout;
     png_structp png_ptr;
@@ -149,7 +149,7 @@ int write_tableau_image(
         png_text title_text;
         title_text.compression = PNG_TEXT_COMPRESSION_NONE;
         title_text.key = "Title";
-        title_text.text = title;
+        title_text.text = (char *) title;
         png_set_text(png_ptr, info_ptr, &title_text, 1);
     }
 

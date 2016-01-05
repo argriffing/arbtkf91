@@ -9,8 +9,8 @@ extern "C" {
 #endif
 
 
-int write_tableau_image(
-        char * filename, const breadcrumb_mat_t mat, char * title);
+int write_tableau_image(const char * filename,
+        const breadcrumb_mat_t mat, const char * title);
 
 
 #ifdef __cplusplus

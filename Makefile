@@ -32,8 +32,7 @@ CHECKS=check_factor_refine \
        check_generators \
        check_arbtkf91_check
 
-all: bin/arbtkf91 \
-	bin/arbtkf91-check \
+all: bin/arbtkf91-check \
 	bin/arbtkf91-bench \
 	bin/arbtkf91-align \
 	bin/arbtkf91-image
@@ -182,7 +181,7 @@ count_solutions.o: count_solutions.c count_solutions.h breadcrumbs.h
 	$(CC) count_solutions.c -c $(CFLAGS)
 
 
-# a json thing
+# json related stuff
 
 runjson.o: runjson.c runjson.h
 	$(CC) runjson.c -c $(CFLAGS)
@@ -192,7 +191,7 @@ jsonutil.o: jsonutil.c jsonutil.h
 
 
 
-# the main executable
+# the main executables
 
 bin/arbtkf91: arbtkf91.c \
 	femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
@@ -298,96 +297,14 @@ bin/arbtkf91-image: arbtkf91-image.c \
 		-lflint -lgmp -larb -lm -lpng -ljansson
 
 
-# run an example
-
-example1a: bin/arbtkf91
-	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
-		--precision arbitrary \
-		--trace 1 \
-		--sequence-1 ACGATA \
-		--sequence-2 AGTGGTA \
-		--lambda-num 1 --lambda-den 1 \
-		--mu-num 2 --mu-den 1 \
-		--tau-num 1 --tau-den 10 \
-		--pa-num 1 --pa-den 4 \
-		--pc-num 1 --pc-den 4 \
-		--pg-num 1 --pg-den 4 \
-		--pt-num 1 --pt-den 4
-
-example1b: bin/arbtkf91
-	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
-		--precision bound \
-		--sequence-1 ACGATA \
-		--sequence-2 AGTGGTA \
-		--lambda-num 1 --lambda-den 1 \
-		--mu-num 2 --mu-den 1 \
-		--tau-num 1 --tau-den 10 \
-		--pa-num 27 --pa-den 100 \
-		--pc-num 24 --pc-den 100 \
-		--pg-num 26 --pg-den 100 \
-		--pt-num 23 --pt-den 100
-
-example2a: bin/arbtkf91
-	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
-		--precision bound \
-		--trace 1 \
-		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
-		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
-		--lambda-num 1 --lambda-den 1 \
-		--mu-num 2 --mu-den 1 \
-		--tau-num 1 --tau-den 10 \
-		--pa-num 1 --pa-den 4 \
-		--pc-num 1 --pc-den 4 \
-		--pg-num 1 --pg-den 4 \
-		--pt-num 1 --pt-den 4
-
-example2b: bin/arbtkf91
-	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
-		--precision bound \
-		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
-		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
-		--lambda-num 1 --lambda-den 1 \
-		--mu-num 2 --mu-den 1 \
-		--tau-num 1 --tau-den 10 \
-		--pa-num 27 --pa-den 100 \
-		--pc-num 24 --pc-den 100 \
-		--pg-num 26 --pg-den 100 \
-		--pt-num 23 --pt-den 100
-
-example2c: bin/arbtkf91
-	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
-		--precision bound \
-		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
-		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
-		--lambda-num 1 --lambda-den 1 \
-		--mu-num 2 --mu-den 1 \
-		--tau-num 1 --tau-den 10 \
-		--pa-num 1 --pa-den 2 \
-		--pc-num 1 --pc-den 4 \
-		--pg-num 1 --pg-den 8 \
-		--pt-num 1 --pt-den 8
-
-example2d: bin/arbtkf91
-	$(ARB_LD_LIBRARY) $(VALGRIND) bin/arbtkf91 \
-		--precision bound \
-		--sequence-1 ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA \
-		--sequence-2 AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA \
-		--lambda-num 1 --lambda-den 1 \
-		--mu-num 3 --mu-den 1 \
-		--tau-num 1 --tau-den 10 \
-		--pa-num 27 --pa-den 100 \
-		--pc-num 24 --pc-den 100 \
-		--pg-num 26 --pg-den 100 \
-		--pt-num 23 --pt-den 100
-
 
 
 clean:
 	rm -f *.o
-	rm -f bin/arbtkf91
 	rm -f bin/arbtkf91-check
 	rm -f bin/arbtkf91-bench
 	rm -f bin/arbtkf91-align
+	rm -f bin/arbtkf91-image
 	rm -f bin/t-factor_refine
 	rm -f bin/t-femtocas
 	rm -f bin/t-expressions
