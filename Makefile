@@ -199,25 +199,6 @@ json_model_params.o: json_model_params.c json_model_params.h
 
 # the main executables
 
-bin/arbtkf91: arbtkf91.c \
-	femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
-	generators.o tkf91_generators.o \
-	rgenerators.o tkf91_rgenerators.o \
-	wavefront_hermite.o breadcrumbs.o \
-	tkf91_dp.o tkf91_generator_vecs.o vis.o count_solutions.o \
-	tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o bound_mat.o
-	$(CC) arbtkf91.c \
-		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
-		generators.o tkf91_generators.o \
-		rgenerators.o tkf91_rgenerators.o \
-		wavefront_hermite.o breadcrumbs.o \
-		tkf91_dp.o tkf91_generator_vecs.o vis.o \
-		tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o \
-		bound_mat.o count_solutions.o \
-		-o bin/arbtkf91 \
-		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
-		-lflint -lgmp -larb -lm -lpng
-
 bin/arbtkf91-check: arbtkf91-check.c \
 	femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 	generators.o tkf91_generators.o \
@@ -225,7 +206,7 @@ bin/arbtkf91-check: arbtkf91-check.c \
 	wavefront_hermite.o breadcrumbs.o \
 	tkf91_dp.o tkf91_generator_vecs.o count_solutions.o \
 	tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o bound_mat.o \
-	runjson.o jsonutil.o model_params.o vis.o
+	runjson.o jsonutil.o json_model_params.o model_params.o vis.o
 	$(CC) arbtkf91-check.c \
 		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 		generators.o tkf91_generators.o \
@@ -234,7 +215,7 @@ bin/arbtkf91-check: arbtkf91-check.c \
 		tkf91_dp.o tkf91_generator_vecs.o \
 		tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o \
 		bound_mat.o count_solutions.o \
-		runjson.o jsonutil.o model_params.o vis.o \
+		runjson.o jsonutil.o json_model_params.o model_params.o vis.o \
 		-o bin/arbtkf91-check \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb -lm -lpng -ljansson
@@ -246,7 +227,7 @@ bin/arbtkf91-bench: arbtkf91-bench.c \
 	wavefront_hermite.o breadcrumbs.o \
 	tkf91_dp.o tkf91_generator_vecs.o count_solutions.o \
 	tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o bound_mat.o \
-	runjson.o jsonutil.o model_params.o vis.o
+	runjson.o jsonutil.o json_model_params.o model_params.o vis.o
 	$(CC) arbtkf91-bench.c \
 		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 		generators.o tkf91_generators.o \
@@ -255,7 +236,7 @@ bin/arbtkf91-bench: arbtkf91-bench.c \
 		tkf91_dp.o tkf91_generator_vecs.o \
 		tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o \
 		bound_mat.o count_solutions.o \
-		runjson.o jsonutil.o model_params.o vis.o \
+		runjson.o jsonutil.o json_model_params.o model_params.o vis.o \
 		-o bin/arbtkf91-bench \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb -lm -lpng -ljansson
@@ -288,7 +269,7 @@ bin/arbtkf91-image: arbtkf91-image.c \
 	wavefront_hermite.o breadcrumbs.o \
 	tkf91_dp.o tkf91_generator_vecs.o count_solutions.o \
 	tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o bound_mat.o \
-	runjson.o jsonutil.o model_params.o vis.o
+	runjson.o jsonutil.o json_model_params.o model_params.o vis.o
 	$(CC) arbtkf91-image.c \
 		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 		generators.o tkf91_generators.o \
@@ -297,7 +278,7 @@ bin/arbtkf91-image: arbtkf91-image.c \
 		tkf91_dp.o tkf91_generator_vecs.o \
 		tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o \
 		bound_mat.o count_solutions.o \
-		runjson.o jsonutil.o model_params.o vis.o \
+		runjson.o jsonutil.o json_model_params.o model_params.o vis.o \
 		-o bin/arbtkf91-image \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb -lm -lpng -ljansson

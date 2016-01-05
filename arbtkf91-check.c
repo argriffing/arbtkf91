@@ -47,6 +47,7 @@
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
 #include "model_params.h"
+#include "json_model_params.h"
 
 
 typedef struct
@@ -136,7 +137,7 @@ json_t *run(void * userdata, json_t *j_in);
 
 json_t *run(void * userdata, json_t *j_in)
 {
-    json_t *args;
+    json_t *root;
     json_t *j_out;
     model_params_t p;
     alignment_t aln;
@@ -146,6 +147,10 @@ json_t *run(void * userdata, json_t *j_in)
     slong *B;
     solution_t sol;
     breadcrumb_mat_t crumb_mat;
+    int result;
+    const char * sequence_a;
+    const char * sequence_b;
+    json_t * parameters;
 
     model_params_init(p);
 
@@ -155,22 +160,28 @@ json_t *run(void * userdata, json_t *j_in)
         abort();
     }
 
-    args = j_in;
+    root = j_in;
+
+    result = json_unpack(root, "{s:o, s:s, s:s}",
+            "parameters", &parameters,
+            "sequence_a", &sequence_a,
+            "sequence_b", &sequence_b);
+    if (result) abort();
 
     /* read the model parameter values */
-    _json_object_get_fmpq(p->pi+0, args, "pa_n", "pa_d");
-    _json_object_get_fmpq(p->pi+1, args, "pc_n", "pc_d");
-    _json_object_get_fmpq(p->pi+2, args, "pg_n", "pg_d");
-    _json_object_get_fmpq(p->pi+3, args, "pt_n", "pt_d");
-    _json_object_get_fmpq(p->lambda, args, "lambda_n", "lambda_d");
-    _json_object_get_fmpq(p->mu, args, "mu_n", "mu_d");
-    _json_object_get_fmpq(p->tau, args, "tau_n", "tau_d");
-
-    /* model_params_print(p); */
+    model_params_init(p);
+    result = _json_get_model_params(p, parameters);
+    if (result) abort();
 
     /* read the two aligned sequences */
-    A = _json_object_get_sequence(&len_A, args, "sequence_a");
-    B = _json_object_get_sequence(&len_B, args, "sequence_b");
+
+    len_A = strlen(sequence_a);
+    A = flint_malloc(len_A * sizeof(slong));
+    _fill_sequence_vector(A, sequence_a, len_A);
+
+    len_B = strlen(sequence_b);
+    B = flint_malloc(len_B * sizeof(slong));
+    _fill_sequence_vector(B, sequence_b, len_B);
 
     if (len_A != len_B)
     {
@@ -191,10 +202,6 @@ json_t *run(void * userdata, json_t *j_in)
     sol->pmask = crumb_mat;
 
     /* do enough of the traceback to get the solution mask */
-    /*
-    flint_printf("length of sequence A: %wd\n", sequences->len_A);
-    flint_printf("length of sequence B: %wd\n", sequences->len_B);
-    */
     solve(sol, p, sequences);
 
     int optimal;

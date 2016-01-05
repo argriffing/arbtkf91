@@ -3,35 +3,6 @@
  * Input and output uses json.
  * The output has all of the terms expected by the 'arbtkf91-check' tool,
  * and it also has a "verified" boolean.
- *
- * input:
- * {
- * "precision" : "float" | "double" | "high", "exact",
- * "pa_n" : integer, "pa_d" : integer,
- * "pc_n" : integer, "pc_d" : integer,
- * "pg_n" : integer, "pg_d" : integer,
- * "pt_n" : integer, "pt_d" : integer,
- * "lambda_n" : integer, "lambda_d" : integer,
- * "mu_n" : integer, "mu_d" : integer,
- * "tau_n" : integer, "tau_d" : integer,
- * "sequence_a" : string,
- * "sequence_b" : string
- * }
- *
- * output:
- * {
- * "pa_n" : integer, "pa_d" : integer,
- * "pc_n" : integer, "pc_d" : integer,
- * "pg_n" : integer, "pg_d" : integer,
- * "pt_n" : integer, "pt_d" : integer,
- * "lambda_n" : integer, "lambda_d" : integer,
- * "mu_n" : integer, "mu_d" : integer,
- * "tau_n" : integer, "tau_d" : integer,
- * "sequence_a" : string,
- * "sequence_b" : string,
- * "verified" : bool
- * }
- *
  */
 
 #include <time.h>
