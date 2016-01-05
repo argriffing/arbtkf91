@@ -1,5 +1,4 @@
 {
-	"precision" : "float",
 	"parameters" :
 	{
 		"pa" : {"num" : 25, "denom" : 100},
@@ -9,7 +8,5 @@
 		"lambda" : {"num" : 1, "denom" : 1},
 		"mu" : {"num" : 2, "denom" : 1},
 		"tau" : {"num" : 1, "denom" : 10}
-	},
-	"sequence_a" : "ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA",
-	"sequence_b" : "AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA"
+	}
 }

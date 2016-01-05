@@ -4,7 +4,6 @@
 #include "jsonutil.h"
 
 
-static void _fill_sequence_vector(slong *v, const char *str, slong n);
 
 void
 _fill_sequence_vector(slong *v, const char *str, slong n)

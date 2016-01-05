@@ -50,6 +50,7 @@
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
 #include "model_params.h"
+#include "json_model_params.h"
 
 
 
@@ -62,15 +63,18 @@ json_t *run(void * userdata, json_t *j_in);
 
 json_t *run(void * userdata, json_t *j_in)
 {
-    json_t *args;
+    json_t *root;
     json_t *j_out;
     model_params_t p;
     slong len_A, len_B;
     slong *A;
     slong *B;
     solution_t sol;
-
-    model_params_init(p);
+    int result;
+    json_t *parameters;
+    const char * sequence_a;
+    const char * sequence_b;
+    const char * precision;
 
     if (userdata)
     {
@@ -78,67 +82,57 @@ json_t *run(void * userdata, json_t *j_in)
         abort();
     }
 
-    args = j_in;
+    root = j_in;
 
-    /* read the model parameter values */
-    _json_object_get_fmpq(p->pi+0, args, "pa_n", "pa_d");
-    _json_object_get_fmpq(p->pi+1, args, "pc_n", "pc_d");
-    _json_object_get_fmpq(p->pi+2, args, "pg_n", "pg_d");
-    _json_object_get_fmpq(p->pi+3, args, "pt_n", "pt_d");
-    _json_object_get_fmpq(p->lambda, args, "lambda_n", "lambda_d");
-    _json_object_get_fmpq(p->mu, args, "mu_n", "mu_d");
-    _json_object_get_fmpq(p->tau, args, "tau_n", "tau_d");
+    result = json_unpack(root, "{s:O, s:s, s:s, s:s}",
+            "parameters", &parameters,
+            "sequence_a", &sequence_a,
+            "sequence_b", &sequence_b,
+            "precision", &precision);
+    if (result) abort();
+
+    model_params_init(p);
+    result = _json_get_model_params(p, parameters);
+    if (result) abort();
 
     /* read the two unaligned sequences */
-    A = _json_object_get_sequence(&len_A, args, "sequence_a");
-    B = _json_object_get_sequence(&len_B, args, "sequence_b");
 
-    /* read the requested precision */
-    const char * precision_str;
-    precision_str = _json_object_get_string(args, "precision");
+    len_A = strlen(sequence_a);
+    A = flint_malloc(len_A * sizeof(slong));
+    _fill_sequence_vector(A, sequence_a, len_A);
+
+    len_B = strlen(sequence_b);
+    B = flint_malloc(len_B * sizeof(slong));
+    _fill_sequence_vector(B, sequence_b, len_B);
 
     /* dispatch */
     tkf91_dp_fn f = NULL;
-    if (strcmp(precision_str, "float") == 0)
-    {
+    if (strcmp(precision, "float") == 0) {
         f = tkf91_dp_f;
     }
-    else if (strcmp(precision_str, "double") == 0)
-    {
+    else if (strcmp(precision, "double") == 0) {
         f = tkf91_dp_d;
     }
-    else if (strcmp(precision_str, "high") == 0)
-    {
-        f = tkf91_dp_r;
-    }
-    else if (strcmp(precision_str, "exact") == 0)
-    {
+    else if (strcmp(precision, "mag") == 0) {
         f = tkf91_dp_bound;
     }
-    else
-    {
+    else if (strcmp(precision, "arb256") == 0) {
+        f = tkf91_dp_r;
+    }
+    else {
         printf("expected the precision string to be one of ");
-        printf("{\"float\" | \"double\" | \"exact\" | \"high\"}\n");
+        printf("{float | double | mag | arb256}\n");
         abort();
     }
 
     solution_init(sol, len_A + len_B);
     solve(f, sol, p, A, len_A, B, len_B);
 
-    /*
-     * Copy the input json object and delete a few keys.
-     * The remaining keys are kept so that the output json object
-     * can be passed directly to 'arbtkf91-check'.
-     */
-    j_out = json_copy(j_in);
-    json_object_del(j_out, "precision");
-    json_object_del(j_out, "sequence_a");
-    json_object_del(j_out, "sequence_b");
-
-    /* put the aligned sequences into the output object */
-    json_object_set_new(j_out, "sequence_a", json_string(sol->A));
-    json_object_set_new(j_out, "sequence_b", json_string(sol->B));
-    json_object_set_new(j_out, "verified", json_boolean(sol->optimality_flag));
+    j_out = json_pack("{s:o, s:s, s:s, s:b}",
+            "parameters", parameters,
+            "sequence_a", sol->A,
+            "sequence_b", sol->B,
+            "verified", sol->optimality_flag);
 
     flint_free(A);
     flint_free(B);

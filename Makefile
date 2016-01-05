@@ -189,6 +189,12 @@ runjson.o: runjson.c runjson.h
 jsonutil.o: jsonutil.c jsonutil.h
 	$(CC) jsonutil.c -c $(CFLAGS)
 
+model_params.o: model_params.c model_params.h
+	$(CC) model_params.c -c $(CFLAGS)
+
+json_model_params.o: json_model_params.c json_model_params.h
+	$(CC) json_model_params.c -c $(CFLAGS)
+
 
 
 # the main executables
@@ -261,7 +267,7 @@ bin/arbtkf91-align: arbtkf91-align.c \
 	wavefront_hermite.o breadcrumbs.o \
 	tkf91_dp.o tkf91_generator_vecs.o count_solutions.o \
 	tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o bound_mat.o \
-	runjson.o jsonutil.o model_params.o vis.o
+	runjson.o jsonutil.o json_model_params.o model_params.o vis.o
 	$(CC) arbtkf91-align.c \
 		femtocas.o factor_refine.o expressions.o tkf91_rationals.o \
 		generators.o tkf91_generators.o \
@@ -270,7 +276,7 @@ bin/arbtkf91-align: arbtkf91-align.c \
 		tkf91_dp.o tkf91_generator_vecs.o \
 		tkf91_dp_d.o tkf91_dp_f.o tkf91_dp_r.o tkf91_dp_bound.o \
 		bound_mat.o count_solutions.o \
-		runjson.o jsonutil.o model_params.o vis.o \
+		runjson.o jsonutil.o json_model_params.o model_params.o vis.o \
 		-o bin/arbtkf91-align \
 		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
 		-lflint -lgmp -larb -lm -lpng -ljansson

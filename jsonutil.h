@@ -15,6 +15,8 @@ extern "C" {
 
 const char * _json_object_get_string(const json_t *object, const char *key);
 
+void _fill_sequence_vector(slong *v, const char *str, slong n);
+
 slong *
 _json_object_get_sequence(slong *plen, const json_t *object, const char *key);
 
