@@ -2,18 +2,7 @@
  * This executable checks the status of a given alignment
  * in the context of a tkf91 model with given parameter values.
  *
- * Possible outcomes:
- * 1) The alignment is shown to be optimal, both in the sense that no other
- *    alignment has greater probability and that it is the canonical
- *    alignment (according to the 'counter-clockwise traceback' criterion)
- *    among all such alignments.
- * 2) The alignment is shown to have the maximum probability
- *    but is not canonical.
- * 3) The alignment is shown to not have the maximum probability.
- * 4) The status could not be determined.
- *
- * These outcomes are represented by a json object
- * with three members on stdout:
+ * Output format:
  * {
  * "alignment_is_optimal" : "yes" | "no" | "undetermined",
  * "alignment_is_canonical" : "yes" | "no" | "undetermined",
@@ -21,19 +10,6 @@
  * }
  * The number of optimal alignments is reported as a json string instead
  * of as a json integer because it is likely to overflow json integer capacity.
- *
- * The json input on stdin is:
- * {
- * "pa_n" : integer, "pa_d" : integer,
- * "pc_n" : integer, "pc_d" : integer,
- * "pg_n" : integer, "pg_d" : integer,
- * "pt_n" : integer, "pt_d" : integer,
- * "lambda_n" : integer, "lambda_d" : integer,
- * "mu_n" : integer, "mu_d" : integer,
- * "tau_n" : integer, "tau_d" : integer,
- * "sequence_a" : string, "sequence_b" : string
- * }
- *
  */
 
 #include "flint/flint.h"
@@ -133,11 +109,10 @@ solve(solution_t sol, const model_params_t p,
         const sequence_pair_t sequences);
 
 
-json_t *run(void * userdata, json_t *j_in);
+json_t *run(void * userdata, json_t *root);
 
-json_t *run(void * userdata, json_t *j_in)
+json_t *run(void * userdata, json_t *root)
 {
-    json_t *root;
     json_t *j_out;
     model_params_t p;
     alignment_t aln;
@@ -159,8 +134,6 @@ json_t *run(void * userdata, json_t *j_in)
         fprintf(stderr, "error: unexpected userdata\n");
         abort();
     }
-
-    root = j_in;
 
     result = json_unpack(root, "{s:o, s:s, s:s}",
             "parameters", &parameters,

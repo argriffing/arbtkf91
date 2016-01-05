@@ -30,11 +30,10 @@ solve(tkf91_dp_fn f, solution_t sol, const model_params_t p,
         const slong *A, slong len_A, const slong *B, slong len_B);
 
 
-json_t *run(void * userdata, json_t *j_in);
+json_t *run(void * userdata, json_t *root);
 
-json_t *run(void * userdata, json_t *j_in)
+json_t *run(void * userdata, json_t *root)
 {
-    json_t *root;
     json_t *j_out;
     model_params_t p;
     slong len_A, len_B;
@@ -52,8 +51,6 @@ json_t *run(void * userdata, json_t *j_in)
         fprintf(stderr, "error: unexpected userdata\n");
         abort();
     }
-
-    root = j_in;
 
     result = json_unpack(root, "{s:O, s:s, s:s, s:s}",
             "parameters", &parameters,

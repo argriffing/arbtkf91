@@ -1,20 +1,5 @@
 /*
  * Visualize the tableau.
- *
- * input:
- * {
- * "image_filename" : string,
- * "pa_n" : integer, "pa_d" : integer,
- * "pc_n" : integer, "pc_d" : integer,
- * "pg_n" : integer, "pg_d" : integer,
- * "pt_n" : integer, "pt_d" : integer,
- * "lambda_n" : integer, "lambda_d" : integer,
- * "mu_n" : integer, "mu_d" : integer,
- * "tau_n" : integer, "tau_d" : integer,
- * "sequence_a" : string,
- * "sequence_b" : string
- * }
- *
  */
 
 #include <time.h>
@@ -30,6 +15,7 @@
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
 #include "model_params.h"
+#include "json_model_params.h"
 
 
 
@@ -38,16 +24,20 @@ solve(solution_t sol, const char * image_filenmae, const model_params_t p,
         const slong *A, slong len_A, const slong *B, slong len_B);
 
 
-json_t *run(void * userdata, json_t *j_in);
+json_t *run(void * userdata, json_t *root);
 
-json_t *run(void * userdata, json_t *j_in)
+json_t *run(void * userdata, json_t *root)
 {
-    json_t *args;
     model_params_t p;
     slong len_A, len_B;
     slong *A;
     slong *B;
     solution_t sol;
+    int result;
+    json_t * parameters;
+    const char * sequence_a;
+    const char * sequence_b;
+    const char * image_filename;
 
     model_params_init(p);
 
@@ -57,24 +47,27 @@ json_t *run(void * userdata, json_t *j_in)
         abort();
     }
 
-    args = j_in;
+    result = json_unpack(root, "{s:o, s:s, s:s, s:s}",
+            "parameters", &parameters,
+            "image_filename", &image_filename,
+            "sequence_a", &sequence_a,
+            "sequence_b", &sequence_b);
+    if (result) abort();
 
     /* read the model parameter values */
-    _json_object_get_fmpq(p->pi+0, args, "pa_n", "pa_d");
-    _json_object_get_fmpq(p->pi+1, args, "pc_n", "pc_d");
-    _json_object_get_fmpq(p->pi+2, args, "pg_n", "pg_d");
-    _json_object_get_fmpq(p->pi+3, args, "pt_n", "pt_d");
-    _json_object_get_fmpq(p->lambda, args, "lambda_n", "lambda_d");
-    _json_object_get_fmpq(p->mu, args, "mu_n", "mu_d");
-    _json_object_get_fmpq(p->tau, args, "tau_n", "tau_d");
+    model_params_init(p);
+    result = _json_get_model_params(p, parameters);
+    if (result) abort();
 
     /* read the two unaligned sequences */
-    A = _json_object_get_sequence(&len_A, args, "sequence_a");
-    B = _json_object_get_sequence(&len_B, args, "sequence_b");
 
-    /* read the requested image filename */
-    const char * image_filename;
-    image_filename = _json_object_get_string(args, "image_filename");
+    len_A = strlen(sequence_a);
+    A = flint_malloc(len_A * sizeof(slong));
+    _fill_sequence_vector(A, sequence_a, len_A);
+
+    len_B = strlen(sequence_b);
+    B = flint_malloc(len_B * sizeof(slong));
+    _fill_sequence_vector(B, sequence_b, len_B);
 
     solution_init(sol, len_A + len_B);
     solve(sol, image_filename, p, A, len_A, B, len_B);

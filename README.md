@@ -9,4 +9,6 @@ but it is a little trickier to use manually.
 Here's a scratch example of using [jq](https://stedolan.github.io/jq/)
 to essentially supply a command line parameter (output image filename)
 by adding a field to a top level json object on the fly...
-`jq '.image_filename = "image.png"' vfail_small.json | bin/arbtkf91-image`
+`$ jq '.image_filename = "tableau.png"' alignme.json | bin/arbtkf91-image`
+![tableau](https://github.com/argriffing/arbtkf91/blob/master/tableau.png)
+
