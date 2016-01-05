@@ -15,6 +15,8 @@
 #include "breadcrumbs.h"
 #include "vis.h"
 
+#define PIXEL_WIDTH 4
+
 typedef struct
 {
     png_bytep data;
@@ -29,13 +31,13 @@ static void buf_clear(buf_t buf);
 static void buf_zero(buf_t buf);
 static png_bytep buf_pixel_row(buf_t buf, slong di);
 static png_bytep buf_pixel(buf_t buf, slong j, slong di, slong dj);
-static void buf_set_rgb(buf_t buf, slong j, slong di, slong dj,
-        png_byte r, png_byte g, png_byte b);
+static void buf_set_rgba(buf_t buf, slong j, slong di, slong dj,
+        png_byte r, png_byte g, png_byte b, png_byte a);
 
 void
 buf_init(buf_t buf, slong nrows, slong ncols)
 {
-    buf->sz_data = 5 * ncols * 5 * 3 * sizeof(png_byte);
+    buf->sz_data = 5 * ncols * 5 * PIXEL_WIDTH * sizeof(png_byte);
     buf->data = malloc(buf->sz_data);
     buf->r = nrows;
     buf->c = ncols;
@@ -50,7 +52,7 @@ buf_clear(buf_t buf)
 png_bytep
 buf_pixel_row(buf_t buf, slong di)
 {
-    return buf->data + di * (buf->c * 5 * 3);
+    return buf->data + di * (buf->c * 5 * PIXEL_WIDTH);
 }
 
 png_bytep
@@ -60,18 +62,19 @@ buf_pixel(buf_t buf, slong j, slong di, slong dj)
      * in one row of the tableau.
      * j is the column of the dp cell
      * di and dj index the row and column of the pixel within the dp cell */
-    return buf_pixel_row(buf, di) + j * (5 * 3) + dj * 3;
+    return buf_pixel_row(buf, di) + j * (5 * PIXEL_WIDTH) + dj * PIXEL_WIDTH;
 }
 
 void
-buf_set_rgb(buf_t buf, slong j, slong di, slong dj,
-        png_byte r, png_byte g, png_byte b)
+buf_set_rgba(buf_t buf, slong j, slong di, slong dj,
+        png_byte r, png_byte g, png_byte b, png_byte a)
 {
     png_bytep pixel;
     pixel = buf_pixel(buf, j, di, dj);
     pixel[0] = r;
     pixel[1] = g;
     pixel[2] = b;
+    pixel[3] = a;
 }
 
 void
@@ -89,7 +92,7 @@ int write_tableau_image(const char * filename,
     png_structp png_ptr;
     png_infop info_ptr;
     int code, width, height;
-    png_byte r, g, b;
+    png_byte r, g, b, a;
     breadcrumb_t curr, top, diag, left;
 
     fout = NULL;
@@ -141,7 +144,7 @@ int write_tableau_image(const char * filename,
 
     /* write header (8 bit color depth) */
     png_set_IHDR(png_ptr, info_ptr, width, height,
-            8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE,
+            8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
             PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
 
     if (title != NULL)
@@ -179,76 +182,77 @@ int write_tableau_image(const char * filename,
              */
 
             /* draw the cell itself, without connections */
+            r = 0; g = 0; b = 0; a = 0;
             if (curr & CRUMB_CONTENDER) {
-                r = 255; g = 0; b = 0;
+                r = 255; g = 0; b = 0; a = 255;
             } else if (curr & CRUMB_WANT3) {
-                r = 0; g = 0; b = 255;
+                r = 0; g = 0; b = 255; a = 255;
             } else if (curr & CRUMB_WANT2) {
-                r = 0; g = 255; b = 0;
+                r = 0; g = 255; b = 0; a = 255;
             } else {
-                r = 0; g = 80; b = 0;
+                r = 0; g = 0; b = 0; a = 20;
             }
             for (di = 2; di < 5; di++) {
                 for (dj = 2; dj < 5; dj++) {
-                    buf_set_rgb(buf, j, di, dj, r, g, b);
+                    buf_set_rgba(buf, j, di, dj, r, g, b, a);
                 }
             }
 
             /* top connections */
             if ((curr & want_any) && (top & want_any))
             {
-                r = 0; b = 0; g = 0;
+                r = 0; b = 0; g = 0; a=0;
                 if (curr & CRUMB_TOP)
                 {
-                    r = 0; g = 255; b = 0;
+                    r = 0; g = 255; b = 0; a = 255;
                 }
                 if ((top & CRUMB_CONTENDER) && (curr & CRUMB_CONTENDER))
                 {
                     if (curr & CRUMB_TOP)
                     {
-                        r = 255; g = 0; b = 0;
+                        r = 255; g = 0; b = 0; a = 255;
                     }
                 }
-                buf_set_rgb(buf, j, 0, 3, r, g, b);
-                buf_set_rgb(buf, j, 1, 3, r, g, b);
+                buf_set_rgba(buf, j, 0, 3, r, g, b, a);
+                buf_set_rgba(buf, j, 1, 3, r, g, b, a);
             }
 
             /* left connections */
             if ((curr & want_any) && (left & want_any))
             {
-                r = 0; b = 0; g = 0;
+                r = 0; b = 0; g = 0; a = 0;
                 if (curr & CRUMB_LEFT2)
                 {
-                    r = 0; g = 255; b = 0;
+                    r = 0; g = 255; b = 0; a = 255;
                 }
                 if ((left & CRUMB_CONTENDER) && (curr & CRUMB_CONTENDER))
                 {
                     if (curr & CRUMB_LEFT)
                     {
-                        r = 255; g = 0; b = 0;
+                        r = 255; g = 0; b = 0; a = 255;
                     }
                 }
-                buf_set_rgb(buf, j, 3, 0, r, g, b);
-                buf_set_rgb(buf, j, 3, 1, r, g, b);
+                buf_set_rgba(buf, j, 3, 0, r, g, b, a);
+                buf_set_rgba(buf, j, 3, 1, r, g, b, a);
             }
 
             /* diagonal connections */
             if ((curr & want_any) && (diag & want_any))
             {
-                r = 0; b = 0; g = 0;
+                r = 0; b = 0; g = 0; a = 0;
                 if (curr & CRUMB_DIAG2)
                 {
-                    r = 0; g = 255; b = 0;
+                    r = 0; g = 255; b = 0; a = 255;
                 }
                 if ((diag & CRUMB_CONTENDER) && (curr & CRUMB_CONTENDER))
                 {
                     if (curr & CRUMB_DIAG)
                     {
-                        r = 255; g = 0; b = 0;
+                        r = 255; g = 0; b = 0; a = 255;
                     }
                 }
-                buf_set_rgb(buf, j, 0, 0, r, g, b);
-                buf_set_rgb(buf, j, 1, 1, r, g, b);
+                buf_set_rgba(buf, j, 0, 0, r, g, b, a);
+                buf_set_rgba(buf, j, 1, 1, r, g, b, a);
             }
         }
 
@@ -256,7 +260,7 @@ int write_tableau_image(const char * filename,
         for (di = 0; di < 5; di++)
         {
             if (i == 0 && di < 2) continue;
-            png_write_row(png_ptr, buf_pixel_row(buf, di) + 2*3);
+            png_write_row(png_ptr, buf_pixel_row(buf, di) + 2*PIXEL_WIDTH);
         }
     }
 
