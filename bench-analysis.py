@@ -37,6 +37,7 @@ def main(args):
         for a, b in data_source.gen_sequence_pairs(fin):
             d = dict(
                 precision=args.precision,
+                rtol=0.0,
                 samples=samples,
                 parameters=model_params,
                 sequence_a=a,

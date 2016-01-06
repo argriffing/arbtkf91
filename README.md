@@ -21,6 +21,7 @@ to filter the json inputs or outputs.
 ```javascript
 {
     "precision" : "float",
+    "rtol" : 0.0,
     "parameters" :
     {
         "pa" : {"num" : 25, "denom" : 100},

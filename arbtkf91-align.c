@@ -53,7 +53,7 @@ json_t *run(void * userdata, json_t *root)
         abort();
     }
 
-    result = json_unpack(root, "{s:O, s:s, s:s, s:f, s:s}",
+    result = json_unpack(root, "{s:O, s:s, s:s, s:F, s:s}",
             "parameters", &parameters,
             "sequence_a", &sequence_a,
             "sequence_b", &sequence_b,
