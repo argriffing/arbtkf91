@@ -14,3 +14,7 @@ by adding a field to a top level json object on the fly...
 
 ![tableau](https://github.com/argriffing/arbtkf91/blob/master/tableau.png)
 
+`$ jq '.samples=10 | .precision="arb256"' alignme.json | bin/arbtkf91-bench`
+```javascript
+{"sequence_a": "ACGACTAGTCA-GC-TACG-AT-CGA-CT-C-ATTCAACTGACTGACA-TCGACTTA", "ticks_per_second": 1000000, "elapsed_ticks": [16308, 15952, 15957, 16016, 15976, 15960, 15950, 15943, 16017, 15974], "sequence_b": "A-GAG-AGTAATGCATACGCATGC-ATCTGCTATTC---TG-CTG-CAGTGG--T-A", "verified": true}
+```

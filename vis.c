@@ -190,7 +190,7 @@ int write_tableau_image(const char * filename,
             } else if (curr & CRUMB_WANT2) {
                 r = 0; g = 255; b = 0; a = 255;
             } else {
-                r = 0; g = 0; b = 0; a = 20;
+                r = 245; g = 245; b = 245; a = 255;
             }
             for (di = 2; di < 5; di++) {
                 for (dj = 2; dj < 5; dj++) {
