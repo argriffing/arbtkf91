@@ -72,3 +72,15 @@ to filter the json inputs or outputs.
 ```javascript
 {"alignment_is_optimal": "yes", "alignment_is_canonical": "yes", "number_of_optimal_alignments": "56"}
 ```
+
+These examples show that float precision is not enough
+for reasonable sized alignments.
+
+`$ jq '.precision="float" | .rtol=3e-7' fails-high-tolerance.json | bin/arbtkf91-align | bin/arbtkf91-check`
+```json
+{"alignment_is_optimal": "no", "number_of_optimal_alignments": "32332559983411306514373848819744479641600", "alignment_is_canonical": "no"}
+```
+`$ jq '.precision="float" | .rtol=3e-7' needs-high-tolerance.json | bin/arbtkf91-align | bin/arbtkf91-check`
+```json
+{"alignment_is_optimal": "yes", "alignment_is_canonical": "no", "number_of_optimal_alignments": "9442009665687106671596887819668655696812107909520913524435008004699019468288819200000000000000"}
+```

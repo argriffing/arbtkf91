@@ -73,6 +73,9 @@ def main(args):
                 ncanon += 1
             if js['alignment_is_optimal'] == 'yes':
                 nopt += 1
+            if js['alignment_is_canonical'] == 'no':
+                print('a:', a)
+                print('b:', b)
             k += 1
         print('total number of alignments:', k)
         print('number of optimal alignments:', nopt)
