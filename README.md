@@ -49,9 +49,22 @@ to filter the json inputs or outputs.
 
 ![tableau](https://github.com/argriffing/arbtkf91/blob/master/tableau.png)
 
-`$ jq '.samples=10 | .precision="arb256"' in.json | bin/arbtkf91-bench`
+
+`$ jq '.samples=10 | .precision="arb256"' in.json | bin/arbtkf91-bench | jq '. | .elapsed_ticks'`
+
 ```javascript
-{"sequence_a": "ACGACTAGTCA-GC-TACG-AT-CGA-CT-C-ATTCAACTGACTGACA-TCGACTTA", "ticks_per_second": 1000000, "elapsed_ticks": [16308, 15952, 15957, 16016, 15976, 15960, 15950, 15943, 16017, 15974], "sequence_b": "A-GAG-AGTAATGCATACGCATGC-ATCTGCTATTC---TG-CTG-CAGTGG--T-A", "verified": true}
+[
+  16288,
+  15987,
+  16082,
+  16036,
+  15957,
+  15995,
+  15999,
+  15949,
+  16047,
+  16047
+]
 ```
 
 `$ bin/arbtkf91-align < in.json | bin/arbtkf91-check`
