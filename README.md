@@ -84,3 +84,8 @@ for reasonable sized alignments.
 ```json
 {"alignment_is_optimal": "yes", "alignment_is_canonical": "no", "number_of_optimal_alignments": "9442009665687106671596887819668655696812107909520913524435008004699019468288819200000000000000"}
 ```
+
+
+what will github do with this huge image...
+
+![tableau](https://github.com/argriffing/arbtkf91/blob/master/needs-high.tableau.png)
