@@ -89,6 +89,12 @@ _firebrick(png_byte *r, png_byte *g, png_byte *b, png_byte *a)
     *r = 0xB2; *g = 0x22; *b = 0x22; *a = 0xFF;
 }
 
+static __inline__ void
+_myblue(png_byte *r, png_byte *g, png_byte *b, png_byte *a)
+{
+    *r = 0x1E; *g = 0x36; *b = 0x91; *a = 0xFF;
+}
+
 
 int write_tableau_image(const char * filename,
         const breadcrumb_mat_t mat, const char * title)
@@ -189,9 +195,9 @@ int write_tableau_image(const char * filename,
             /* draw the cell itself, without connections */
             r = 0; g = 0; b = 0; a = 0;
             if (curr & CRUMB_CONTENDER) {
-                _firebrick(&r, &g, &b, &a);
+                _myblue(&r, &g, &b, &a);
             } else if (curr & CRUMB_WANT3) {
-                r = 0; g = 0; b = 255; a = 255;
+                _firebrick(&r, &g, &b, &a);
             } else if (curr & CRUMB_WANT2) {
                 r = 0; g = 255; b = 0; a = 255;
             } else {
@@ -215,7 +221,7 @@ int write_tableau_image(const char * filename,
                 {
                     if (curr & CRUMB_TOP)
                     {
-                        _firebrick(&r, &g, &b, &a);
+                        _myblue(&r, &g, &b, &a);
                     }
                 }
                 buf_set_rgba(buf, j, 0, 3, r, g, b, a);
@@ -234,7 +240,7 @@ int write_tableau_image(const char * filename,
                 {
                     if (curr & CRUMB_LEFT)
                     {
-                        _firebrick(&r, &g, &b, &a);
+                        _myblue(&r, &g, &b, &a);
                     }
                 }
                 buf_set_rgba(buf, j, 3, 0, r, g, b, a);
@@ -253,7 +259,7 @@ int write_tableau_image(const char * filename,
                 {
                     if (curr & CRUMB_DIAG)
                     {
-                        _firebrick(&r, &g, &b, &a);
+                        _myblue(&r, &g, &b, &a);
                     }
                 }
                 buf_set_rgba(buf, j, 0, 0, r, g, b, a);
