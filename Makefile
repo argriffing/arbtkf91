@@ -30,7 +30,7 @@ CHECKS=check_factor_refine \
        check_femtocas \
        check_expressions \
        check_generators \
-       check_arbtkf91_check
+       test_mag
 
 all: bin/arbtkf91-check \
 	bin/arbtkf91-bench \
@@ -44,14 +44,10 @@ tests: $(TEST_EXECUTABLES)
 check: $(CHECKS)
 
 
-# a regression test
+# a python test
 
-check_arbtkf91_check: bin/arbtkf91-check
-	bin/arbtkf91-check < tests/data/a_in.json > tmp.json
-	python tests/compare_json.py tests/data/a_out.json tmp.json
-	#
-	bin/arbtkf91-check < tests/data/b_in.json > tmp.json
-	python tests/compare_json.py tests/data/b_out.json tmp.json
+test_mag:
+	python test_mag.py
 
 # factor refine
 
