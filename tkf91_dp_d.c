@@ -31,7 +31,7 @@ typedef tmat_struct tmat_t[1];
 
 static void tmat_init(tmat_t mat, slong nrows, slong ncols);
 static void tmat_clear(tmat_t mat);
-static void tmat_get_alignment(solution_t sol,
+static void tmat_get_alignment(solution_t sol, double rtol,
         const tmat_t mat, const slong *A, const slong *B);
 
 static __inline__ slong
@@ -95,14 +95,18 @@ _almost_equal(double a, double b, double rtol)
 {
     if (a == 0 || b==0)
     {
-        return b == 0 && b == 0;
+        return a == 0 && b == 0;
+    }
+    if (rtol == 0)
+    {
+        return a == b;
     }
     return fabs(b - a) / fmin(fabs(b), fabs(a)) < rtol;
 }
 
 void
 tmat_get_alignment(
-        solution_t sol,
+        solution_t sol, double rtol,
         const tmat_t mat, const slong *A, const slong *B)
 {
     slong i, j;
@@ -113,7 +117,6 @@ tmat_get_alignment(
     tnode_ptr cell;
     char * sa;
     char * sb;
-    double rtol = 1e-6;
 
     sa = sol->A;
     sb = sol->B;
@@ -296,7 +299,12 @@ tkf91_dynamic_programming_double_tmat(
     }
 
     /* main loop */
-    for (i = 1; i < nrows; i++)
+    tnode_ptr prev_row;
+    tnode_ptr curr_row;
+    i = 1;
+    prev_row = tmat->data + (i-1)*ncols;
+    curr_row = tmat->data + i*ncols;
+    while (i < nrows)
     {
         nta = A[i - 1];
 
@@ -304,16 +312,14 @@ tkf91_dynamic_programming_double_tmat(
         c0_incr_nta = c0_incr[nta];
         c1_incr_nta = c1_incr + 4*nta;
 
-        tnode_ptr prev_row = tmat->data + (i-1)*ncols;
-        tnode_ptr curr_row = tmat->data + i*ncols;
-        for (j = 1; j < ncols; j++)
+        j = 1;
+        cell = curr_row + j;
+        p0 = prev_row + j;
+        p1 = prev_row + j - 1;
+        p2 = curr_row + j - 1;
+        while (j < ncols)
         {
             ntb = B[j - 1];
-
-            cell = curr_row + j;
-            p0 = prev_row + j;
-            p1 = prev_row + j-1;
-            p2 = curr_row + j-1;
 
             p0_max3 = fmax(p0->m0, fmax(p0->m1, p0->m2));
             p1_max3 = fmax(p1->m0, fmax(p1->m1, p1->m2));
@@ -322,7 +328,16 @@ tkf91_dynamic_programming_double_tmat(
             cell->m0 = p0_max3 + c0_incr_nta;
             cell->m1 = p1_max3 + c1_incr_nta[ntb];
             cell->m2 = p2_max2 + c2_incr[ntb];
+
+            j++;
+            cell++;
+            p0++;
+            p1++;
+            p2++;
         }
+        i++;
+        prev_row += ncols;
+        curr_row += ncols;
     }
 
     /* compute the log probability of the optimal alignment */
@@ -338,7 +353,7 @@ tkf91_dynamic_programming_double_tmat(
     if (req->trace)
     {
         start = clock();
-        tmat_get_alignment(sol, tmat, A, B);
+        tmat_get_alignment(sol, req->rtol, tmat, A, B);
         _fprint_elapsed(file, "traceback", clock() - start);
     }
 

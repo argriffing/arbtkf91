@@ -34,7 +34,7 @@
 
 
 void
-solve(tkf91_dp_fn f, solution_t sol, const model_params_t p,
+solve(tkf91_dp_fn f, solution_t sol, double rtol, const model_params_t p,
         const slong *A, slong len_A, const slong *B, slong len_B);
 
 
@@ -54,6 +54,7 @@ json_t *run(void * userdata, json_t *root)
     const char * sequence_a;
     const char * sequence_b;
     const char * precision;
+    double rtol;
 
     model_params_init(p);
 
@@ -63,11 +64,12 @@ json_t *run(void * userdata, json_t *root)
         abort();
     }
 
-    result = json_unpack(root, "{s:o, s:s, s:s, s:i, s:s}",
+    result = json_unpack(root, "{s:o, s:s, s:s, s:i, s:f, s:s}",
             "parameters", &parameters,
             "sequence_a", &sequence_a,
             "sequence_b", &sequence_b,
             "samples", &samples,
+            "rtol", &rtol,
             "precision", &precision);
     if (result) abort();
 
@@ -114,7 +116,7 @@ json_t *run(void * userdata, json_t *root)
     {
         start = clock();
         solution_init(sol, len_A + len_B);
-        solve(f, sol, p, A, len_A, B, len_B);
+        solve(f, sol, rtol, p, A, len_A, B, len_B);
         if (i < samples - 1)
         {
             solution_clear(sol);
@@ -141,7 +143,7 @@ json_t *run(void * userdata, json_t *root)
 
 
 void
-solve(tkf91_dp_fn f, solution_t sol, const model_params_t p,
+solve(tkf91_dp_fn f, solution_t sol, double rtol, const model_params_t p,
         const slong *A, slong szA, const slong *B, slong szB)
 {
     tkf91_rationals_t r;
@@ -173,6 +175,7 @@ solve(tkf91_dp_fn f, solution_t sol, const model_params_t p,
     /* init request object */
     req->png_filename = NULL;
     req->trace = 1;
+    req->rtol = rtol;
 
     f(sol, req, mat, expressions_table, generators, A, szA, B, szB);
 

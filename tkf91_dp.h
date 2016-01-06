@@ -56,12 +56,15 @@ solution_print(const solution_t x)
  * The png filename is NULL if no tableau visualization is requested.
  * The trace option is nonzero if the actual alignment is requested (as
  * opposed to requesting just the best score).
- * The nrepeats option may be greater than 1 for the purposes of benchmarking.
+ * The rtol option specifies a relative tolerance to be used in the
+ * traceback phase of 'float' and 'double' precision dynamic programming;
+ * the rtol option is ignored for more sophisticated precision settings.
  */
 typedef struct
 {
     const char * png_filename;
     int trace;
+    double rtol;
 } request_struct;
 typedef request_struct request_t[1];
 
