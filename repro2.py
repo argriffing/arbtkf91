@@ -43,23 +43,30 @@ def align_pair(a, b):
     return p.communicate()
 
 
-def check_pair(a, b):
-    model_params = dict(
-            pa_n=27, pa_d=100,
-            pc_n=24, pc_d=100,
-            pg_n=26, pg_d=100,
-            pt_n=23, pt_d=100,
-            lambda_n=1, lambda_d=1,
-            mu_n=2, mu_d=1,
-            tau_n=1, tau_d=10)
-    d = model_params.copy()
-    d.update(sequence_a=a, sequence_b=b)
+def runjson(args, d):
     s_in = json.dumps(d)
-    args = [check]
     p = Popen(args, stdout=PIPE, stdin=PIPE, stderr=PIPE)
     data = p.communicate(input=s_in)
     stdout_data, stderr_data = data
     return json.loads(stdout_data)
+
+def rat(a, b):
+    return dict(num=a, denom=b)
+
+def check_pair(a, b):
+    model_params = {
+            "pa" : rat(27, 100),
+            "pc" : rat(24, 100),
+            "pg" : rat(26, 100),
+            "pt" : rat(23, 100),
+            "lambda" : rat(1, 1),
+            "mu" : rat(2, 1),
+            "tau" : rat(1, 10)}
+    j_in = dict(
+        parameters=model_params,
+        sequence_a=a,
+        sequence_b=b)
+    return runjson([check], j_in)
 
 
 def main():
