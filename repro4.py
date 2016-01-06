@@ -12,33 +12,11 @@ import json
 
 from data_source import gen_files, gen_sequence_pairs
 
-
 align = os.path.realpath('./bin/arbtkf91-align')
 check = os.path.realpath('./bin/arbtkf91-check')
 
-
-def align_pair(model_params, precision, rtol, a, b):
-    d = dict(
-        parameters=model_params,
-        rtol=rtol,
-        precision=precision,
-        sequence_a=a,
-        sequence_b=b)
+def runjson(args, d):
     s_in = json.dumps(d)
-    args = [align]
-    p = Popen(args, stdout=PIPE, stdin=PIPE, stderr=PIPE)
-    data = p.communicate(input=s_in)
-    stdout_data, stderr_data = data
-    return json.loads(stdout_data)
-
-
-def check_pair(model_params, a, b):
-    d = dict(
-        parameters=model_params,
-        sequence_a=a,
-        sequence_b=b)
-    s_in = json.dumps(d)
-    args = [check]
     p = Popen(args, stdout=PIPE, stdin=PIPE, stderr=PIPE)
     data = p.communicate(input=s_in)
     stdout_data, stderr_data = data
@@ -46,6 +24,7 @@ def check_pair(model_params, a, b):
 
 def rat(a, b):
     return dict(num=a, denom=b)
+
 
 def main(args):
     model_params = {
@@ -64,18 +43,25 @@ def main(args):
         nopt = 0
         k = 0
         for a, b in sequence_pairs:
-            #print('sequence lengths:', len(a), len(b))
-            d = align_pair(model_params, args.precision, args.rtol, a, b)
-            a_aln = d['sequence_a']
-            b_aln = d['sequence_b']
-            js = check_pair(model_params, a_aln, b_aln)
-            if js['alignment_is_canonical'] == 'yes':
+            j_in = dict(
+                parameters=model_params,
+                rtol=args.rtol,
+                precision=args.precision,
+                sequence_a=a,
+                sequence_b=b)
+            d = runjson([align], j_in)
+            j_in = dict(
+                parameters=model_params,
+                sequence_a=d['sequence_a'],
+                sequence_b=d['sequence_b'])
+            d = runjson([check], j_in)
+            if d['alignment_is_canonical'] == 'yes':
                 ncanon += 1
-            if js['alignment_is_optimal'] == 'yes':
+            if d['alignment_is_optimal'] == 'yes':
                 nopt += 1
-            if js['alignment_is_canonical'] == 'no':
-                print('a:', a)
-                print('b:', b)
+            #if d['alignment_is_canonical'] == 'no':
+                #print('a:', a)
+                #print('b:', b)
             k += 1
         print('total number of alignments:', k)
         print('number of optimal alignments:', nopt)
