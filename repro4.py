@@ -18,8 +18,11 @@ check = os.path.realpath('./bin/arbtkf91-check')
 
 
 def align_pair(model_params, precision, a, b):
-    d = model_params.copy()
-    d.update(precision=precision, sequence_a=a, sequence_b=b)
+    d = dict(
+        parameters=model_params,
+        precision=precision,
+        sequence_a=a,
+        sequence_b=b)
     s_in = json.dumps(d)
     args = [align]
     p = Popen(args, stdout=PIPE, stdin=PIPE, stderr=PIPE)
@@ -29,8 +32,10 @@ def align_pair(model_params, precision, a, b):
 
 
 def check_pair(model_params, a, b):
-    d = model_params.copy()
-    d.update(sequence_a=a, sequence_b=b)
+    d = dict(
+        parameters=model_params,
+        sequence_a=a,
+        sequence_b=b)
     s_in = json.dumps(d)
     args = [check]
     p = Popen(args, stdout=PIPE, stdin=PIPE, stderr=PIPE)
@@ -38,20 +43,22 @@ def check_pair(model_params, a, b):
     stdout_data, stderr_data = data
     return json.loads(stdout_data)
 
+def rat(a, b):
+    return dict(num=a, denom=b)
 
 def main():
-    model_params = dict(
-            pa_n=27, pa_d=100,
-            pc_n=24, pc_d=100,
-            pg_n=26, pg_d=100,
-            pt_n=23, pt_d=100,
-            lambda_n=1, lambda_d=1,
-            mu_n=2, mu_d=1,
-            tau_n=1, tau_d=10)
+    model_params = {
+            "pa" : rat(27, 100),
+            "pc" : rat(24, 100),
+            "pg" : rat(26, 100),
+            "pt" : rat(23, 100),
+            "lambda" : rat(1, 1),
+            "mu" : rat(2, 1),
+            "tau" : rat(1, 10)}
     for name, fin in gen_files():
         print(name)
         sequence_pairs = list(gen_sequence_pairs(fin, force_acgt=True))
-        for precision in 'float', 'double', 'exact':
+        for precision in 'float', 'double', 'mag':
             print('precision:', precision)
             ncanon = 0
             nopt = 0
