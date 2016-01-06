@@ -20,7 +20,8 @@
 
 
 void
-solve(solution_t sol, const char * image_filenmae, const model_params_t p,
+solve(solution_t sol, int image_mode_full, const char * image_filename,
+        const model_params_t p,
         const slong *A, slong len_A, const slong *B, slong len_B);
 
 
@@ -38,6 +39,8 @@ json_t *run(void * userdata, json_t *root)
     const char * sequence_a;
     const char * sequence_b;
     const char * image_filename;
+    const char * image_mode;
+    int image_mode_full;
 
     model_params_init(p);
 
@@ -47,12 +50,27 @@ json_t *run(void * userdata, json_t *root)
         abort();
     }
 
-    result = json_unpack(root, "{s:o, s:s, s:s, s:s}",
+    json_unpack(root, "{s:o, s:s, s:s, s:s, s:s}",
             "parameters", &parameters,
+            "image_mode", &image_mode,
             "image_filename", &image_filename,
             "sequence_a", &sequence_a,
             "sequence_b", &sequence_b);
-    if (result) abort();
+
+    /* read the image mode */
+    if (strcmp(image_mode, "simple") == 0)
+    {
+        image_mode_full = 0;
+    }
+    else if (strcmp(image_mode, "full") == 0)
+    {
+        image_mode_full = 1;
+    }
+    else
+    {
+        fprintf(stderr, "error: expected image_mode : {full,simple}\n");
+        abort();
+    }
 
     /* read the model parameter values */
     model_params_init(p);
@@ -70,7 +88,7 @@ json_t *run(void * userdata, json_t *root)
     _fill_sequence_vector(B, sequence_b, len_B);
 
     solution_init(sol, len_A + len_B);
-    solve(sol, image_filename, p, A, len_A, B, len_B);
+    solve(sol, image_mode_full, image_filename, p, A, len_A, B, len_B);
 
     flint_free(A);
     flint_free(B);
@@ -83,7 +101,8 @@ json_t *run(void * userdata, json_t *root)
 
 
 void
-solve(solution_t sol, const char * image_filename, const model_params_t p,
+solve(solution_t sol, int image_mode_full, const char * image_filename,
+        const model_params_t p,
         const slong *A, slong szA, const slong *B, slong szB)
 {
     tkf91_rationals_t r;
@@ -113,6 +132,7 @@ solve(solution_t sol, const char * image_filename, const model_params_t p,
     expressions_table = reg_vec(er);
 
     /* init request object */
+    req->image_mode_full = image_mode_full;
     req->png_filename = image_filename;
     req->trace = 1;
 

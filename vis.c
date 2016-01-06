@@ -286,3 +286,123 @@ end:
 
     return code;
 }
+
+
+int write_simple_tableau_image(const char * filename,
+        const breadcrumb_mat_t mat, const char * title)
+{
+    FILE *fout;
+    png_structp png_ptr;
+    png_infop info_ptr;
+    int code, width, height;
+    png_byte r, g, b, a;
+    breadcrumb_t curr;
+    png_bytep pixel_row;
+
+    fout = NULL;
+    png_ptr = NULL;
+    info_ptr = NULL;
+    code = 0;
+
+    slong nrows, ncols;
+
+    nrows = breadcrumb_mat_nrows(mat);
+    ncols = breadcrumb_mat_ncols(mat);
+
+    width = (int) ncols;
+    height = (int) nrows;
+
+    fout = fopen(filename, "wb");
+    if (fout == NULL)
+    {
+        fprintf(stderr, "failed to open %s for writing\n", filename);
+        code = 1;
+        goto end;
+    }
+    
+    png_ptr = png_create_write_struct(
+            PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (png_ptr == NULL)
+    {
+        fprintf(stderr, "could not allocate write struct\n");
+        code = 1;
+        goto end;
+    }
+
+    info_ptr = png_create_info_struct(png_ptr);
+    if (info_ptr == NULL)
+    {
+        fprintf(stderr, "could not allocate info struct\n");
+        code = 1;
+        goto end;
+    }
+
+    if (setjmp(png_jmpbuf(png_ptr)))
+    {
+        fprintf(stderr, "error during png creation\n");
+        code = 1;
+        goto end;
+    }
+
+    png_init_io(png_ptr, fout);
+
+    /* write header (8 bit color depth) */
+    png_set_IHDR(png_ptr, info_ptr, width, height,
+            8, PNG_COLOR_TYPE_RGB_ALPHA, PNG_INTERLACE_NONE,
+            PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+
+    if (title != NULL)
+    {
+        png_text title_text;
+        title_text.compression = PNG_TEXT_COMPRESSION_NONE;
+        title_text.key = "Title";
+        title_text.text = (char *) title;
+        png_set_text(png_ptr, info_ptr, &title_text, 1);
+    }
+
+    png_write_info(png_ptr, info_ptr);
+
+    /* write image data one row at a time */
+    size_t sz_pixel_row = width * PIXEL_WIDTH * sizeof(png_byte);
+    pixel_row = malloc(sz_pixel_row);
+    int i, j;
+    for (i = 0; i < nrows; i++)
+    {
+        /* reset all entries of the pixel buffer to zero */
+        memset(pixel_row, 0, sz_pixel_row);
+
+        for (j = 0; j < ncols; j++)
+        {
+            curr = *breadcrumb_mat_srcentry(mat, i, j);
+
+            /* draw the cell itself, without connections */
+            r = 0; g = 0; b = 0; a = 0;
+            if (curr & CRUMB_CONTENDER) {
+                _myblue(&r, &g, &b, &a);
+            } else if (curr & CRUMB_WANT3) {
+                _firebrick(&r, &g, &b, &a);
+            } else if (curr & CRUMB_WANT2) {
+                r = 0; g = 255; b = 0; a = 255;
+            }
+            pixel_row[PIXEL_WIDTH * j + 0] = r;
+            pixel_row[PIXEL_WIDTH * j + 1] = g;
+            pixel_row[PIXEL_WIDTH * j + 2] = b;
+            pixel_row[PIXEL_WIDTH * j + 3] = a;
+        }
+
+        /* write the row */
+        png_write_row(png_ptr, pixel_row);
+    }
+
+    png_write_end(png_ptr, NULL);
+
+end:
+    if (fout != NULL) fclose(fout);
+    if (info_ptr != NULL) png_free_data(png_ptr, info_ptr, PNG_FREE_ALL, -1);
+    if (info_ptr != NULL) png_destroy_info_struct(png_ptr, &info_ptr);
+    if (png_ptr != NULL) png_destroy_write_struct(&png_ptr, (png_infopp)NULL);
+
+    free(pixel_row);
+
+    return code;
+}

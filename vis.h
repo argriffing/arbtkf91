@@ -12,6 +12,9 @@ extern "C" {
 int write_tableau_image(const char * filename,
         const breadcrumb_mat_t mat, const char * title);
 
+int write_simple_tableau_image(const char * filename,
+        const breadcrumb_mat_t mat, const char * title);
+
 
 #ifdef __cplusplus
 }

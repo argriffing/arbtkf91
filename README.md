@@ -46,7 +46,7 @@ to filter the json inputs or outputs.
 }
 ```
 
-`$ jq '.image_filename = "tableau.png"' in.json | arbtkf91-image`
+`$ jq '.image_mode="full" | .image_filename="tableau.png"' in.json | bin/arbtkf91-image`
 
 ![tableau](https://github.com/argriffing/arbtkf91/blob/master/tableau.png)
 
@@ -87,6 +87,7 @@ for reasonable sized alignments.
 ```
 
 
-what will github do with this huge image...
+
+`$ jq '.image_mode="simple" | .image_filename="needs-high.tableau.png"' needs-high-tolerance.json | bin/arbtkf91-image`
 
 ![tableau](https://github.com/argriffing/arbtkf91/blob/master/needs-high.tableau.png)

@@ -502,7 +502,16 @@ tkf91_dp_bound(
         if (req->png_filename)
         {
             start = clock();
-            write_tableau_image(req->png_filename, crumb_mat, "tkf91 tableau");
+            if (req->image_mode_full)
+            {
+                write_tableau_image(
+                        req->png_filename, crumb_mat, "tkf91 tableau");
+            }
+            else
+            {
+                write_simple_tableau_image(
+                        req->png_filename, crumb_mat, "tkf91 tableau");
+            }
             _fprint_elapsed(file, "create tableau png", clock() - start);
         }
 

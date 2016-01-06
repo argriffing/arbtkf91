@@ -62,6 +62,7 @@ solution_print(const solution_t x)
  */
 typedef struct
 {
+    int image_mode_full;
     const char * png_filename;
     int trace;
     double rtol;

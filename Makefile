@@ -147,17 +147,17 @@ tkf91_generator_vecs.o: tkf91_generator_vecs.c
 	$(CC) tkf91_generator_vecs.c \
 		-c $(ARB_INCLUDES) $(CFLAGS)
 
-tkf91_dp_d.o: tkf91_dp_d.c \
+tkf91_dp_d.o: tkf91_dp_d.c tkf91_dp_d.h \
 	breadcrumbs.h printutil.h tkf91_dp.h
 	$(CC) tkf91_dp_d.c \
 		-c $(ARB_INCLUDES) $(CFLAGS)
 
-tkf91_dp_f.o: tkf91_dp_f.c \
+tkf91_dp_f.o: tkf91_dp_f.c tkf91_dp_f.h \
 	printutil.h tkf91_dp.h
 	$(CC) tkf91_dp_f.c \
 		-c $(ARB_INCLUDES) $(CFLAGS)
 
-tkf91_dp_r.o: tkf91_dp_r.c \
+tkf91_dp_r.o: tkf91_dp_r.c tkf91_dp_r.h \
 	breadcrumbs.h tkf91_generator_vecs.h tkf91_dp.h
 	$(CC) tkf91_dp_r.c \
 		-c $(ARB_INCLUDES) $(CFLAGS)
@@ -170,7 +170,7 @@ tkf91_dp_bound.o: tkf91_dp_bound.c \
 bound_mat.o: bound_mat.c breadcrumbs.h
 	$(CC) bound_mat.c -c $(ARB_INCLUDES) $(CFLAGS)
 
-tkf91_dp.o: tkf91_dp.c
+tkf91_dp.o: tkf91_dp.c tkf91_dp.h
 	$(CC) tkf91_dp.c -c $(ARB_INCLUDES) $(CFLAGS)
 
 count_solutions.o: count_solutions.c count_solutions.h breadcrumbs.h
