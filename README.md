@@ -6,8 +6,8 @@ The four scripts arbtkf91-{align, bench, check, image}
 align, benchmark, check alignment optimality,
 and generate tableau visualizations respectively.
 
-Most input and output uses the json format which is a little nicer
-for programmatic access than than using command line flags,
+Most input and output uses the json format which is nicer
+for programmatic access than using command line flags,
 but it is a little trickier to use manually.
 
 Examples
