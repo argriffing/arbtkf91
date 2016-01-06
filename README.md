@@ -1,14 +1,20 @@
-An experimental dynamic programming implementation
+An experimental tkf91 dynamic programming implementation
 that uses numerical bounds instead of just using double precision
 and hoping for the best.
+
+The four scripts arbtkf91-{align, bench, check, image}
+align, benchmark, check alignment optimality,
+and generate tableau visualizations respectively.
 
 Most input and output uses the json format which is a little nicer
 for programmatic access than than using command line flags,
 but it is a little trickier to use manually.
 
-Here's a scratch example of using [jq](https://stedolan.github.io/jq/)
-to essentially supply a command line parameter (output image filename)
-by adding a field to a top level json object on the fly...
+Examples
+--------
+
+Some of these examples use [jq](https://stedolan.github.io/jq/)
+to filter the json inputs or outputs.
 
 `$ cat alignme.json`
 
