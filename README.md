@@ -36,7 +36,7 @@ to filter the json inputs or outputs.
 }
 ```
 
-`$ bin/arbtkf91-align < in.json | jq '. | {a: .sequence_a, b: .sequence_b}'`
+`$ arbtkf91-align < in.json | jq '. | {a: .sequence_a, b: .sequence_b}'`
 
 ```javascript
 {
@@ -45,12 +45,12 @@ to filter the json inputs or outputs.
 }
 ```
 
-`$ jq '.image_filename = "tableau.png"' in.json | bin/arbtkf91-image`
+`$ jq '.image_filename = "tableau.png"' in.json | arbtkf91-image`
 
 ![tableau](https://github.com/argriffing/arbtkf91/blob/master/tableau.png)
 
 
-`$ jq '.samples=10 | .precision="arb256"' in.json | bin/arbtkf91-bench | jq '. | .elapsed_ticks'`
+`$ jq '.samples=10 | .precision="arb256"' in.json | arbtkf91-bench | jq '. | .elapsed_ticks'`
 
 ```javascript
 [
@@ -67,7 +67,7 @@ to filter the json inputs or outputs.
 ]
 ```
 
-`$ bin/arbtkf91-align < in.json | bin/arbtkf91-check`
+`$ arbtkf91-align < in.json | arbtkf91-check`
 
 ```javascript
 {"alignment_is_optimal": "yes", "alignment_is_canonical": "yes", "number_of_optimal_alignments": "56"}
