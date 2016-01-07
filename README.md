@@ -3,7 +3,7 @@ Introduction
 
 The arbtkf91 program tries to compute the maximum probability tkf91 alignment
 for a given set of parameter values.
-The numerical error is controlled in such a way that for many alignments
+The numerical error is controlled in such a way that for many inputs
 it is possible to verify that the alignment is optimal.
 
 The command line program uses json on stdin and stdout as follows.
