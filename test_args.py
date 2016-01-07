@@ -1,6 +1,5 @@
 """
-Check what happens when bad arguments are passed
-to programs like arbtkf91-align and arbtkf91-check.
+Check what happens when bad arguments are passed the the programs.
 
 """
 from __future__ import print_function, division
@@ -13,6 +12,23 @@ from numpy.testing import assert_equal, assert_raises, TestCase
 
 align = os.path.realpath('./bin/arbtkf91-align')
 check = os.path.realpath('./bin/arbtkf91-check')
+bench = os.path.realpath('./bin/arbtkf91-bench')
+
+bench_root = {
+        "precision" : "float",
+        "rtol" : 0.0,
+        "samples" : 10,
+        "parameters" : {
+            "pa" : {"num" : 25, "denom" : 100},
+            "pc" : {"num" : 25, "denom" : 100},
+            "pg" : {"num" : 25, "denom" : 100},
+            "pt" : {"num" : 25, "denom" : 100},
+            "lambda" : {"num" : 1, "denom" : 1},
+            "mu" : {"num" : 2, "denom" : 1},
+            "tau" : {"num" : 1, "denom" : 10}
+        },
+        "sequence_a" : "ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA",
+        "sequence_b" : "AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA"}
 
 align_root = {
         "precision" : "float",
@@ -96,3 +112,24 @@ class TestCheckArgs(TestCase):
         x = copy.deepcopy(check_root)
         del x['parameters']['pc']['denom']
         assert_raises(ReturnError, runjson, [check], x)
+
+
+class TestBenchArgs(TestCase):
+
+    def test_ok(self):
+        runjson([bench], bench_root)
+
+    def test_missing_samples(self):
+        x = copy.deepcopy(bench_root)
+        del x['samples']
+        assert_raises(ReturnError, runjson, [bench], x)
+
+    def test_missing_parameters_pc(self):
+        x = copy.deepcopy(bench_root)
+        del x['parameters']['pc']
+        assert_raises(ReturnError, runjson, [bench], x)
+
+    def test_missing_parameters_pc_denom(self):
+        x = copy.deepcopy(bench_root)
+        del x['parameters']['pc']['denom']
+        assert_raises(ReturnError, runjson, [bench], x)
