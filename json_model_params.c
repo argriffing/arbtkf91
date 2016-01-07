@@ -68,11 +68,12 @@ _json_get_model_params(model_params_t p, json_t * root)
 
 int
 _json_get_model_params_ex(model_params_t p, json_t * root,
-        json_error_t *perror, size_t flags)
+        json_error_t *e, size_t flags)
 {
-    int result;
+    int r;
     json_t *pa, *pc, *pg, *pt, *lambda, *mu, *tau;
-    result = json_unpack_ex(root, perror, flags,
+
+    r = json_unpack_ex(root, e, flags,
             "{s:o, s:o, s:o, s:o, s:o, s:o, s:o}",
             "pa", &pa,
             "pc", &pc,
@@ -81,16 +82,14 @@ _json_get_model_params_ex(model_params_t p, json_t * root,
             "lambda", &lambda,
             "mu", &mu,
             "tau", &tau);
-    if (result)
-    {
-        return result;
-    }
-    if (_json_get_fmpq(p->pi + 0, pa)) return -1;
-    if (_json_get_fmpq(p->pi + 1, pc)) return -1;
-    if (_json_get_fmpq(p->pi + 2, pg)) return -1;
-    if (_json_get_fmpq(p->pi + 3, pt)) return -1;
-    if (_json_get_fmpq(p->lambda, lambda)) return -1;
-    if (_json_get_fmpq(p->mu, mu)) return -1;
-    if (_json_get_fmpq(p->tau, tau)) return -1;
+    if (r) return r;
+
+    r = _json_get_fmpq_ex(p->pi + 0, pa, e, flags); if (r) return r;
+    r = _json_get_fmpq_ex(p->pi + 1, pc, e, flags); if (r) return r;
+    r = _json_get_fmpq_ex(p->pi + 2, pg, e, flags); if (r) return r;
+    r = _json_get_fmpq_ex(p->pi + 3, pt, e, flags); if (r) return r;
+    r = _json_get_fmpq_ex(p->lambda, lambda, e, flags); if (r) return r;
+    r = _json_get_fmpq_ex(p->mu, mu, e, flags); if (r) return r;
+    r = _json_get_fmpq_ex(p->tau, tau, e, flags); if (r) return r;
     return 0;
 }

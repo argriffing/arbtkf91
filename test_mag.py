@@ -6,12 +6,9 @@ from __future__ import print_function, division
 
 from subprocess import Popen, PIPE
 import random
-import argparse
 import os
 import json
 from numpy.testing import assert_equal
-
-from data_source import gen_files, gen_sequence_pairs
 
 align = os.path.realpath('./bin/arbtkf91-align')
 check = os.path.realpath('./bin/arbtkf91-check')
@@ -99,17 +96,30 @@ def check_for_smoke(precision, rtol, model_params, a, b):
         sequence_b=d['sequence_b'])
     d = runjson([check], j_in)
 
-def main():
+def test_mag():
     random.seed(1234)
-    nsamples = 100
+    nsamples = 20
     for i in range(nsamples):
         model_params = sample_params()
         a, b = sample_sequences()
         check_mag(model_params, a, b)
-        for precision in 'float', 'double':
-            for rtol in 0.0, 1e-2, 1e-7:
-                check_for_smoke(precision, rtol, model_params, a, b)
 
+def test_smoke_float():
+    random.seed(1234)
+    nsamples = 20
+    precision = 'float'
+    for rtol in 0.0, 1e-2, 1e-7:
+        for i in range(nsamples):
+            model_params = sample_params()
+            a, b = sample_sequences()
+            check_for_smoke(precision, rtol, model_params, a, b)
 
-if __name__ == '__main__':
-    main()
+def test_smoke_double():
+    random.seed(1234)
+    nsamples = 20
+    precision = 'double'
+    for rtol in 0.0, 1e-2, 1e-7:
+        for i in range(nsamples):
+            model_params = sample_params()
+            a, b = sample_sequences()
+            check_for_smoke(precision, rtol, model_params, a, b)

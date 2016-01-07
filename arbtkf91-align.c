@@ -46,6 +46,8 @@ json_t *run(void * userdata, json_t *root)
     const char * sequence_b;
     const char * precision;
     double rtol;
+    json_error_t err;
+    size_t flags;
 
     if (userdata)
     {
@@ -53,17 +55,27 @@ json_t *run(void * userdata, json_t *root)
         abort();
     }
 
-    result = json_unpack(root, "{s:O, s:s, s:s, s:F, s:s}",
+    flags = JSON_STRICT;
+    result = json_unpack_ex(root, &err, flags,
+            "{s:O, s:s, s:s, s:F, s:s}",
             "parameters", &parameters,
             "sequence_a", &sequence_a,
             "sequence_b", &sequence_b,
             "rtol", &rtol,
             "precision", &precision);
-    if (result) abort();
+    if (result)
+    {
+        fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
+        abort();
+    }
 
     model_params_init(p);
-    result = _json_get_model_params(p, parameters);
-    if (result) abort();
+    result = _json_get_model_params_ex(p, parameters, &err, flags);
+    if (result)
+    {
+        fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
+        abort();
+    }
 
     /* read the two unaligned sequences */
 
