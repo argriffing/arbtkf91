@@ -112,7 +112,7 @@ Examples
 ```
 
 These examples show that float precision is not enough
-for reasonable sized alignments.
+for reasonably sized alignments.
 
 `$ jq '.precision="float" | .rtol=3e-7' fails-high-tolerance.json | bin/arbtkf91-align | bin/arbtkf91-check`
 ```json
