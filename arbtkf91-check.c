@@ -126,6 +126,8 @@ json_t *run(void * userdata, json_t *root)
     const char * sequence_a;
     const char * sequence_b;
     json_t * parameters;
+    json_error_t err;
+    size_t flags;
 
     model_params_init(p);
 
@@ -135,16 +137,25 @@ json_t *run(void * userdata, json_t *root)
         abort();
     }
 
-    result = json_unpack(root, "{s:o, s:s, s:s}",
+    flags = JSON_STRICT;
+    result = json_unpack_ex(root, &err, flags, "{s:o, s:s, s:s}",
             "parameters", &parameters,
             "sequence_a", &sequence_a,
             "sequence_b", &sequence_b);
-    if (result) abort();
+    if (result)
+    {
+        fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
+        abort();
+    }
 
     /* read the model parameter values */
     model_params_init(p);
-    result = _json_get_model_params(p, parameters);
-    if (result) abort();
+    result = _json_get_model_params_ex(p, parameters, &err, flags);
+    if (result)
+    {
+        fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
+        abort();
+    }
 
     /* read the two aligned sequences */
 
