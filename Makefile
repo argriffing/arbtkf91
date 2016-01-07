@@ -20,6 +20,10 @@ CFLAGS+= $(WARNINGS) -O3 $(DEFS) $(GLOBAL_DEFS) -march=native -ffast-math
 CFLAGS+= -g
 #CFLAGS+= -std=c++11
 
+MAIN_EXECUTABLES=bin/arbtkf91-check \
+		bin/arbtkf91-bench \
+		bin/arbtkf91-align \
+		bin/arbtkf91-image
 
 TEST_EXECUTABLES=bin/t-factor_refine \
 		 bin/t-femtocas \
@@ -30,12 +34,9 @@ CHECKS=check_factor_refine \
        check_femtocas \
        check_expressions \
        check_generators \
-       test_mag
+       python_tests
 
-all: bin/arbtkf91-check \
-	bin/arbtkf91-bench \
-	bin/arbtkf91-align \
-	bin/arbtkf91-image
+all: $(MAIN_EXECUTABLES)
 
 # force the test scripts to be built by listing them as requirements
 tests: $(TEST_EXECUTABLES)
@@ -44,10 +45,10 @@ tests: $(TEST_EXECUTABLES)
 check: $(CHECKS)
 
 
-# a python test
+# run the python tests
 
-test_mag:
-	python test_mag.py
+python_tests: $(MAIN_EXECUTABLES)
+	nosetests
 
 # factor refine
 
