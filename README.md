@@ -1,27 +1,39 @@
-An experimental tkf91 dynamic programming implementation
-that uses numerical bounds instead of just using double precision
-and hoping for the best.
+Introduction
+------------
 
-The four scripts arbtkf91-{align, bench, check, image}
-align, benchmark, check alignment optimality,
-and generate tableau visualizations respectively.
+The arbtkf91 program tries to compute the maximum probability tkf91 alignment
+for a given set of parameter values.
+The numerical error is controlled in such a way that for many alignments
+it is possible to verify that the alignment is optimal.
 
-Most input and output uses the json format which is nicer
-for programmatic access than using command line flags,
-but it is a little trickier to use manually.
+The command line program uses json on stdin and stdout as follows.
 
-Examples
---------
+`$ arbtkf91-align < in.json`
 
-Some of these examples use [jq](https://stedolan.github.io/jq/)
-to filter the json inputs or outputs.
+```javascript
+{
+    "parameters" :
+    {
+        "pa" : {"num" : 25, "denom" : 100},
+        "pc" : {"num" : 25, "denom" : 100},
+        "pg" : {"num" : 25, "denom" : 100},
+        "pt" : {"num" : 25, "denom" : 100},
+        "lambda" : {"num" : 1, "denom" : 1},
+        "mu" : {"num" : 2, "denom" : 1},
+        "tau" : {"num" : 1, "denom" : 10}
+    },
+    "sequence_a": "ACGACTAGTCA-GC-TACG-AT-CGA-CT-C-ATTCAACTGACTGACA-TCGACTTA",
+    "sequence_b": "A-GAG-AGTAATGCATACGCATGC-ATCTGCTATTC---TG-CTG-CAGTGG--T-A",
+    "verified": true
+}
+```
 
 `$ cat in.json`
 
 ```javascript
 {
-    "precision" : "float",
-    "rtol" : 0.0,
+    "precision" : "mag",
+    "rtol" : 0,
     "parameters" :
     {
         "pa" : {"num" : 25, "denom" : 100},
@@ -36,6 +48,31 @@ to filter the json inputs or outputs.
     "sequence_b" : "AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA"
 }
 ```
+
+Installation
+------------
+
+You will probably not be able to install this,
+unless you are on linux and you reverse-engineer the makefile.
+
+It depends on these C libraries:
+ * [arb](https://github.com/fredrik-johansson/arb)
+ * [flint2](https://github.com/wbhart/flint2)
+ * [mpir](https://github.com/wbhart/mpir)
+ * [mpfr](http://www.mpfr.org/)
+ * [gmp](https://gmplib.org/)
+ * [libpng](http://www.libpng.org/pub/png/libpng.html)
+ * [jansson](https://github.com/akheron/jansson)
+
+The tests depend on a couple of Python packages:
+ * [numpy](https://github.com/numpy/numpy)
+ * [biopython](https://github.com/biopython/biopython)
+
+Scripts may use [jq](https://stedolan.github.io/jq/) for json filtering.
+
+
+Examples
+--------
 
 `$ arbtkf91-align < in.json | jq '. | {a: .sequence_a, b: .sequence_b}'`
 

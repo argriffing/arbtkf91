@@ -1,6 +1,6 @@
 {
-	"precision" : "float",
-	"rtol" : 0.0,
+	"precision" : "mag",
+	"rtol" : 0,
 	"parameters" :
 	{
 		"pa" : {"num" : 25, "denom" : 100},
