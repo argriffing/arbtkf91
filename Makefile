@@ -284,6 +284,7 @@ bin/arbtkf91-image: arbtkf91-image.c \
 
 clean:
 	rm -f *.o
+	rm -f *.pyc
 	rm -f bin/arbtkf91-check
 	rm -f bin/arbtkf91-bench
 	rm -f bin/arbtkf91-align
