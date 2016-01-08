@@ -1,6 +1,6 @@
-ARB_INCLUDES=-I. -I../arb -I/usr/local/include/flint
-ARB_LIBS=-L../arb
-ARB_LD_LIBRARY=LD_LIBRARY_PATH=/usr/local/bin:../arb
+
+# work around https://github.com/fredrik-johansson/arb/issues/24
+ARB_INCLUDES=-I/usr/local/include/flint
 
 VALGRIND=valgrind --leak-check=full --show-leak-kinds=all
 #VALGRIND=
@@ -67,7 +67,7 @@ bin/t-factor_refine: tests/t-factor_refine.c factor_refine.o
 # femtocas
 
 check_femtocas: bin/t-femtocas
-	$(ARB_LD_LIBRARY) $(VALGRIND) valgrind bin/t-femtocas
+	$(VALGRIND) valgrind bin/t-femtocas
 
 femtocas.o: femtocas.c
 	$(CC) femtocas.c -c $(ARB_INCLUDES) $(CFLAGS)
@@ -75,13 +75,13 @@ femtocas.o: femtocas.c
 bin/t-femtocas: tests/t-femtocas.c femtocas.o
 	$(CC) tests/t-femtocas.c femtocas.o \
 		-o bin/t-femtocas \
-		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
+		-I. $(ARB_INCLUDES) $(CFLAGS) -lflint -lgmp -larb
 
 
 # expressions
 
 check_expressions: bin/t-expressions
-	$(ARB_LD_LIBRARY) $(VALGRIND) bin/t-expressions
+	$(VALGRIND) bin/t-expressions
 
 expressions.o: expressions.c \
 	femtocas.h
@@ -92,13 +92,13 @@ bin/t-expressions: tests/t-expressions.c expressions.o \
 	$(CC) tests/t-expressions.c expressions.o \
 		femtocas.o tkf91_rationals.o \
 		-o bin/t-expressions \
-		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
+		-I. $(ARB_INCLUDES) $(CFLAGS) -lflint -lgmp -larb
 
 
 # generators
 
 check_generators: bin/t-generators
-	$(ARB_LD_LIBRARY) $(VALGRIND) bin/t-generators
+	$(VALGRIND) bin/t-generators
 
 generators.o: generators.c \
 	femtocas.h expressions.h
@@ -110,7 +110,7 @@ bin/t-generators: tests/t-generators.c generators.o \
 		generators.o femtocas.o expressions.o \
 		tkf91_generators.o tkf91_rationals.o \
 		-o bin/t-generators \
-		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) -lflint -lgmp -larb
+		-I. $(ARB_INCLUDES) $(CFLAGS) -lflint -lgmp -larb
 
 
 # more generators stuff
@@ -131,7 +131,7 @@ tkf91_generators.o: tkf91_generators.c \
 # integer vector wavefront implementation
 
 wavefront_hermite.o: wavefront_hermite.c
-	$(CC) wavefront_hermite.c -c $(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS)
+	$(CC) wavefront_hermite.c -c $(ARB_INCLUDES) $(CFLAGS)
 
 
 # the matrix of breadcrumbs for the traceback stage of dynamic programming
@@ -214,7 +214,7 @@ bin/arbtkf91-check: arbtkf91-check.c \
 		bound_mat.o count_solutions.o \
 		runjson.o jsonutil.o json_model_params.o model_params.o vis.o \
 		-o bin/arbtkf91-check \
-		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+		$(ARB_INCLUDES) $(CFLAGS) \
 		-lflint -lgmp -larb -lm -lpng -ljansson
 
 bin/arbtkf91-bench: arbtkf91-bench.c \
@@ -235,7 +235,7 @@ bin/arbtkf91-bench: arbtkf91-bench.c \
 		bound_mat.o count_solutions.o \
 		runjson.o jsonutil.o json_model_params.o model_params.o vis.o \
 		-o bin/arbtkf91-bench \
-		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+		$(ARB_INCLUDES) $(CFLAGS) \
 		-lflint -lgmp -larb -lm -lpng -ljansson
 
 bin/arbtkf91-align: arbtkf91-align.c \
@@ -256,7 +256,7 @@ bin/arbtkf91-align: arbtkf91-align.c \
 		bound_mat.o count_solutions.o \
 		runjson.o jsonutil.o json_model_params.o model_params.o vis.o \
 		-o bin/arbtkf91-align \
-		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+		$(ARB_INCLUDES) $(CFLAGS) \
 		-lflint -lgmp -larb -lm -lpng -ljansson
 
 bin/arbtkf91-image: arbtkf91-image.c \
@@ -277,7 +277,7 @@ bin/arbtkf91-image: arbtkf91-image.c \
 		bound_mat.o count_solutions.o \
 		runjson.o jsonutil.o json_model_params.o model_params.o vis.o \
 		-o bin/arbtkf91-image \
-		$(ARB_INCLUDES) $(ARB_LIBS) $(CFLAGS) \
+		$(ARB_INCLUDES) $(CFLAGS) \
 		-lflint -lgmp -larb -lm -lpng -ljansson
 
 
