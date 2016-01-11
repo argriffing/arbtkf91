@@ -71,7 +71,7 @@ Something like the usual autotools installation commands should
 work if you are lucky.
 
 ```shell
-$ ./configure CFLAGS='-I/path/to/include/flint'
+$ ./configure CPPFLAGS='-I/path/to/include/flint'
 $ make
 $ make install
 ```
