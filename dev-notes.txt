@@ -1,0 +1,13 @@
+Rebuild the 'configure' and 'Makefile.in' files:
+$ autoreconf --install
+
+Put the rebuilt files through some paces:
+$ rm -r build
+$ mkdir build
+$ cd build
+$ ../configure CPPFLAGS='-I/usr/local/include/flint' --prefix=~/.local
+$ make
+$ make check
+$ make install
+$ cd ..
+$ nosetests
