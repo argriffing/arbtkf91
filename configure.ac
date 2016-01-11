@@ -1,4 +1,4 @@
-AC_INIT([amarbtkf91], [1.0], [bug-report@address])
+AC_INIT([arbtkf91], [1.0], [bug-report@address])
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])
