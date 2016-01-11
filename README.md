@@ -52,9 +52,6 @@ The command line program uses json on stdin and stdout as follows.
 Installation
 ------------
 
-You will probably not be able to install this,
-unless you are on linux and you reverse-engineer the makefile.
-
 It depends on these C libraries:
  * [arb](https://github.com/fredrik-johansson/arb)
  * [flint2](https://github.com/wbhart/flint2)
@@ -70,6 +67,19 @@ The tests depend on a couple of Python packages:
 
 Scripts may use [jq](https://stedolan.github.io/jq/) for json filtering.
 
+Something like the usual autotools installation commands should
+work if you are lucky.
+
+```shell
+$ ./configure CFLAGS='-I/path/to/include/flint'
+$ make
+$ make install
+```
+
+The extra CFLAGS path is due to the
+[idiosyncratic](https://github.com/fredrik-johansson/arb/issues/24)
+way that arb includes the flint2 headers.
+
 
 Examples
 --------
@@ -83,7 +93,7 @@ Examples
 }
 ```
 
-`$ jq '.image_mode="full" | .image_filename="tableau.png"' in.json | bin/arbtkf91-image`
+`$ jq '.image_mode="full" | .image_filename="tableau.png"' in.json | arbtkf91-image`
 
 ![tableau](https://github.com/argriffing/arbtkf91/blob/master/tableau.png)
 
@@ -114,17 +124,17 @@ Examples
 These examples show that float precision is not enough
 for reasonably sized alignments.
 
-`$ jq '.precision="float" | .rtol=3e-7' fails-high-tolerance.json | bin/arbtkf91-align | bin/arbtkf91-check`
+`$ jq '.precision="float" | .rtol=3e-7' fails-high-tolerance.json | arbtkf91-align | arbtkf91-check`
 ```json
 {"alignment_is_optimal": "no", "number_of_optimal_alignments": "32332559983411306514373848819744479641600", "alignment_is_canonical": "no"}
 ```
-`$ jq '.precision="float" | .rtol=3e-7' needs-high-tolerance.json | bin/arbtkf91-align | bin/arbtkf91-check`
+`$ jq '.precision="float" | .rtol=3e-7' needs-high-tolerance.json | arbtkf91-align | arbtkf91-check`
 ```json
 {"alignment_is_optimal": "yes", "alignment_is_canonical": "no", "number_of_optimal_alignments": "9442009665687106671596887819668655696812107909520913524435008004699019468288819200000000000000"}
 ```
 
 
 
-`$ jq '.image_mode="simple" | .image_filename="needs-high.tableau.png"' needs-high-tolerance.json | bin/arbtkf91-image`
+`$ jq '.image_mode="simple" | .image_filename="needs-high.tableau.png"' needs-high-tolerance.json | arbtkf91-image`
 
 ![tableau](https://github.com/argriffing/arbtkf91/blob/master/needs-high.tableau.png)
