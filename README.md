@@ -93,8 +93,9 @@ way that arb includes the flint2 headers.
 Testing
 -------
 
-In addition to the `$ make check` step of the installation,
-additional python test scripts can be run with `$ nosetests`.
+Some tests are run during the `$ make check` step of the installation.
+After installation, additional python test scripts can be run
+with the `$ nosetests` command.
 
 
 Examples
