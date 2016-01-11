@@ -7,20 +7,8 @@ AC_CONFIG_HEADERS([config.h])
 ## https://www.gnu.org/software/autoconf/manual/autoconf-2.60/html_node/External-Software.html
 
 # But also see http://stackoverflow.com/questions/10199754
-
-
-
-AC_ARG_WITH([flint],
-	    [AS_HELP_STRING([--with-flint],
-			    [Specify location of flint @<:@default=check@:>@])],
-	    [],
-	    [with_flint=check])
-
-AC_ARG_WITH([arb],
-	    [AS_HELP_STRING([--with-arb],
-			    [Specify location of arb @<:@default=check@:>@])],
-	    [],
-	    [with_arb=check])
+# How about requiring the user to do something like
+# configure LDFLAGS='-I/usr/local/include/flint -L/usr -L/usr/local -L/usr/local/flint'
 
 AC_CONFIG_FILES([Makefile src/Makefile])
 AC_OUTPUT

@@ -52,9 +52,6 @@ The command line program uses json on stdin and stdout as follows.
 Installation
 ------------
 
-You will probably not be able to install this,
-unless you are on linux and you reverse-engineer the makefile.
-
 It depends on these C libraries:
  * [arb](https://github.com/fredrik-johansson/arb)
  * [flint2](https://github.com/wbhart/flint2)
@@ -69,6 +66,19 @@ The tests depend on a couple of Python packages:
  * [biopython](https://github.com/biopython/biopython)
 
 Scripts may use [jq](https://stedolan.github.io/jq/) for json filtering.
+
+Something like the usual autotools installation commands should
+work if you are lucky.
+
+```shell
+$ ./configure CFLAGS='-I/path/to/include/flint'
+$ make
+$ make install
+```
+
+The extra CFLAGS path is due to the
+[idiosyncratic](https://github.com/fredrik-johansson/arb/issues/24)
+way that arb includes the flint2 headers.
 
 
 Examples
