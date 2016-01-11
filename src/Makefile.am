@@ -6,10 +6,20 @@
 
 
 bin_PROGRAMS = arbtkf91-align arbtkf91-check arbtkf91-image arbtkf91-bench
+check_PROGRAMS = t-expressions t-factor_refine t-femtocas t-generators
+TESTS = $(check_PROGRAMS)
 
-ALL_LDADD=-lflint -lgmp -larb -lm -lpng -ljansson
+JSON_LDADD = -ljansson
+JSON_SOURCES = \
+	json_model_params.c \
+	jsonutil.c \
+	runjson.c \
+	json_model_params.h \
+	jsonutil.h \
+	runjson.h
 
-ALL_SOURCES =  \
+OTHER_LDADD = -lflint -lgmp -larb -lm -lpng
+OTHER_SOURCES =  \
 	bound_mat.c \
 	breadcrumbs.c \
 	count_solutions.c \
@@ -17,11 +27,8 @@ ALL_SOURCES =  \
 	factor_refine.c \
 	femtocas.c \
 	generators.c \
-	json_model_params.c \
-	jsonutil.c \
 	model_params.c \
 	rgenerators.c \
-	runjson.c \
 	tkf91_dp_bound.c \
 	tkf91_dp.c \
 	tkf91_dp_d.c \
@@ -40,12 +47,9 @@ ALL_SOURCES =  \
 	factor_refine.h \
 	femtocas.h \
 	generators.h \
-	json_model_params.h \
-	jsonutil.h \
 	model_params.h \
 	printutil.h \
 	rgenerators.h \
-	runjson.h \
 	tkf91_dp_bound.h \
 	tkf91_dp_d.h \
 	tkf91_dp_f.h \
@@ -59,6 +63,8 @@ ALL_SOURCES =  \
 	vis.h \
 	wavefront_hermite.h
 
+ALL_LDADD = $(OTHER_LDADD) $(JSON_LDADD)
+ALL_SOURCES = $(OTHER_SOURCES) $(JSON_SOURCES)
 
 arbtkf91_align_LDADD = $(ALL_LDADD)
 arbtkf91_align_SOURCES =  $(ALL_SOURCES) arbtkf91-align.c
@@ -71,3 +77,16 @@ arbtkf91_image_SOURCES =  $(ALL_SOURCES) arbtkf91-image.c
 
 arbtkf91_check_LDADD = $(ALL_LDADD)
 arbtkf91_check_SOURCES =  $(ALL_SOURCES) arbtkf91-check.c
+
+
+t_expressions_LDADD = $(OTHER_LDADD)
+t_expressions_SOURCES =  $(OTHER_SOURCES) t-expressions.c
+
+t_factor_refine_LDADD = $(OTHER_LDADD)
+t_factor_refine_SOURCES =  $(OTHER_SOURCES) t-factor_refine.c
+
+t_femtocas_LDADD = $(OTHER_LDADD)
+t_femtocas_SOURCES =  $(OTHER_SOURCES) t-femtocas.c
+
+t_generators_LDADD = $(OTHER_LDADD)
+t_generators_SOURCES =  $(OTHER_SOURCES) t-generators.c
