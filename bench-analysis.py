@@ -21,7 +21,7 @@ def bench_pair(bench, d):
 
 
 def main(args):
-    bench = os.path.realpath('./bin/arbtkf91-bench')
+    bench = 'arbtkf91-bench'
     samples = 10
     model_params = {
             "pa" : rat(27, 100),

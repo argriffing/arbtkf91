@@ -20,7 +20,7 @@ align = os.path.realpath(os.path.join(
     '..', 'bioinf2015', 'implementation-team2',
     'bin', 'TKFLOG_CACHING_ROUND_UP'))
 
-check = os.path.realpath('./bin/arbtkf91-check')
+check = 'arbtkf91-check'
 
 
 def align_pair(a, b):

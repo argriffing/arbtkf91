@@ -12,8 +12,8 @@ import json
 
 from data_source import gen_files, gen_sequence_pairs
 
-align = os.path.realpath('./bin/arbtkf91-align')
-check = os.path.realpath('./bin/arbtkf91-check')
+align = 'arbtkf91-align'
+check = 'arbtkf91-check'
 
 def runjson(args, d):
     s_in = json.dumps(d)
