@@ -115,31 +115,29 @@ am__objects_2 = json_model_params.$(OBJEXT) jsonutil.$(OBJEXT) \
 am__objects_3 = $(am__objects_1) $(am__objects_2)
 am_arbtkf91_align_OBJECTS = $(am__objects_3) arbtkf91-align.$(OBJEXT)
 arbtkf91_align_OBJECTS = $(am_arbtkf91_align_OBJECTS)
-am__DEPENDENCIES_1 =
-am__DEPENDENCIES_2 = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
-arbtkf91_align_DEPENDENCIES = $(am__DEPENDENCIES_2)
+arbtkf91_align_LDADD = $(LDADD)
 am_arbtkf91_bench_OBJECTS = $(am__objects_3) arbtkf91-bench.$(OBJEXT)
 arbtkf91_bench_OBJECTS = $(am_arbtkf91_bench_OBJECTS)
-arbtkf91_bench_DEPENDENCIES = $(am__DEPENDENCIES_2)
+arbtkf91_bench_LDADD = $(LDADD)
 am_arbtkf91_check_OBJECTS = $(am__objects_3) arbtkf91-check.$(OBJEXT)
 arbtkf91_check_OBJECTS = $(am_arbtkf91_check_OBJECTS)
-arbtkf91_check_DEPENDENCIES = $(am__DEPENDENCIES_2)
+arbtkf91_check_LDADD = $(LDADD)
 am_arbtkf91_image_OBJECTS = $(am__objects_3) arbtkf91-image.$(OBJEXT)
 arbtkf91_image_OBJECTS = $(am_arbtkf91_image_OBJECTS)
-arbtkf91_image_DEPENDENCIES = $(am__DEPENDENCIES_2)
+arbtkf91_image_LDADD = $(LDADD)
 am_t_expressions_OBJECTS = $(am__objects_1) t-expressions.$(OBJEXT)
 t_expressions_OBJECTS = $(am_t_expressions_OBJECTS)
-t_expressions_DEPENDENCIES = $(am__DEPENDENCIES_1)
+t_expressions_LDADD = $(LDADD)
 am_t_factor_refine_OBJECTS = $(am__objects_1) \
 	t-factor_refine.$(OBJEXT)
 t_factor_refine_OBJECTS = $(am_t_factor_refine_OBJECTS)
-t_factor_refine_DEPENDENCIES = $(am__DEPENDENCIES_1)
+t_factor_refine_LDADD = $(LDADD)
 am_t_femtocas_OBJECTS = $(am__objects_1) t-femtocas.$(OBJEXT)
 t_femtocas_OBJECTS = $(am_t_femtocas_OBJECTS)
-t_femtocas_DEPENDENCIES = $(am__DEPENDENCIES_1)
+t_femtocas_LDADD = $(LDADD)
 am_t_generators_OBJECTS = $(am__objects_1) t-generators.$(OBJEXT)
 t_generators_OBJECTS = $(am_t_generators_OBJECTS)
-t_generators_DEPENDENCIES = $(am__DEPENDENCIES_1)
+t_generators_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -499,17 +497,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 TESTS = $(check_PROGRAMS)
-JSON_LDADD = -ljansson
-JSON_SOURCES = \
-	json_model_params.c \
-	jsonutil.c \
-	runjson.c \
-	json_model_params.h \
-	jsonutil.h \
-	runjson.h
-
-OTHER_LDADD = -lflint -lgmp -larb -lm -lpng
-OTHER_SOURCES = \
+CORE_SOURCES = \
 	bound_mat.c \
 	breadcrumbs.c \
 	count_solutions.c \
@@ -553,24 +541,23 @@ OTHER_SOURCES = \
 	vis.h \
 	wavefront_hermite.h
 
-ALL_LDADD = $(OTHER_LDADD) $(JSON_LDADD)
-ALL_SOURCES = $(OTHER_SOURCES) $(JSON_SOURCES)
-arbtkf91_align_LDADD = $(ALL_LDADD)
+JSON_SOURCES = \
+	json_model_params.c \
+	jsonutil.c \
+	runjson.c \
+	json_model_params.h \
+	jsonutil.h \
+	runjson.h
+
+ALL_SOURCES = $(CORE_SOURCES) $(JSON_SOURCES)
+t_expressions_SOURCES = $(CORE_SOURCES) t-expressions.c
+t_factor_refine_SOURCES = $(CORE_SOURCES) t-factor_refine.c
+t_femtocas_SOURCES = $(CORE_SOURCES) t-femtocas.c
+t_generators_SOURCES = $(CORE_SOURCES) t-generators.c
 arbtkf91_align_SOURCES = $(ALL_SOURCES) arbtkf91-align.c
-arbtkf91_bench_LDADD = $(ALL_LDADD)
 arbtkf91_bench_SOURCES = $(ALL_SOURCES) arbtkf91-bench.c
-arbtkf91_image_LDADD = $(ALL_LDADD)
 arbtkf91_image_SOURCES = $(ALL_SOURCES) arbtkf91-image.c
-arbtkf91_check_LDADD = $(ALL_LDADD)
 arbtkf91_check_SOURCES = $(ALL_SOURCES) arbtkf91-check.c
-t_expressions_LDADD = $(OTHER_LDADD)
-t_expressions_SOURCES = $(OTHER_SOURCES) t-expressions.c
-t_factor_refine_LDADD = $(OTHER_LDADD)
-t_factor_refine_SOURCES = $(OTHER_SOURCES) t-factor_refine.c
-t_femtocas_LDADD = $(OTHER_LDADD)
-t_femtocas_SOURCES = $(OTHER_SOURCES) t-femtocas.c
-t_generators_LDADD = $(OTHER_LDADD)
-t_generators_SOURCES = $(OTHER_SOURCES) t-generators.c
 all: all-am
 
 .SUFFIXES:
