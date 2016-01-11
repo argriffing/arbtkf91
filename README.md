@@ -49,8 +49,11 @@ The command line program uses json on stdin and stdout as follows.
 }
 ```
 
-Installation
+
+Requirements
 ------------
+
+The arbtkf91 code has been tested only on Linux.
 
 It depends on these C libraries:
  * [arb](https://github.com/fredrik-johansson/arb)
@@ -64,8 +67,13 @@ It depends on these C libraries:
 The tests depend on a couple of Python packages:
  * [numpy](https://github.com/numpy/numpy)
  * [biopython](https://github.com/biopython/biopython)
+ * [nose](https://nose.readthedocs.org)
 
 Scripts may use [jq](https://stedolan.github.io/jq/) for json filtering.
+
+
+Installation
+------------
 
 Something like the usual autotools installation commands should
 work if you are lucky.
@@ -73,12 +81,20 @@ work if you are lucky.
 ```shell
 $ ./configure CPPFLAGS='-I/path/to/include/flint'
 $ make
+$ make check
 $ make install
 ```
 
-The extra CFLAGS path is due to the
+The extra CPPFLAGS path is due to the
 [idiosyncratic](https://github.com/fredrik-johansson/arb/issues/24)
 way that arb includes the flint2 headers.
+
+
+Testing
+-------
+
+In addition to the `$ make check` step of the installation,
+additional python test scripts can be run with `$ nosetests`.
 
 
 Examples
@@ -122,7 +138,7 @@ Examples
 ```
 
 These examples show that float precision is not enough
-for reasonably sized alignments.
+for 'canonical' alignments reasonably sized alignments.
 
 `$ jq '.precision="float" | .rtol=3e-7' fails-high-tolerance.json | arbtkf91-align | arbtkf91-check`
 ```json
@@ -132,7 +148,6 @@ for reasonably sized alignments.
 ```json
 {"alignment_is_optimal": "yes", "alignment_is_canonical": "no", "number_of_optimal_alignments": "9442009665687106671596887819668655696812107909520913524435008004699019468288819200000000000000"}
 ```
-
 
 
 `$ jq '.image_mode="simple" | .image_filename="needs-high.tableau.png"' needs-high-tolerance.json | arbtkf91-image`
