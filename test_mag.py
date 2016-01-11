@@ -10,8 +10,8 @@ import os
 import json
 from numpy.testing import assert_equal
 
-align = os.path.realpath('./bin/arbtkf91-align')
-check = os.path.realpath('./bin/arbtkf91-check')
+align = 'arbtkf91-align'
+check = 'arbtkf91-check'
 
 def runjson(args, d):
     s_in = json.dumps(d)

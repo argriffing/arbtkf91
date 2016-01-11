@@ -10,9 +10,9 @@ import copy
 from subprocess import Popen, PIPE
 from numpy.testing import assert_equal, assert_raises, TestCase
 
-align = os.path.realpath('./bin/arbtkf91-align')
-check = os.path.realpath('./bin/arbtkf91-check')
-bench = os.path.realpath('./bin/arbtkf91-bench')
+align = 'arbtkf91-align'
+check = 'arbtkf91-check'
+bench = 'arbtkf91-bench'
 
 bench_root = {
         "precision" : "float",
