@@ -114,6 +114,8 @@ with the `$ nosetests` command.
 Examples
 --------
 
+### align
+
 `$ arbtkf91-align < in.json | jq '. | {a: .sequence_a, b: .sequence_b}'`
 
 ```javascript
@@ -123,10 +125,8 @@ Examples
 }
 ```
 
-`$ jq '.image_mode="full" | .image_filename="tableau.png"' in.json | arbtkf91-image`
 
-![tableau](https://github.com/argriffing/arbtkf91/blob/master/tableau.png)
-
+### bench
 
 `$ jq '.samples=10 | .precision="arb256"' in.json | arbtkf91-bench | jq '. | .elapsed_ticks'`
 
@@ -145,23 +145,41 @@ Examples
 ]
 ```
 
+### check
+
 `$ arbtkf91-align < in.json | arbtkf91-check`
-
 ```javascript
-{"alignment_is_optimal": "yes", "alignment_is_canonical": "yes", "number_of_optimal_alignments": "56"}
+{
+    "alignment_is_optimal": "yes",
+    "alignment_is_canonical": "yes",
+    "number_of_optimal_alignments": "56"
+}
 ```
-
-These examples show that float precision is not enough
-for 'canonical' alignments reasonably sized alignments.
 
 `$ jq '.precision="float" | .rtol=3e-7' fails-high-tolerance.json | arbtkf91-align | arbtkf91-check`
 ```json
-{"alignment_is_optimal": "no", "number_of_optimal_alignments": "32332559983411306514373848819744479641600", "alignment_is_canonical": "no"}
+{
+    "alignment_is_optimal": "no",
+    "alignment_is_canonical": "no",
+    "number_of_optimal_alignments": "32332559983411306514373848819744479641600"
+}
 ```
+
 `$ jq '.precision="float" | .rtol=3e-7' needs-high-tolerance.json | arbtkf91-align | arbtkf91-check`
 ```json
-{"alignment_is_optimal": "yes", "alignment_is_canonical": "no", "number_of_optimal_alignments": "9442009665687106671596887819668655696812107909520913524435008004699019468288819200000000000000"}
+{
+    "alignment_is_optimal": "yes",
+    "alignment_is_canonical": "no",
+    "number_of_optimal_alignments": "9442009665687106671596887819668655696812107909520913524435008004699019468288819200000000000000"
+}
 ```
+
+
+### image
+
+`$ jq '.image_mode="full" | .image_filename="tableau.png"' in.json | arbtkf91-image`
+
+![tableau](https://github.com/argriffing/arbtkf91/blob/master/tableau.png)
 
 
 `$ jq '.image_mode="simple" | .image_filename="needs-high.tableau.png"' needs-high-tolerance.json | arbtkf91-image`
