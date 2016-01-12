@@ -67,7 +67,7 @@ It depends on these C libraries:
  * [jansson](https://github.com/akheron/jansson)
    -- C library for encoding, decoding and manipulating JSON data
 
-The tests depend on a couple of Python packages:
+The tests depend on a few Python packages:
  * [numpy](https://github.com/numpy/numpy)
    -- A package for scientific computing with Python
  * [biopython](https://github.com/biopython/biopython)
