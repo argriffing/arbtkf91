@@ -120,6 +120,7 @@ These example commands assume that the current directory is `examples`.
 
 `$ arbtkf91-align < in.json | jq '. | {a: .sequence_a, b: .sequence_b}'`
 
+
 ```javascript
 {
   "a": "ACGACTAGTCA-GC-TACG-AT-CGA-CT-C-ATTCAACTGACTGACA-TCGACTTA",
@@ -149,7 +150,7 @@ These example commands assume that the current directory is `examples`.
 
 ### check
 
-`$ arbtkf91-align < in.json | arbtkf91-check`
+`$ arbtkf91-align < in.json | jq '. | del(.verified)' | arbtkf91-check`
 ```javascript
 {
     "alignment_is_optimal": "yes",
@@ -158,7 +159,7 @@ These example commands assume that the current directory is `examples`.
 }
 ```
 
-`$ jq '.precision="float" | .rtol=3e-7' fails-high-tolerance.json | arbtkf91-align | arbtkf91-check`
+`$ jq '.precision="float" | .rtol=3e-7' fails-high-tolerance.json | arbtkf91-align | jq '. | del(.verified)' | arbtkf91-check`
 ```json
 {
     "alignment_is_optimal": "no",
@@ -167,7 +168,7 @@ These example commands assume that the current directory is `examples`.
 }
 ```
 
-`$ jq '.precision="float" | .rtol=3e-7' needs-high-tolerance.json | arbtkf91-align | arbtkf91-check`
+`$ jq '.precision="float" | .rtol=3e-7' needs-high-tolerance.json | arbtkf91-align | jq '. | del(.verified)' | arbtkf91-check`
 ```json
 {
     "alignment_is_optimal": "yes",
