@@ -18,3 +18,7 @@ $CMD
 CMD="python repro4.py --precision=float --bench-data=$BENCH_DATA"
 echo $CMD
 $CMD
+
+CMD="python bench-analysis.py --precision=float --samples=10 --bench-data=$BENCH_DATA"
+echo $CMD
+$CMD
