@@ -58,8 +58,6 @@ The arbtkf91 code has been tested only on Linux.
 It depends on these C libraries:
  * [arb](https://github.com/fredrik-johansson/arb)
  * [flint2](https://github.com/wbhart/flint2)
- * [mpir](https://github.com/wbhart/mpir)
- * [mpfr](http://www.mpfr.org/)
  * [gmp](https://gmplib.org/)
  * [libpng](http://www.libpng.org/pub/png/libpng.html)
  * [jansson](https://github.com/akheron/jansson)
