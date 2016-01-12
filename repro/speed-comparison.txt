@@ -1,0 +1,53 @@
+./TKFLOG_CACHING_ROUND_UP -t
+~/git-repos/bioinf2015/implementation-team2/bin ~/git-repos/arbtkf91/repro
+Doing benchmark 0
+Seq1 length: 10  Seq2 length: 10
+Elapsed Time in millisecs: 0
+Doing benchmark 1
+Seq1 length: 100  Seq2 length: 100
+Elapsed Time in millisecs: 0
+Doing benchmark 2
+Seq1 length: 1000  Seq2 length: 1000
+Elapsed Time in millisecs: 5.5
+Doing benchmark 3
+Seq1 length: 10000  Seq2 length: 10000
+Elapsed Time in millisecs: 772.1
+Benchmarked succesfully!
+~/git-repos/arbtkf91/repro
+
+python bench-compare.py --sequences=../../bioinf2015/implementation-team2/doc/sequences --precision=float
+benchmark 0 ...
+seq1 length: 10 seq2 length: 10
+elapsed milliseconds: 0.2485
+
+benchmark 1 ...
+seq1 length: 100 seq2 length: 100
+elapsed milliseconds: 0.2843
+
+benchmark 2 ...
+seq1 length: 1000 seq2 length: 1000
+elapsed milliseconds: 3.7535
+
+benchmark 3 ...
+seq1 length: 10000 seq2 length: 10000
+elapsed milliseconds: 451.2365
+
+
+python bench-compare.py --sequences=../../bioinf2015/implementation-team2/doc/sequences --precision=double
+benchmark 0 ...
+seq1 length: 10 seq2 length: 10
+elapsed milliseconds: 0.2492
+
+benchmark 1 ...
+seq1 length: 100 seq2 length: 100
+elapsed milliseconds: 0.291
+
+benchmark 2 ...
+seq1 length: 1000 seq2 length: 1000
+elapsed milliseconds: 4.8875
+
+benchmark 3 ...
+seq1 length: 10000 seq2 length: 10000
+elapsed milliseconds: 706.3818
+
+
