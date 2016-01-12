@@ -108,7 +108,7 @@ Testing
 
 Some tests are run during the `$ make check` step of the installation.
 After installation, additional python test scripts can be run
-with the `$ nosetests` command.
+with the `$ nosetests -v` command.
 
 
 Examples
