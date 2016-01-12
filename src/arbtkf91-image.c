@@ -41,8 +41,8 @@ json_t *run(void * userdata, json_t *root)
     const char * image_filename;
     const char * image_mode;
     int image_mode_full;
-
-    model_params_init(p);
+    json_error_t err;
+    size_t flags;
 
     if (userdata)
     {
@@ -50,12 +50,33 @@ json_t *run(void * userdata, json_t *root)
         abort();
     }
 
+    flags = JSON_STRICT;
     json_unpack(root, "{s:o, s:s, s:s, s:s, s:s}",
             "parameters", &parameters,
             "image_mode", &image_mode,
             "image_filename", &image_filename,
             "sequence_a", &sequence_a,
             "sequence_b", &sequence_b);
+    if (result)
+    {
+        fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
+        abort();
+    }
+
+    /* read the model parameter values */
+    model_params_init(p);
+    result = _json_get_model_params_ex(p, parameters, &err, flags);
+    if (result)
+    {
+        fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
+        abort();
+    }
+    result = model_params_validate(p);
+    if (result)
+    {
+        fprintf(stderr, "invalid model parameters\n");
+        abort();
+    }
 
     /* read the image mode */
     if (strcmp(image_mode, "simple") == 0)
@@ -71,11 +92,6 @@ json_t *run(void * userdata, json_t *root)
         fprintf(stderr, "error: expected image_mode : {full,simple}\n");
         abort();
     }
-
-    /* read the model parameter values */
-    model_params_init(p);
-    result = _json_get_model_params(p, parameters);
-    if (result) abort();
 
     /* read the two unaligned sequences */
 

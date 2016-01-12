@@ -55,8 +55,8 @@ json_t *run(void * userdata, json_t *root)
     const char * sequence_b;
     const char * precision;
     double rtol;
-
-    model_params_init(p);
+    json_error_t err;
+    size_t flags;
 
     if (userdata)
     {
@@ -64,18 +64,34 @@ json_t *run(void * userdata, json_t *root)
         abort();
     }
 
-    result = json_unpack(root, "{s:o, s:s, s:s, s:i, s:F, s:s}",
+    flags = JSON_STRICT;
+    result = json_unpack_ex(root, &err, flags,
+            "{s:o, s:s, s:s, s:i, s:F, s:s}",
             "parameters", &parameters,
             "sequence_a", &sequence_a,
             "sequence_b", &sequence_b,
             "samples", &samples,
             "rtol", &rtol,
             "precision", &precision);
-    if (result) abort();
+    if (result)
+    {
+        fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
+        abort();
+    }
 
     model_params_init(p);
-    result = _json_get_model_params(p, parameters);
-    if (result) abort();
+    result = _json_get_model_params_ex(p, parameters, &err, flags);
+    if (result)
+    {
+        fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
+        abort();
+    }
+    result = model_params_validate(p);
+    if (result)
+    {
+        fprintf(stderr, "invalid model parameters\n");
+        abort();
+    }
 
     /* read the two unaligned sequences */
 
@@ -103,8 +119,8 @@ json_t *run(void * userdata, json_t *root)
     }
     else
     {
-        printf("expected the precision string to be one of ");
-        printf("{'float' | 'double' | 'mag' | 'arb256'}\n");
+        fprintf(stderr, "expected the precision string to be one of ");
+        fprintf(stderr, "{'float' | 'double' | 'mag' | 'arb256'}\n");
         abort();
     }
 

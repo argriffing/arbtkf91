@@ -129,8 +129,6 @@ json_t *run(void * userdata, json_t *root)
     json_error_t err;
     size_t flags;
 
-    model_params_init(p);
-
     if (userdata)
     {
         fprintf(stderr, "error: unexpected userdata\n");
@@ -154,6 +152,12 @@ json_t *run(void * userdata, json_t *root)
     if (result)
     {
         fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
+        abort();
+    }
+    result = model_params_validate(p);
+    if (result)
+    {
+        fprintf(stderr, "invalid model parameters\n");
         abort();
     }
 

@@ -76,6 +76,12 @@ json_t *run(void * userdata, json_t *root)
         fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
         abort();
     }
+    result = model_params_validate(p);
+    if (result)
+    {
+        fprintf(stderr, "invalid model parameters\n");
+        abort();
+    }
 
     /* read the two unaligned sequences */
 
