@@ -27,6 +27,7 @@ def rat(a, b):
 
 
 def main(args):
+    data_path = os.path.realpath(args.bench_data)
     model_params = {
             "pa" : rat(27, 100),
             "pc" : rat(24, 100),
@@ -35,7 +36,7 @@ def main(args):
             "lambda" : rat(1, 1),
             "mu" : rat(2, 1),
             "tau" : rat(1, 10)}
-    for name, fin in gen_files():
+    for name, fin in gen_files(data_path):
         print(name)
         print('precision={} rtol={}'.format(args.precision, args.rtol))
         sequence_pairs = list(gen_sequence_pairs(fin, force_acgt=True))
@@ -71,6 +72,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--bench-data', required=True,
+            help='benchmark data directory')
     parser.add_argument('--precision', required=True,
             choices=('float', 'double', 'mag', 'arb256'))
     parser.add_argument('--rtol', type=float, default=0.0,

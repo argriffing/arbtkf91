@@ -6,22 +6,18 @@ In this one, the third and fourth lines of output are the sequences.
 """
 from __future__ import print_function, division
 
-from StringIO import StringIO
 from subprocess import Popen, PIPE
 import os
 import json
+import argparse
 
 from data_source import gen_files, gen_sequence_pairs
 
 
-align = os.path.realpath(os.path.join(
-    '..', 'bioinf2015', 'implementation-team1',
-    'build', 'mlalign'))
-
 check = 'arbtkf91-check'
 
 
-def align_pair(a, b):
+def align_pair(align, a, b):
     pairs = [
         ("runs", "1"),
         ("pa", "0.27"),
@@ -67,13 +63,15 @@ def check_pair(a, b):
     return runjson([check], j_in)
 
 
-def main():
-    for name, fin in gen_files():
+def main(args):
+    align = os.path.realpath(args.exe)
+    data_path = os.path.realpath(args.bench_data)
+    for name, fin in gen_files(data_path):
         ncanon = 0
         nopt = 0
         k = 0
         for a, b in gen_sequence_pairs(fin, force_acgt=True):
-            out, err = align_pair(a, b)
+            out, err = align_pair(align, a, b)
             #print(out)
             #print(err)
             lines = [x.strip() for x in out.splitlines()]
@@ -93,4 +91,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--bench-data', required=True,
+            help='benchmark data directory')
+    parser.add_argument('--exe', required=True,
+            help='mlalign alignment executable')
+    args = parser.parse_args()
+    main(args)

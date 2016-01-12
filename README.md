@@ -76,7 +76,7 @@ Installation
 ------------
 
 Something like the usual autotools installation commands should
-work if you are lucky.
+work if you are lucky:
 
 ```shell
 $ ./configure CPPFLAGS='-I/path/to/include/flint'
@@ -88,6 +88,13 @@ $ make install
 The extra CPPFLAGS path is due to the
 [idiosyncratic](https://github.com/fredrik-johansson/arb/issues/24)
 way that arb includes the flint2 headers.
+
+To use a configuration tuned to your specific machine architecture,
+use a `configure` command like the following:
+
+```shell
+$ ./configure CFLAGS='-O3 -march=native -ffast-math' CPPFLAGS='-I/path/to/include/flint'
+```
 
 
 Testing

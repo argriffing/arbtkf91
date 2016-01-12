@@ -22,7 +22,8 @@ def bench_pair(bench, d):
 
 def main(args):
     bench = 'arbtkf91-bench'
-    samples = 10
+    data_path = os.path.realpath(args.bench_data)
+    samples = args.samples
     model_params = {
             "pa" : rat(27, 100),
             "pc" : rat(24, 100),
@@ -31,7 +32,7 @@ def main(args):
             "lambda" : rat(1, 1),
             "mu" : rat(2, 1),
             "tau" : rat(1, 10)}
-    for name, fin in data_source.gen_files():
+    for name, fin in data_source.gen_files(data_path):
         print(name)
         total_ticks = 0
         for a, b in data_source.gen_sequence_pairs(fin):
@@ -49,8 +50,18 @@ def main(args):
         print()
 
 
+def pos_int(x):
+    x = int(x)
+    assert x > 0
+    return x
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--bench-data', required=True,
+            help='benchmark data directory')
+    parser.add_argument('--samples', default=10, type=pos_int,
+            help='number of runs per alignment for benchmarking')
     parser.add_argument('--precision', required=True,
             choices=('float', 'double', 'mag', 'arb256'))
     args = parser.parse_args()

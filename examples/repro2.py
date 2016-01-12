@@ -8,22 +8,18 @@ nucleotide sequences.
 """
 from __future__ import print_function, division
 
-from StringIO import StringIO
 from subprocess import Popen, PIPE
 import os
 import json
+import argparse
 
 from data_source import gen_files, gen_sequence_pairs
 
 
-align = os.path.realpath(os.path.join(
-    '..', 'bioinf2015', 'implementation-team2',
-    'bin', 'TKFLOG_CACHING_ROUND_UP'))
-
 check = 'arbtkf91-check'
 
 
-def align_pair(a, b):
+def align_pair(align, a, b):
     pairs = [
         ("output-alignment", "1"),
         ("pa", "0.27"),
@@ -69,20 +65,26 @@ def check_pair(a, b):
     return runjson([check], j_in)
 
 
-def main():
-    for name, fin in gen_files():
+def main(args):
+    align = os.path.realpath(args.exe)
+    data_path = os.path.realpath(args.bench_data)
+    for name, fin in gen_files(data_path):
         ncanon = 0
         nopt = 0
         k = 0
         for a, b in gen_sequence_pairs(fin, force_acgt=True):
-            out, err = align_pair(a, b)
+            out, err = align_pair(align, a, b)
             lines = [x.strip() for x in out.splitlines()]
             nlines = len(lines)
+            found = False
             for i in range(nlines):
                 if lines[i] == 'log_caching_round_up':
                     a_aln = lines[i+1]
                     b_aln = lines[i+2]
+                    found = True
                     break
+            if not found:
+                raise Exception('failed to understand the output')
             js = check_pair(a_aln, b_aln)
             if js['alignment_is_canonical'] == 'yes':
                 ncanon += 1
@@ -97,4 +99,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--bench-data', required=True,
+            help='benchmark data directory')
+    parser.add_argument('--exe', required=True,
+            help='TKFLOG_CACHING_ROUND_UP alignment executable')
+    args = parser.parse_args()
+    main(args)

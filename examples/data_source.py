@@ -12,7 +12,7 @@ from Bio import SeqIO
 
 __all__ = ['gen_files', 'gen_sequence_pairs']
 
-mypath = os.path.realpath('../../stamatakis/benchMark_data')
+#mypath = os.path.realpath('../../stamatakis/benchMark_data')
 
 def _normalized_seq(s):
     return ''.join(_normalized_chr(c) for c in s)
@@ -48,11 +48,11 @@ def gen_sequence_pairs(fin, force_acgt=False):
             k += 1
     assert_equal(k, 45)
 
-def gen_files():
+def gen_files(data_path):
     # yield (name, handle) pairs
-    for filename in os.listdir(mypath):
+    for filename in os.listdir(data_path):
         if 'unaligned' in filename:
-            fullpath = os.path.join(mypath, filename)
+            fullpath = os.path.join(data_path, filename)
             with open(fullpath) as fin:
                 yield filename, fin
 
