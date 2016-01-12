@@ -181,9 +181,9 @@ These example commands assume that the current directory is `examples`.
 
 `$ jq '.image_mode="full" | .image_filename="tableau.png"' in.json | arbtkf91-image`
 
-![tableau](https://github.com/argriffing/arbtkf91/blob/master/tableau.png)
+![tableau](https://github.com/argriffing/arbtkf91/blob/master/examples/tableau.png)
 
 
 `$ jq '.image_mode="simple" | .image_filename="needs-high.tableau.png"' needs-high-tolerance.json | arbtkf91-image`
 
-![tableau](https://github.com/argriffing/arbtkf91/blob/master/needs-high.tableau.png)
+![tableau](https://github.com/argriffing/arbtkf91/blob/master/examples/needs-high.tableau.png)
