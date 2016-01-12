@@ -8,7 +8,7 @@ it is possible to verify that the alignment is optimal.
 
 The command line program uses json on stdin and stdout as follows.
 
-`$ arbtkf91-align < in.json`
+`$ arbtkf91-align < examples/in.json`
 
 ```javascript
 {
@@ -28,7 +28,7 @@ The command line program uses json on stdin and stdout as follows.
 }
 ```
 
-`$ cat in.json`
+`$ cat examples/in.json`
 
 ```javascript
 {
@@ -113,6 +113,8 @@ with the `$ nosetests` command.
 
 Examples
 --------
+
+These example commands assume that the current directory is `examples`.
 
 ### align
 
