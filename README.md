@@ -57,23 +57,23 @@ The arbtkf91 code has been tested only on Linux.
 
 It depends on these C libraries:
  * [arb](https://github.com/fredrik-johansson/arb)
-   C library for arbitrary-precision interval arithmetic
+   -- C library for arbitrary-precision interval arithmetic
  * [flint2](https://github.com/wbhart/flint2)
-   __F__ast __Li__brary for __N__umber __T__heory
+   -- <b>F</b>ast <b>Li</b>brary for <b>N</b>umber <b>T</b>heory
  * [gmp](https://gmplib.org/)
-   The GNU Multiple Precision Arithmetic Library
+   -- The GNU Multiple Precision Arithmetic Library
  * [libpng](http://www.libpng.org/pub/png/libpng.html)
-   The official PNG reference library
+   -- The official PNG reference library
  * [jansson](https://github.com/akheron/jansson)
-   C library for encoding, decoding and manipulating JSON data
+   -- C library for encoding, decoding and manipulating JSON data
 
 The tests depend on a couple of Python packages:
  * [numpy](https://github.com/numpy/numpy)
-   A package for scientific computing with Python
+   -- A package for scientific computing with Python
  * [biopython](https://github.com/biopython/biopython)
-   Python tools for computational molecular biology
+   -- Python tools for computational molecular biology
  * [nose](https://nose.readthedocs.org)
-   A package for unit testing
+   -- A package for unit testing
 
 Scripts may use [jq](https://stedolan.github.io/jq/) for json filtering.
 
