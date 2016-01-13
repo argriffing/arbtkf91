@@ -128,6 +128,38 @@ These example commands assume that the current directory is `examples`.
 }
 ```
 
+For alignments and parameter settings that are trickier than the
+reference data settings used for benchmarking,
+the computed bounds are not always tight enough.
+The example below creates a bunch of debugging spam
+because the implementation does not yet adjust the precision on the fly;
+I have only seen this situation occur for artificially constructed
+inputs, so I have not yet bothered to implement an adaptive search.
+
+`$ arbtkf91-align < difficult.json`
+
+```
+expected two vectors to be equal, but they aren't
+11  18 7 19 2 6 2 5 -28 5 8 8 : (-71250854651360737784577975918036393052090092135798598252541061727090738870129 * 2^-249) +/- (810343202 * 2^-273)
+11  18 7 19 2 6 3 4 -29 5 7 8 : (-71250854564012816899681735519152050743298744969918459614906269546550436053621 * 2^-249) +/- (839718047 * 2^-273)
+overlap? 0
+fail: want3 m2 vs m0
+i=21 j=22
+{"parameters": {"pa": {"num": 10000001, "denom": 40000010}, "tau": {"num": 1, "denom": 10}, "pc": {"num": 10000002, "denom": 40000010}, "pt": {"num": 10000004, "denom": 40000010}, "pg": {"num": 10000003, "denom": 40000010}, "mu": {"num": 2, "denom": 1}, "lambda": {"num": 1, "denom": 1}}, "sequence_a": "ACGACTAGTCA-GC-TACG-AT-CGA-CT-C-ATTCAACTGACTGACA-TCGACTTA", "sequence_b": "A-GAG-AGTAATGCATACGCATGC-ATCTGCTATTC---TG-CTG-CAGTGG--T-A", "verified": false}
+```
+
+Sometimes this can be worked around by using a higher, slower,
+hardcoded precision setting.
+In this case the `arb256` setting
+verifies that the solution is the canonical optimal solution.
+
+`$ jq '. | .precision="arb256"' difficult.json | arbtkf91-align`
+
+```
+{"sequence_b": "A-GAG-AGTAATGCATACGCATGC-ATCTGCTATTC---TG-CTG-CAGTGG--T-A", "parameters": {"pa": {"num": 10000001, "denom": 40000010}, "pc": {"num": 10000002, "denom": 40000010}, "pg": {"num": 10000003, "denom": 40000010}, "pt": {"num": 10000004, "denom": 40000010}, "tau": {"num": 1, "denom": 10}, "lambda": {"num": 1, "denom": 1}, "mu": {"num": 2, "denom": 1}}, "verified": true, "sequence_a": "ACGACTAGTCA-GC-TACG-AT-CGA-CT-C-ATTCAACTGACTGACA-TCGACTTA"}
+```
+
+
 
 ### bench
 

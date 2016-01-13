@@ -1,0 +1,16 @@
+{
+	"precision" : "mag",
+	"rtol" : 0,
+	"parameters" :
+	{
+		"pa" : {"num" : 10000001, "denom" : 40000010},
+		"pc" : {"num" : 10000002, "denom" : 40000010},
+		"pg" : {"num" : 10000003, "denom" : 40000010},
+		"pt" : {"num" : 10000004, "denom" : 40000010},
+		"lambda" : {"num" : 1, "denom" : 1},
+		"mu" : {"num" : 2, "denom" : 1},
+		"tau" : {"num" : 1, "denom" : 10}
+	},
+	"sequence_a" : "ACGACTAGTCAGCTACGATCGACTCATTCAACTGACTGACATCGACTTA",
+	"sequence_b" : "AGAGAGTAATGCATACGCATGCATCTGCTATTCTGCTGCAGTGGTA"
+}
