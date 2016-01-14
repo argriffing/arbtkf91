@@ -17,7 +17,7 @@ solution_init(solution_t x, slong aln_maxlen)
     fmpz_init(x->best_tie_count);
     x->has_best_tie_count = 0;
     x->optimality_flag = 0;
-    x->pmask = NULL;
+    x->mat = NULL;
 }
 
 void

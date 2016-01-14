@@ -1,8 +1,6 @@
 #ifndef DP_H
 #define DP_H
 
-#include "flint/flint.h"
-
 /*
  * This is meant to be a more sophisticated replacement of 'breadcrumbs'.
  *
@@ -65,11 +63,14 @@
 #define CRUMB_TOP DP_MAX3_M0
 #define CRUMB_DIAG DP_MAX3_M1
 #define CRUMB_LEFT DP_MAX3_M2
-#define CRUMB_DIAG2 DP_MAX3_M1
-#define CRUMB_LEFT2 DP_MAX3_M3
+#define CRUMB_DIAG2 DP_MAX2_M1
+#define CRUMB_LEFT2 DP_MAX2_M2
 #define CRUMB_WANT2 DP_MAX2
 #define CRUMB_WANT3 DP_MAX3
 #define CRUMB_CONTENDER DP_TRACE
+
+
+#include "flint/flint.h"
 
 
 typedef unsigned char dp_t;

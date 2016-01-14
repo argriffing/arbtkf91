@@ -28,6 +28,7 @@
 #include "json_model_params.h"
 #include "bound_mat.h"
 #include "count_solutions.h"
+#include "printutil.h"
 
 
 typedef struct
@@ -284,30 +285,29 @@ solve(solution_t sol, const model_params_t p,
     /* symbolic verification */
     /* this should be updated to use the forward pass framework */
     {
-        start = clock();
-        int verified = 0;
+        clock_t start = clock();
         tkf91_dp_verify_symbolically(
-                &verified, mat, generators, tableau,
+                &sol->optimality_flag, 
+                mat, generators, sol->mat,
                 expressions_table,
                 A, B);
         _fprint_elapsed(file, "symbolic verification", clock() - start);
-        sol->optimality_flag = verified;
     }
 
     /* fixme the following code block has been moved from tkf91_dp_bound */
     /* count the solutions */
     {
+        clock_t start = clock();
         fmpz_t solution_count;
         fmpz_init(solution_count);
 
-        start = clock();
-        count_solutions(solution_count, tableau);
-        _fprint_elapsed(file, "counting solutions", clock() - start);
+        count_solutions(solution_count, sol->mat);
 
         fmpz_set(sol->best_tie_count, solution_count);
         sol->has_best_tie_count = 1;
 
         fmpz_clear(solution_count);
+        _fprint_elapsed(file, "counting solutions", clock() - start);
     }
 
     fmpz_mat_clear(mat);

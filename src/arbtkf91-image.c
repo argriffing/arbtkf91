@@ -16,6 +16,7 @@
 #include "tkf91_generator_indices.h"
 #include "model_params.h"
 #include "json_model_params.h"
+#include "printutil.h"
 
 
 
@@ -127,6 +128,12 @@ solve(solution_t sol, int image_mode_full, const char * image_filename,
     fmpz_mat_t mat;
     expr_ptr * expressions_table;
     request_t req;
+    int verbose = 0;
+    FILE * file = NULL;
+    if (verbose)
+    {
+        file = stderr;
+    }
 
     /* expressions registry and (refining) generator registry */
     reg_t er;
@@ -159,16 +166,16 @@ solve(solution_t sol, int image_mode_full, const char * image_filename,
     /* create the tableau png image */
     if (req->png_filename)
     {
-        start = clock();
+        clock_t start = clock();
         if (req->image_mode_full)
         {
             write_tableau_image(
-                    req->png_filename, crumb_mat, "tkf91 tableau");
+                    req->png_filename, sol->mat, "tkf91 tableau");
         }
         else
         {
             write_simple_tableau_image(
-                    req->png_filename, crumb_mat, "tkf91 tableau");
+                    req->png_filename, sol->mat, "tkf91 tableau");
         }
         _fprint_elapsed(file, "create tableau png", clock() - start);
     }

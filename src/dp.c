@@ -9,9 +9,21 @@
 void
 dp_mat_init(dp_mat_t mat, slong nrows, slong ncols)
 {
-    mat->data = calloc(nrows * ncols, sizeof(dp_t));
+    /*
+     * Initially we are interested in max2 and max3 for every cell.
+     * Each of {m1, m2} is a candidate for max2,
+     * and each of {m0, m1, m2} is a candidate for max3.
+     * All tableau cells are possible trace candidates.
+     */
+    slong n = nrows * ncols;
+    mat->data = malloc(n * sizeof(dp_t));
     mat->nrows = nrows;
     mat->ncols = ncols;
+    int i;
+    for (i = 0; i < n; i++)
+    {
+        mat->data[i] = 0xFF;
+    }
 }
 
 void

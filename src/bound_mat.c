@@ -18,10 +18,10 @@ static void _cell_set_max2(fmpz *c, const fmpz *v, slong rank);
 static void _cell_set_max3(fmpz *c, const fmpz *v, slong rank);
 static int _visit_boundary(void *userdata, dp_mat_t mat,
         slong i, slong j,
-        void *curr, void *top, void *diag, void *left)
+        void *curr, void *top, void *diag, void *left);
 static int _visit_center(void *userdata, dp_mat_t mat,
         slong i, slong j,
-        void *curr, void *top, void *diag, void *left)
+        void *curr, void *top, void *diag, void *left);
 
 
 
@@ -33,18 +33,20 @@ typedef struct
     fmpz *m0;
     fmpz *m1;
     fmpz *m2;
-    slong *A;
-    slong *B;
+    const slong *A;
+    const slong *B;
 } utility_struct;
 typedef utility_struct utility_t[1];
 typedef utility_struct * utility_ptr;
 
 static void utility_clear(utility_t p);
 static void utility_init(utility_t p,
-        tkf91_generator_vecs_t h, slong *A, slong *B);
+        tkf91_generator_vecs_t h,
+        const slong *A, const slong *B);
 
 void
-utility_init(utility_t p, tkf91_generator_vecs_t h, slong *A, slong *B)
+utility_init(utility_t p, tkf91_generator_vecs_t h,
+        const slong *A, const slong *B)
 {
     p->h = h;
     slong rank = tkf91_generator_vecs_rank(p->h);
@@ -151,15 +153,13 @@ _visit_boundary(void *userdata, dp_mat_t mat,
         if (i == 0)
         {
             slong ntb = p->B[j - 1];
-            cell_ptr p2 = node->left;
-            fmpz *p2_max2 = _pmax2(p2, rank);
+            fmpz *p2_max2 = _pmax2(left, rank);
             _fmpz_vec_add(p->m2, p2_max2, h->m2_0j_incr[ntb], rank);
         }
         else if (j == 0)
         {
             slong nta = p->A[i - 1];
-            cell_ptr p0 = node->top;
-            fmpz *p0_max3 = _pmax3(p0, rank);
+            fmpz *p0_max3 = _pmax3(top, rank);
             _fmpz_vec_add(p->m0, p0_max3, h->m0_i0_incr[nta], rank);
         }
     }
@@ -182,19 +182,19 @@ _visit_center(void *userdata, dp_mat_t mat,
 
     if (dp_m0_is_interesting(x))
     {
-        fmpz *p0_max3 = _pmax3(node->top, rank);
+        fmpz *p0_max3 = _pmax3(top, rank);
         _fmpz_vec_add(p->m0, p0_max3, h->c0_incr[nta], rank);
     }
 
     if (dp_m1_is_interesting(x))
     {
-        fmpz *p1_max3 = _pmax3(node->diag, rank);
+        fmpz *p1_max3 = _pmax3(diag, rank);
         _fmpz_vec_add(p->m1, p1_max3, h->c1_incr[nta*4+ntb], rank);
     }
 
     if (dp_m2_is_interesting(x))
     {
-        fmpz *p2_max2 = _pmax2(node->left, rank);
+        fmpz *p2_max2 = _pmax2(left, rank);
         _fmpz_vec_add(p->m2, p2_max2, h->c2_incr[ntb], rank);
     }
     return 0;
@@ -327,7 +327,7 @@ _visit(
 
 
 
-int
+void
 tkf91_dp_verify_symbolically(
         int *verified,
         fmpz_mat_t mat,
@@ -341,7 +341,7 @@ tkf91_dp_verify_symbolically(
      *   mat : the generator matrix -- mat_ij where i is a generator index
      *         and j is an expression index.
      *   g : a struct with tkf91 generator indices
-     *   mask : a previously computed generalized traceback,
+     *   tableau : a previously computed generalized traceback,
      *          with marks indicating whether cells are possibly in the
      *          max likelihood traceback, and with directional links
      *          indicating which direction(s) are best, backwards,
@@ -362,7 +362,6 @@ tkf91_dp_verify_symbolically(
     _fmpz_mat_hnf_inverse_transform(H, V, &rank, mat);
 
     tkf91_generator_vecs_init(h, g, V, rank);
-    bound_mat_init(b, mask, rank);
 
     v = _arb_vec_init(rank);
     compute_hlogy(v, H, expressions_table, rank, level);
@@ -377,7 +376,7 @@ tkf91_dp_verify_symbolically(
         s->init = _init;
         s->clear = _clear;
         s->visit = _visit;
-        s->sz_celldata = sizeof(cell_struct);
+        s->sz_celldata = (size_t) (2 * rank * sizeof(fmpz));
         s->userdata = util;
 
         result = dp_forward(tableau, s);
@@ -389,7 +388,7 @@ tkf91_dp_verify_symbolically(
     fmpz_mat_clear(V);
     tkf91_generator_vecs_clear(h);
 
-    return result;
+    *verified = (result == 0);
 }
 
 

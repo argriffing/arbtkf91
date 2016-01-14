@@ -98,7 +98,7 @@ _myblue(png_byte *r, png_byte *g, png_byte *b, png_byte *a)
 
 
 int write_tableau_image(const char * filename,
-        const dp_mat_t mat, const char * title)
+        dp_mat_t mat, const char * title)
 {
     FILE *fout;
     png_structp png_ptr;
@@ -290,7 +290,7 @@ end:
 
 
 int write_simple_tableau_image(const char * filename,
-        const dp_mat_t mat, const char * title)
+        dp_mat_t mat, const char * title)
 {
     FILE *fout;
     png_structp png_ptr;

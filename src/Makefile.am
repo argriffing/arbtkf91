@@ -11,7 +11,6 @@ TESTS = $(check_PROGRAMS)
 
 CORE_SOURCES =  \
 	bound_mat.c \
-	breadcrumbs.c \
 	count_solutions.c \
 	expressions.c \
 	factor_refine.c \
@@ -31,7 +30,6 @@ CORE_SOURCES =  \
 	vis.c \
 	wavefront_hermite.c \
 	bound_mat.h \
-	breadcrumbs.h \
 	count_solutions.h \
 	expressions.h \
 	factor_refine.h \

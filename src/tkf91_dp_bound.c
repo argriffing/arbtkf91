@@ -219,8 +219,8 @@ typedef struct
     mag_t ub_m2;
     tkf91_values_t lb;
     tkf91_values_t ub;
-    slong *A;
-    slong *B;
+    const slong *A;
+    const slong *B;
 } utility_struct;
 typedef utility_struct utility_t[1];
 typedef utility_struct * utility_ptr;
@@ -230,14 +230,14 @@ static void utility_init(utility_t p,
         fmpz_mat_t mat,
         expr_ptr * expressions_table,
         const tkf91_generator_indices_t g,
-        slong *A, slong *B)
+        const slong *A, const slong *B);
 
 void
 utility_init(utility_t p,
         fmpz_mat_t mat,
         expr_ptr * expressions_table,
         const tkf91_generator_indices_t g,
-        slong *A, slong *B)
+        const slong *A, const slong *B)
 {
     _bounds_init(p->lb, p->ub, mat, expressions_table, g);
     mag_init(p->lb_m0);
@@ -272,16 +272,16 @@ static int _visit(void *userdata, dp_mat_t mat,
         void *curr, void *top, void *diag, void *left);
 static int _visit_boundary(void *userdata, dp_mat_t mat,
         slong i, slong j,
-        void *curr, void *top, void *diag, void *left)
+        void *curr, void *top, void *diag, void *left);
 static int _visit_center(void *userdata, dp_mat_t mat,
         slong i, slong j,
-        void *curr, void *top, void *diag, void *left)
+        void *curr, void *top, void *diag, void *left);
 
 
 void *
 _init(void *userdata, size_t num)
 {
-    cell_ptr *p = malloc(num * sizeof(cell_struct));
+    cell_ptr p = malloc(num * sizeof(cell_struct));
     size_t i;
     for (i = 0; i < num; i++)
     {
@@ -294,7 +294,7 @@ _init(void *userdata, size_t num)
 void
 _clear(void *userdata, void *celldata, size_t num)
 {
-    cell_ptr *p = celldata;
+    cell_ptr p = celldata;
     size_t i;
     for (i = 0; i < num; i++)
     {
@@ -455,30 +455,30 @@ _visit(void *userdata, dp_mat_t mat,
     /* If max2 is interesting for this cell then update its candidate flags */
     if (x & DP_MAX2)
     {
-        if ((x & DP_MAX2_M1) && (mag_cmp(p->ub_m1, &(c->lb2) < 0)))
+        if ((x & DP_MAX2_M1) && (mag_cmp(p->ub_m1, &(c->lb2)) < 0))
         {
-            *dp &= ~DP_MAX2_M1;
+            *px &= ~DP_MAX2_M1;
         }
-        if ((x & DP_MAX2_M2) && (mag_cmp(p->ub_m2, &(c->lb2) < 0)))
+        if ((x & DP_MAX2_M2) && (mag_cmp(p->ub_m2, &(c->lb2)) < 0))
         {
-            *dp &= ~DP_MAX2_M2;
+            *px &= ~DP_MAX2_M2;
         }
     }
 
     /* If max3 is interesting for this cell then update its candidate flags */
     if (x & DP_MAX3)
     {
-        if ((x & DP_MAX3_M0) && (mag_cmp(p->ub_m0, &(c->lb3) < 0)))
+        if ((x & DP_MAX3_M0) && (mag_cmp(p->ub_m0, &(c->lb3)) < 0))
         {
-            *dp &= ~DP_MAX3_M0;
+            *px &= ~DP_MAX3_M0;
         }
-        if ((x & DP_MAX3_M1) && (mag_cmp(p->ub_m1, &(c->lb3) < 0)))
+        if ((x & DP_MAX3_M1) && (mag_cmp(p->ub_m1, &(c->lb3)) < 0))
         {
-            *dp &= ~DP_MAX3_M1;
+            *px &= ~DP_MAX3_M1;
         }
-        if ((x & DP_MAX3_M2) && (mag_cmp(p->ub_m2, &(c->lb3) < 0)))
+        if ((x & DP_MAX3_M2) && (mag_cmp(p->ub_m2, &(c->lb3)) < 0))
         {
-            *dp &= ~DP_MAX3_M2;
+            *px &= ~DP_MAX3_M2;
         }
     }
 

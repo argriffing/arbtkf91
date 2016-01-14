@@ -34,6 +34,7 @@ typedef struct
     fmpz_mat_t M;
 } tkf91_generator_vecs_struct;
 typedef tkf91_generator_vecs_struct tkf91_generator_vecs_t[1];
+typedef tkf91_generator_vecs_struct * tkf91_generator_vecs_ptr;
 
 
 

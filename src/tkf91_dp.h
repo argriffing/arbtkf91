@@ -13,7 +13,7 @@
 #include "flint/fmpz_mat.h"
 
 #include "expressions.h"
-#include "breadcrumbs.h"
+#include "dp.h"
 #include "tkf91_generator_indices.h"
 
 
@@ -36,7 +36,7 @@ typedef struct
     fmpz_t best_tie_count;
     int has_best_tie_count;
     int optimality_flag;
-    breadcrumb_mat_ptr pmask;
+    dp_mat_ptr mat;
 } solution_struct;
 typedef solution_struct solution_t[1];
 

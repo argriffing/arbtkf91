@@ -100,10 +100,9 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am__objects_1 = bound_mat.$(OBJEXT) breadcrumbs.$(OBJEXT) \
-	count_solutions.$(OBJEXT) expressions.$(OBJEXT) \
-	factor_refine.$(OBJEXT) femtocas.$(OBJEXT) \
-	generators.$(OBJEXT) model_params.$(OBJEXT) \
+am__objects_1 = bound_mat.$(OBJEXT) count_solutions.$(OBJEXT) \
+	expressions.$(OBJEXT) factor_refine.$(OBJEXT) \
+	femtocas.$(OBJEXT) generators.$(OBJEXT) model_params.$(OBJEXT) \
 	rgenerators.$(OBJEXT) tkf91_dp_bound.$(OBJEXT) \
 	tkf91_dp.$(OBJEXT) tkf91_dp_d.$(OBJEXT) tkf91_dp_f.$(OBJEXT) \
 	tkf91_dp_r.$(OBJEXT) tkf91_generators.$(OBJEXT) \
@@ -499,7 +498,6 @@ top_srcdir = @top_srcdir@
 TESTS = $(check_PROGRAMS)
 CORE_SOURCES = \
 	bound_mat.c \
-	breadcrumbs.c \
 	count_solutions.c \
 	expressions.c \
 	factor_refine.c \
@@ -519,7 +517,6 @@ CORE_SOURCES = \
 	vis.c \
 	wavefront_hermite.c \
 	bound_mat.h \
-	breadcrumbs.h \
 	count_solutions.h \
 	expressions.h \
 	factor_refine.h \
@@ -685,7 +682,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arbtkf91-check.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arbtkf91-image.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bound_mat.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/breadcrumbs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/count_solutions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/expressions.Po@am__quote@
