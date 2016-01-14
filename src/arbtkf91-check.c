@@ -267,6 +267,36 @@ solve(solution_t sol, const model_params_t p,
             sol, req, mat, expressions_table, generators,
             A, szA, B, szB);
 
+    /* fixme the following code block has been moved from tkf91_dp_bound */
+    /* symbolic verification */
+    /* this should be updated to use the forward pass framework */
+    {
+        start = clock();
+        int verified = 0;
+        tkf91_dp_verify_symbolically(
+                &verified, mat, g, crumb_mat,
+                expressions_table,
+                A, B);
+        _fprint_elapsed(file, "symbolic verification", clock() - start);
+        sol->optimality_flag = verified;
+    }
+
+    /* fixme the following code block has been moved from tkf91_dp_bound */
+    /* count the solutions */
+    {
+        fmpz_t solution_count;
+        fmpz_init(solution_count);
+
+        start = clock();
+        count_solutions(solution_count, crumb_mat);
+        _fprint_elapsed(file, "counting solutions", clock() - start);
+
+        fmpz_set(sol->best_tie_count, solution_count);
+        sol->has_best_tie_count = 1;
+
+        fmpz_clear(solution_count);
+    }
+
     fmpz_mat_clear(mat);
     flint_free(expressions_table);
 

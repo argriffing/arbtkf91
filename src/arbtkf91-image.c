@@ -155,6 +155,24 @@ solve(solution_t sol, int image_mode_full, const char * image_filename,
     tkf91_dp_bound(sol, req, mat, expressions_table, generators,
             A, szA, B, szB);
 
+    /* fixme the following block has been moved out of tkf91_dp_bound */
+    /* create the tableau png image */
+    if (req->png_filename)
+    {
+        start = clock();
+        if (req->image_mode_full)
+        {
+            write_tableau_image(
+                    req->png_filename, crumb_mat, "tkf91 tableau");
+        }
+        else
+        {
+            write_simple_tableau_image(
+                    req->png_filename, crumb_mat, "tkf91 tableau");
+        }
+        _fprint_elapsed(file, "create tableau png", clock() - start);
+    }
+
     fmpz_mat_clear(mat);
     flint_free(expressions_table);
 

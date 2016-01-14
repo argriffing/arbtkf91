@@ -10,10 +10,10 @@
 
 #include "tkf91_dp.h"
 #include "tkf91_dp_bound.h"
-#include "breadcrumbs.h"
+#include "dp.h"
+#include "forward.h"
 #include "bound_mat.h"
 #include "printutil.h"
-#include "vis.h"
 #include "count_solutions.h"
 
 
@@ -170,6 +170,7 @@ _bounds_init(tkf91_values_t lb, tkf91_values_t ub,
 }
 
 
+
 /*
  * Each cell stores the lower bound and upper bound
  * for max(m1, m2) and max(m0, m1, m2).
@@ -185,22 +186,8 @@ typedef struct
 typedef cell_struct cell_t[1];
 typedef cell_struct * cell_ptr;
 
-void cell_init(cell_t x);
-void cell_clear(cell_t x);
-void cell_get_crumb(breadcrumb_t * pcrumb, const cell_t x,
-        const mag_t ub_m0, const mag_t ub_m1, const mag_t ub_m2,
-        slong i, slong j);
-
-static __inline__ void
-cell_fill(cell_t x,
-        const mag_t lb_m0, const mag_t lb_m1, const mag_t lb_m2,
-        const mag_t ub_m0, const mag_t ub_m1, const mag_t ub_m2)
-{
-    mag_max(&(x->ub2), ub_m1, ub_m2);
-    mag_max(&(x->lb2), lb_m1, lb_m2);
-    mag_max(&(x->ub3), &(x->ub2), ub_m0);
-    mag_max(&(x->lb3), &(x->lb2), lb_m0);
-}
+static void cell_init(cell_t x);
+static void cell_clear(cell_t x);
 
 void
 cell_init(cell_t x)
@@ -220,105 +207,286 @@ cell_clear(cell_t x)
     mag_clear(&(x->ub3));
 }
 
-void
-cell_get_crumb(breadcrumb_t * pcrumb, const cell_t x,
-        const mag_t ub_m0, const mag_t ub_m1, const mag_t ub_m2,
-        slong i, slong j)
-{
-    *pcrumb = 0;
-
-    /* breadcrumb for alignment traceback */
-    if (i || j)
-    {
-        if (mag_cmp(&(x->lb3), ub_m0) <= 0)
-        {
-            *pcrumb |= CRUMB_TOP;
-        }
-        if (mag_cmp(&(x->lb3), ub_m1) <= 0)
-        {
-            *pcrumb |= CRUMB_DIAG;
-        }
-        if (mag_cmp(&(x->lb3), ub_m2) <= 0)
-        {
-            *pcrumb |= CRUMB_LEFT;
-        }
-    }
-
-    /* breadcrumb for info propagation for symbolic optimality verification */
-    if (j)
-    {
-        if (mag_cmp(&(x->lb2), ub_m1) <= 0)
-        {
-            *pcrumb |= CRUMB_DIAG2;
-        }
-        if (mag_cmp(&(x->lb2), ub_m2) <= 0)
-        {
-            *pcrumb |= CRUMB_LEFT2;
-        }
-    }
-}
 
 
+
+/* the tableau cell visitor sees this data */
 typedef struct
 {
-    cell_ptr data;
-    slong r;
-    slong c;
-} cellfront_struct;
-typedef cellfront_struct cellfront_t[1];
-typedef cellfront_struct * cellfront_ptr;
+    mag_t lb_m0;
+    mag_t lb_m1;
+    mag_t lb_m2;
+    mag_t ub_m0;
+    mag_t ub_m1;
+    mag_t ub_m2;
+    tkf91_values_t lb;
+    tkf91_values_t ub;
+    slong *A;
+    slong *B;
+} utility_struct;
+typedef utility_struct utility_t[1];
+typedef utility_struct * utility_ptr;
 
-void cellfront_init(cellfront_t x, slong nrows, slong ncols);
-void cellfront_clear(cellfront_t x);
+static void utility_clear(utility_t p);
+static void utility_init(utility_t p,
+        fmpz_mat_t mat,
+        expr_ptr * expressions_table,
+        const tkf91_generator_indices_t g,
+        slong *A, slong *B)
 
-static __inline__ cell_ptr
-cellfront_entry(cellfront_t x, slong i, slong j)
+void
+utility_init(utility_t p,
+        fmpz_mat_t mat,
+        expr_ptr * expressions_table,
+        const tkf91_generator_indices_t g,
+        slong *A, slong *B)
 {
-    return x->data + (i % 2) * (x->c) + j;
+    _bounds_init(p->lb, p->ub, mat, expressions_table, g);
+    mag_init(p->lb_m0);
+    mag_init(p->lb_m1);
+    mag_init(p->lb_m2);
+    mag_init(p->ub_m0);
+    mag_init(p->ub_m1);
+    mag_init(p->ub_m2);
+    p->A = A;
+    p->B = B;
 }
 
-static __inline__ cell_ptr
-cellfront_entry_top(cellfront_t x, slong i, slong j)
+void
+utility_clear(utility_t p)
 {
-    return cellfront_entry(x, i-1, j);
+    tkf91_values_clear(p->lb);
+    tkf91_values_clear(p->ub);
+    mag_clear(p->lb_m0);
+    mag_clear(p->lb_m1);
+    mag_clear(p->lb_m2);
+    mag_clear(p->ub_m0);
+    mag_clear(p->ub_m1);
+    mag_clear(p->ub_m2);
 }
 
-static __inline__ cell_ptr
-cellfront_entry_diag(cellfront_t x, slong i, slong j)
-{
-    return cellfront_entry(x, i-1, j-1);
-}
 
-static __inline__ cell_ptr
-cellfront_entry_left(cellfront_t x, slong i, slong j)
+
+static void *_init(size_t num);
+static void _clear(void *celldata, size_t num);
+static int _visit(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left);
+static int _visit_boundary(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
+static int _visit_center(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
+
+
+void *
+_init(size_t num)
 {
-    return cellfront_entry(x, i, j-1);
+    cell_ptr *p = malloc(num * sizeof(cell_struct));
+    size_t i;
+    for (i = 0; i < num; i++)
+    {
+        cell_init(p + i);
+    }
+    return p;
 }
 
 
 void
-cellfront_init(cellfront_t x, slong nrows, slong ncols)
+_clear(void *celldata, size_t num)
 {
-    slong i;
-    x->r = nrows;
-    x->c = ncols;
-    x->data = flint_malloc(2 * ncols * sizeof(cell_struct));
-    for (i = 0; i < 2 * ncols; i++)
+    cell_ptr *p = celldata;
+    size_t i;
+    for (i = 0; i < num; i++)
     {
-        cell_init(x->data+i);
+        cell_clear(p + i);
     }
+    free(p);
 }
 
-void
-cellfront_clear(cellfront_t x)
+
+int
+_visit_boundary(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
 {
-    slong i;
-    for (i = 0; i < 2 * x->c; i++)
+    utility_ptr p = userdata;
+
+    mag_zero(p->lb_m0);
+    mag_zero(p->lb_m1);
+    mag_zero(p->lb_m2);
+    mag_zero(p->ub_m0);
+    mag_zero(p->ub_m1);
+    mag_zero(p->ub_m2);
+
+    if (i == 0 && j == 0)
     {
-        cell_clear(x->data+i);
+        mag_set(p->lb_m1, p->lb->m1_00);
+        mag_set(p->ub_m1, p->ub->m1_00);
     }
-    flint_free(x->data);
+    else if (i == 1 && j == 0)
+    {
+        mag_set(p->lb_m0, p->lb->m0_10);
+        mag_set(p->ub_m0, p->ub->m0_10);
+    }
+    else if (i == 0 && j == 1)
+    {
+        mag_set(p->lb_m2, p->lb->m2_01);
+        mag_set(p->ub_m2, p->ub->m2_01);
+    }
+    else
+    {
+        if (i == 0)
+        {
+            slong ntb = p->B[j - 1];
+            cell_ptr p2 = left;
+            mag_mul_lower(p->lb_m2, &(p2->lb2), p->lb->m2_0j_incr+ntb);
+            mag_mul(p->ub_m2, &(p2->ub2), p->ub->m2_0j_incr+ntb);
+        }
+        else if (j == 0)
+        {
+            slong nta = p->A[i - 1];
+            cell_ptr p0 = top;
+            mag_mul_lower(p->lb_m0, &(p0->lb3), p->lb->m0_i0_incr+nta);
+            mag_mul(p->ub_m0, &(p0->ub3), p->ub->m0_i0_incr+nta);
+        }
+    }
+    return 0;
 }
+
+
+int
+_visit_center(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
+{
+    utility_ptr p = userdata;
+    dp_t x = *dp_mat_entry(mat, i, j);
+
+    slong nta = p->A[i - 1];
+    slong ntb = p->B[j - 1];
+
+    if (dp_m0_is_interesting(x))
+    {
+        cell_ptr p0 = top;
+        mag_mul_lower(p->lb_m0, &(p0->lb3), p->lb->c0_incr+nta);
+        mag_mul(p->ub_m0, &(p0->ub3), p->ub->c0_incr+nta);
+    }
+
+    if (dp_m1_is_interesting(x))
+    {
+        cell_ptr p1 = diag;
+        mag_mul_lower(p->lb_m1, &(p1->lb3), p->lb->c1_incr+nta*4 + ntb);
+        mag_mul(p->ub_m1, &(p1->ub3), p->ub->c1_incr+nta*4 + ntb);
+    }
+
+    if (dp_m2_is_interesting(x))
+    {
+        cell_ptr p2 = left;
+        mag_mul_lower(p->lb_m2, &(p2->lb2), p->lb->c2_incr+ntb);
+        mag_mul(p->ub_m2, &(p2->ub2), p->ub->c2_incr+ntb);
+    }
+
+    return 0;
+}
+
+
+int
+_visit(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
+{
+    utility_ptr p = userdata;
+    cell_ptr c = curr;
+    dp_t *px = dp_mat_entry(mat, i, j);
+    dp_t x = *px;
+
+    /*
+     * Update the upper and lower bounds of the subset of m0, m1, m2
+     * that is interesting for this cell according to the tableau flags.
+     */
+    if (i < 1 || j < 1)
+    {
+        _visit_boundary(userdata, mat, i, j, curr, top, diag, left);
+    }
+    else
+    {
+        _visit_center(userdata, mat, i, j, curr, top, diag, left);
+    }
+
+    /* If max2 is interesting for this cell then update its bounds. */
+    if (x & DP_MAX2)
+    {
+        mag_zero(&(c->ub2));
+        mag_zero(&(c->lb2));
+        if (x & DP_MAX2_M1)
+        {
+            mag_max(&(c->ub2), &(c->ub2), p->ub_m1);
+            mag_max(&(c->lb2), &(c->lb2), p->lb_m1);
+        }
+        if (x & DP_MAX2_M2)
+        {
+            mag_max(&(c->ub2), &(c->ub2), p->ub_m2);
+            mag_max(&(c->lb2), &(c->lb2), p->lb_m2);
+        }
+    }
+
+    /* If max3 is interesting for this cell then update its bounds. */
+    if (x & DP_MAX3)
+    {
+        mag_zero(&(c->ub3));
+        mag_zero(&(c->lb3));
+        if (x & DP_MAX3_M0)
+        {
+            mag_max(&(c->ub3), &(c->ub3), p->ub_m0);
+            mag_max(&(c->lb3), &(c->lb3), p->lb_m0);
+        }
+        if (x & DP_MAX3_M1)
+        {
+            mag_max(&(c->ub3), &(c->ub3), p->ub_m1);
+            mag_max(&(c->lb3), &(c->lb3), p->lb_m1);
+        }
+        if (x & DP_MAX3_M2)
+        {
+            mag_max(&(c->ub3), &(c->ub3), p->ub_m2);
+            mag_max(&(c->lb3), &(c->lb3), p->lb_m2);
+        }
+    }
+
+    /* If max2 is interesting for this cell then update its candidate flags */
+    if (x & DP_MAX2)
+    {
+        if ((x & DP_MAX2_M1) && (mag_cmp(p->ub_m1, &(c->lb2) < 0)))
+        {
+            *dp &= ~DP_MAX2_M1;
+        }
+        if ((x & DP_MAX2_M2) && (mag_cmp(p->ub_m2, &(c->lb2) < 0)))
+        {
+            *dp &= ~DP_MAX2_M2;
+        }
+    }
+
+    /* If max3 is interesting for this cell then update its candidate flags */
+    if (x & DP_MAX3)
+    {
+        if ((x & DP_MAX3_M0) && (mag_cmp(p->ub_m0, &(c->lb3) < 0)))
+        {
+            *dp &= ~DP_MAX3_M0;
+        }
+        if ((x & DP_MAX3_M1) && (mag_cmp(p->ub_m1, &(c->lb3) < 0)))
+        {
+            *dp &= ~DP_MAX3_M1;
+        }
+        if ((x & DP_MAX3_M2) && (mag_cmp(p->ub_m2, &(c->lb3) < 0)))
+        {
+            *dp &= ~DP_MAX3_M2;
+        }
+    }
+
+    return 0;
+}
+
 
 
 
@@ -330,239 +498,48 @@ tkf91_dp_bound(
         const slong *A, size_t szA,
         const slong *B, size_t szB)
 {
+    utility_t util;
+    forward_strategy_t s;
     clock_t start;
     int verbose = 0;
-    FILE * file = NULL;
+    FILE *file = NULL;
     if (verbose)
     {
         file = stderr;
     }
 
-    /* Convert the first few args to generator lower and upper bounds. */
-    tkf91_values_t lb;
-    tkf91_values_t ub;
-    _bounds_init(lb, ub, mat, expressions_table, g);
-
-    /*
-     * Define the matrix to be used for the traceback.
-     * The number of rows is one greater than the length of the first sequence,
-     * and the number of columns is one greater than the length of the second
-     * sequence.
-     */
-    slong nrows = szA + 1;
-    slong ncols = szB + 1;
-    breadcrumb_mat_t crumb_mat;
-    breadcrumb_ptr pcrumb;
-
-    /*
-     * TODO for efficiency do not duplicate
-     * crumb_mat and sol->pmask.
-     */
-
-    if (req->trace)
+    if (!req->trace)
     {
-        breadcrumb_mat_init(crumb_mat, nrows, ncols);
+        fprintf(stderr, "tkf91_dp_bound: req->trace is required\n");
+        abort();
     }
 
-    /* define the cellfront matrix */
-    cellfront_t cells;
-    cellfront_init(cells, nrows, ncols);
+    if (!sol->mat)
+    {
+        fprintf(stderr, "tkf91_dp_bound: sol->mat is required\n");
+        abort();
+    }
 
     start = clock();
-
-    /* iterate over rows of the dynamic programming matrix */
-    cell_ptr cell, p0, p1, p2;
-    slong i, j;
-    slong nta, ntb;
-    mag_t lb_m0, lb_m1, lb_m2;
-    mag_t ub_m0, ub_m1, ub_m2;
-    mag_init(lb_m0); mag_init(lb_m1); mag_init(lb_m2);
-    mag_init(ub_m0); mag_init(ub_m1); mag_init(ub_m2);
-    for (i = 0; i < nrows; i++)
-    {
-        for (j = 0; j < ncols; j++)
-        {
-            cell = cellfront_entry(cells, i, j);
-            if (i < 1 || j < 1)
-            {
-                mag_zero(lb_m0);
-                mag_zero(lb_m1);
-                mag_zero(lb_m2);
-                mag_zero(ub_m0);
-                mag_zero(ub_m1);
-                mag_zero(ub_m2);
-                if (i == 0 && j == 0)
-                {
-                    mag_set(lb_m1, lb->m1_00);
-                    mag_set(ub_m1, ub->m1_00);
-                }
-                else if (i == 1 && j == 0)
-                {
-                    mag_set(lb_m0, lb->m0_10);
-                    mag_set(ub_m0, ub->m0_10);
-                }
-                else if (i == 0 && j == 1)
-                {
-                    mag_set(lb_m2, lb->m2_01);
-                    mag_set(ub_m2, ub->m2_01);
-                }
-                else
-                {
-                    if (i == 0)
-                    {
-                        ntb = B[j - 1];
-                        p2 = cellfront_entry_left(cells, i, j);
-                        mag_mul_lower(lb_m2, &(p2->lb2), lb->m2_0j_incr+ntb);
-                        mag_mul(ub_m2, &(p2->ub2), ub->m2_0j_incr+ntb);
-                    }
-                    else if (j == 0)
-                    {
-                        nta = A[i - 1];
-                        p0 = cellfront_entry_top(cells, i, j);
-                        mag_mul_lower(lb_m0, &(p0->lb3), lb->m0_i0_incr+nta);
-                        mag_mul(ub_m0, &(p0->ub3), ub->m0_i0_incr+nta);
-                    }
-                }
-            }
-            else
-            {
-                nta = A[i - 1];
-                ntb = B[j - 1];
-                p0 = cellfront_entry_top(cells, i, j);
-                p1 = cellfront_entry_diag(cells, i, j);
-                p2 = cellfront_entry_left(cells, i, j);
-
-                mag_mul_lower(lb_m0, &(p0->lb3), lb->c0_incr+nta);
-                mag_mul(ub_m0, &(p0->ub3), ub->c0_incr+nta);
-
-                mag_mul_lower(lb_m1, &(p1->lb3), lb->c1_incr+nta*4 + ntb);
-                mag_mul(ub_m1, &(p1->ub3), ub->c1_incr+nta*4 + ntb);
-
-                mag_mul_lower(lb_m2, &(p2->lb2), lb->c2_incr+ntb);
-                mag_mul(ub_m2, &(p2->ub2), ub->c2_incr+ntb);
-            }
-
-            /* fill the current cell using the current m* bounds */
-            cell_fill(cell, lb_m0, lb_m1, lb_m2, ub_m0, ub_m1, ub_m2);
-
-            /* optionally fill the table for traceback */
-            if (req->trace)
-            {
-                pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
-
-                /* pass i and j to detect boundaries only */
-                cell_get_crumb(pcrumb, cell, ub_m0, ub_m1, ub_m2, i, j);
-            }
-        }
-    }
-
+    utility_init(util, mat, expressions_table, g, A, B);
+    s->init = _init;
+    s->clear = _clear;
+    s->visit = _visit;
+    s->sz_celldata = sizeof(cell_struct);
+    s->userdata = util;
+    dp_forward(sol->mat, s);
+    utility_clear(util);
     _fprint_elapsed(file, "dynamic programming", clock() - start);
 
-    if (verbose)
-    {
-        if (req->trace)
-        {
-            flint_fprintf(stdout, "mask before tracing:\n");
-            breadcrumb_mat_fprint(stdout, crumb_mat);
-            flint_fprintf(stdout, "\n");
-        }
-        else
-        {
-            flint_fprintf(stdout, "not showing mask before tracing\n");
-        }
-    }
+    /* update flags using a backward pass through the tableau */
+    start = clock();
+    dp_mat_backward(sol->mat);
+    _fprint_elapsed(file, "backward algorithm pass", clock() - start);
 
-    /* report the score */
-
-    cell = cellfront_entry(cells, nrows - 1, ncols - 1);
-
-    if (verbose)
-    {
-        flint_printf("best alignment lower bound probability: ");
-        mag_print(&(cell->lb3));
-        flint_printf("\n");
-
-        flint_printf("best alignment upper bound probability: ");
-        mag_print(&(cell->ub3));
-        flint_printf("\n");
-    }
-
-    if (req->trace)
-    {
-        /*
-         * Get the not-ruled-out cells of the dynamic programming table,
-         * and get the cells that are not ruled out for contributing
-         * information towards the optimal alignment.
-         */
-        start = clock();
-        breadcrumb_mat_get_mask(crumb_mat, crumb_mat);
-        _fprint_elapsed(file, "mask extraction", clock() - start);
-
-        /* create the tableau png image */
-        if (req->png_filename)
-        {
-            start = clock();
-            if (req->image_mode_full)
-            {
-                write_tableau_image(
-                        req->png_filename, crumb_mat, "tkf91 tableau");
-            }
-            else
-            {
-                write_simple_tableau_image(
-                        req->png_filename, crumb_mat, "tkf91 tableau");
-            }
-            _fprint_elapsed(file, "create tableau png", clock() - start);
-        }
-
-        /* do the traceback */
-        start = clock();
-
-        breadcrumb_mat_get_alignment(
-                sol->A, sol->B, &(sol->len),
-                crumb_mat, A, B);
-
-        _fprint_elapsed(file, "alignment traceback", clock() - start);
-
-        start = clock();
-        int verified = 0;
-        tkf91_dp_verify_symbolically(
-                &verified, mat, g, crumb_mat,
-                expressions_table,
-                A, B);
-        _fprint_elapsed(file, "symbolic verification", clock() - start);
-        sol->optimality_flag = verified;
-
-        {
-            fmpz_t solution_count;
-            fmpz_init(solution_count);
-
-            start = clock();
-            count_solutions(solution_count, crumb_mat);
-            _fprint_elapsed(file, "counting solutions", clock() - start);
-
-            fmpz_set(sol->best_tie_count, solution_count);
-            sol->has_best_tie_count = 1;
-
-            fmpz_clear(solution_count);
-        }
-    }
-
-    cellfront_clear(cells);
-
-    if (req->trace && sol->pmask)
-    {
-        breadcrumb_mat_set(sol->pmask, crumb_mat);
-    }
-
-    if (req->trace)
-    {
-        breadcrumb_mat_clear(crumb_mat);
-    }
-
-    tkf91_values_clear(lb);
-    tkf91_values_clear(ub);
-
-    mag_clear(lb_m0); mag_clear(lb_m1); mag_clear(lb_m2);
-    mag_clear(ub_m0); mag_clear(ub_m1); mag_clear(ub_m2);
+    /* extract the alignment */
+    start = clock();
+    dp_mat_get_alignment(
+            sol->A, sol->B, &(sol->len),
+            sol->mat, A, B);
+    _fprint_elapsed(file, "alignment traceback", clock() - start);
 }

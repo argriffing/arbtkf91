@@ -51,7 +51,11 @@ CORE_SOURCES =  \
 	tkf91_rationals.h \
 	tkf91_rgenerators.h \
 	vis.h \
-	wavefront_hermite.h
+	wavefront_hermite.h \
+	dp.c \
+	dp.h \
+	forward.c \
+	forward.h
 
 JSON_SOURCES = \
 	json_model_params.c \

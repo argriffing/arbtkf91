@@ -109,7 +109,7 @@ am__objects_1 = bound_mat.$(OBJEXT) breadcrumbs.$(OBJEXT) \
 	tkf91_dp_r.$(OBJEXT) tkf91_generators.$(OBJEXT) \
 	tkf91_generator_vecs.$(OBJEXT) tkf91_rationals.$(OBJEXT) \
 	tkf91_rgenerators.$(OBJEXT) vis.$(OBJEXT) \
-	wavefront_hermite.$(OBJEXT)
+	wavefront_hermite.$(OBJEXT) dp.$(OBJEXT) forward.$(OBJEXT)
 am__objects_2 = json_model_params.$(OBJEXT) jsonutil.$(OBJEXT) \
 	runjson.$(OBJEXT)
 am__objects_3 = $(am__objects_1) $(am__objects_2)
@@ -539,7 +539,11 @@ CORE_SOURCES = \
 	tkf91_rationals.h \
 	tkf91_rgenerators.h \
 	vis.h \
-	wavefront_hermite.h
+	wavefront_hermite.h \
+	dp.c \
+	dp.h \
+	forward.c \
+	forward.h
 
 JSON_SOURCES = \
 	json_model_params.c \
@@ -683,9 +687,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bound_mat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/breadcrumbs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/count_solutions.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/expressions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/factor_refine.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/femtocas.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/forward.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/generators.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/json_model_params.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jsonutil.Po@am__quote@
