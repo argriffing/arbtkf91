@@ -29,7 +29,7 @@ dp_forward(dp_mat_t mat, forward_strategy_t strat)
     sz_cell = strat->sz_celldata;
 
     /* allocate two rows worth of cell data */
-    buffer = strat->init(active_cell_count);
+    buffer = strat->init(strat->userdata, active_cell_count);
     row = buffer + 0 * ncols * sz_cell;
     alt = buffer + 1 * ncols * sz_cell;
 
@@ -65,6 +65,6 @@ dp_forward(dp_mat_t mat, forward_strategy_t strat)
         alt = tmp;
     }
 
-    strat->clear(buffer, active_cell_count);
+    strat->clear(strat->userdata, buffer, active_cell_count);
     return result;
 }

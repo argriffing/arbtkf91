@@ -49,6 +49,7 @@
 #define DP_MAX2_M2 0x80
 */
 
+/* todo remove back compat */
 /* for now use values that are backwards compatible
  * with the 'breadcrumbs' module */
 #define DP_MAX3    0x40
@@ -59,6 +60,16 @@
 #define DP_MAX2    0x20
 #define DP_MAX2_M1 0x08
 #define DP_MAX2_M2 0x10
+
+/* todo remove these back compat definitions when feasible */
+#define CRUMB_TOP DP_MAX3_M0
+#define CRUMB_DIAG DP_MAX3_M1
+#define CRUMB_LEFT DP_MAX3_M2
+#define CRUMB_DIAG2 DP_MAX3_M1
+#define CRUMB_LEFT2 DP_MAX3_M3
+#define CRUMB_WANT2 DP_MAX2
+#define CRUMB_WANT3 DP_MAX3
+#define CRUMB_CONTENDER DP_TRACE
 
 
 typedef unsigned char dp_t;

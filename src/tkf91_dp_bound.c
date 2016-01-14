@@ -12,9 +12,7 @@
 #include "tkf91_dp_bound.h"
 #include "dp.h"
 #include "forward.h"
-#include "bound_mat.h"
 #include "printutil.h"
-#include "count_solutions.h"
 
 
 typedef struct
@@ -267,8 +265,8 @@ utility_clear(utility_t p)
 
 
 
-static void *_init(size_t num);
-static void _clear(void *celldata, size_t num);
+static void *_init(void *userdata, size_t num);
+static void _clear(void *userdata, void *celldata, size_t num);
 static int _visit(void *userdata, dp_mat_t mat,
         slong i, slong j,
         void *curr, void *top, void *diag, void *left);
@@ -281,7 +279,7 @@ static int _visit_center(void *userdata, dp_mat_t mat,
 
 
 void *
-_init(size_t num)
+_init(void *userdata, size_t num)
 {
     cell_ptr *p = malloc(num * sizeof(cell_struct));
     size_t i;
@@ -294,7 +292,7 @@ _init(size_t num)
 
 
 void
-_clear(void *celldata, size_t num)
+_clear(void *userdata, void *celldata, size_t num)
 {
     cell_ptr *p = celldata;
     size_t i;

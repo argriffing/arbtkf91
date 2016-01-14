@@ -12,9 +12,10 @@
 #include "flint/flint.h"
 #include "png.h"
 
-#include "breadcrumbs.h"
+#include "dp.h"
 #include "vis.h"
 
+/* RGBA */
 #define PIXEL_WIDTH 4
 
 typedef struct
@@ -97,14 +98,14 @@ _myblue(png_byte *r, png_byte *g, png_byte *b, png_byte *a)
 
 
 int write_tableau_image(const char * filename,
-        const breadcrumb_mat_t mat, const char * title)
+        const dp_mat_t mat, const char * title)
 {
     FILE *fout;
     png_structp png_ptr;
     png_infop info_ptr;
     int code, width, height;
     png_byte r, g, b, a;
-    breadcrumb_t curr, top, diag, left;
+    dp_t curr, top, diag, left;
 
     fout = NULL;
     png_ptr = NULL;
@@ -113,8 +114,8 @@ int write_tableau_image(const char * filename,
 
     slong nrows, ncols;
 
-    nrows = breadcrumb_mat_nrows(mat);
-    ncols = breadcrumb_mat_ncols(mat);
+    nrows = dp_mat_nrows(mat);
+    ncols = dp_mat_ncols(mat);
 
     width = (int) ncols * 5 - 2;
     height = (int) nrows * 5 - 2;
@@ -170,7 +171,7 @@ int write_tableau_image(const char * filename,
     png_write_info(png_ptr, info_ptr);
 
     /* write image data one row at a time */
-    breadcrumb_t want_any = (CRUMB_WANT2 | CRUMB_WANT3 | CRUMB_CONTENDER);
+    dp_t want_any = (CRUMB_WANT2 | CRUMB_WANT3);
     int i, j, di, dj;
     buf_t buf;
     buf_init(buf, nrows, ncols);
@@ -181,11 +182,11 @@ int write_tableau_image(const char * filename,
 
         for (j = 0; j < ncols; j++)
         {
-            curr = *breadcrumb_mat_srcentry(mat, i, j);
+            curr = *dp_mat_entry(mat, i, j);
             top = diag = left = 0;
-            if (i) top = *breadcrumb_mat_srcentry(mat, i-1, j);
-            if (i && j) diag = *breadcrumb_mat_srcentry(mat, i-1, j-1);
-            if (j) left = *breadcrumb_mat_srcentry(mat, i, j-1);
+            if (i) top = *dp_mat_entry(mat, i-1, j);
+            if (i && j) diag = *dp_mat_entry(mat, i-1, j-1);
+            if (j) left = *dp_mat_entry(mat, i, j-1);
 
             /*
              * Draw this tableau cell and its connections to its
@@ -289,14 +290,14 @@ end:
 
 
 int write_simple_tableau_image(const char * filename,
-        const breadcrumb_mat_t mat, const char * title)
+        const dp_mat_t mat, const char * title)
 {
     FILE *fout;
     png_structp png_ptr;
     png_infop info_ptr;
     int code, width, height;
     png_byte r, g, b, a;
-    breadcrumb_t curr;
+    dp_t curr;
     png_bytep pixel_row;
 
     fout = NULL;
@@ -306,8 +307,8 @@ int write_simple_tableau_image(const char * filename,
 
     slong nrows, ncols;
 
-    nrows = breadcrumb_mat_nrows(mat);
-    ncols = breadcrumb_mat_ncols(mat);
+    nrows = dp_mat_nrows(mat);
+    ncols = dp_mat_ncols(mat);
 
     width = (int) ncols;
     height = (int) nrows;
@@ -373,7 +374,7 @@ int write_simple_tableau_image(const char * filename,
 
         for (j = 0; j < ncols; j++)
         {
-            curr = *breadcrumb_mat_srcentry(mat, i, j);
+            curr = *dp_mat_entry(mat, i, j);
 
             /* draw the cell itself, without connections */
             r = 0; g = 0; b = 0; a = 0;

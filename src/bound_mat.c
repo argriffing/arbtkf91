@@ -1,257 +1,338 @@
-/*
- * Alignment disambiguation based on a sparse (CSR) representation
- * of possible cells of a dynamic programming table, after having
- * used upper and lower probability bounds to determine that the
- * maximum probability traceback must pass through these cells.
- */
-
 #include "flint/flint.h"
 
-#include "breadcrumbs.h"
 #include "tkf91_generator_vecs.h"
+#include "forward.h"
+#include "dp.h"
 #include "bound_mat.h"
 
-slong _breadcrumb_mat_nnz(const breadcrumb_mat_t mat);
-slong _breadcrumb_mat_max_row_nnz(const breadcrumb_mat_t mat);
 
-typedef struct bound_node_struct_tag
-{
-    fmpz * pmax2;
-    fmpz * pmax3;
-    struct bound_node_struct_tag * top;
-    struct bound_node_struct_tag * diag;
-    struct bound_node_struct_tag * left;
-    breadcrumb_t crumb;
-} bound_node_struct;
-typedef bound_node_struct * bound_node_ptr;
-typedef bound_node_struct bound_node_t[1];
+static void *_init(void *userdata, size_t num);
+static void _clear(void *userdata, void *celldata, size_t num);
+static int _visit(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left);
 
-void bound_node_init(bound_node_t x);
+static fmpz * _pmax2(fmpz * celldata, slong rank);
+static fmpz * _pmax3(fmpz * celldata, slong rank);
+static void _cell_set_max2(fmpz *c, const fmpz *v, slong rank);
+static void _cell_set_max3(fmpz *c, const fmpz *v, slong rank);
+static int _visit_boundary(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
+static int _visit_center(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
 
+
+
+
+/* the tableau cell visitor sees this data */
 typedef struct
 {
-    slong * indptr; /* length r + 1 */
-    slong * indices; /* length nnz */
-    bound_node_struct * data; /* length nnz */
-    fmpz * brick_of_fmpz; /* length 2*2*rank*max_row_nnz */
-    slong r; /* number of rows */
-    slong c; /* number of columns */
-    slong nnz; /* number of nonzero entries */
-    slong max_row_nnz; /* max number of nonzero entries in a single row */
-    slong rank; /* length of an fmpz vector that tracks partial aln state */
-} bound_mat_struct;
-typedef bound_mat_struct * bound_mat_ptr;
-typedef bound_mat_struct bound_mat_t[1];
+    tkf91_generator_vecs_ptr h;
+    fmpz *m0;
+    fmpz *m1;
+    fmpz *m2;
+    slong *A;
+    slong *B;
+} utility_struct;
+typedef utility_struct utility_t[1];
+typedef utility_struct * utility_ptr;
 
-void bound_mat_init(bound_mat_t mat, breadcrumb_mat_t mask, slong rank);
-void bound_mat_clear(bound_mat_t mat);
-fmpz * _bound_mat_max3ref(bound_mat_t mat, slong i, slong k);
-fmpz * _bound_mat_max2ref(bound_mat_t mat, slong i, slong k);
-slong bound_mat_ncols(const bound_mat_t mat);
-slong bound_mat_nrows(const bound_mat_t mat);
+static void utility_clear(utility_t p);
+static void utility_init(utility_t p,
+        tkf91_generator_vecs_t h, slong *A, slong *B);
 
-void _tkf91_dp_verify_symbolically(
-        int *verified,
-        tkf91_generator_vecs_t h,
-        arb_ptr v,
-        bound_mat_t b,
-        const slong *A,
-        const slong *B);
-
-slong
-bound_mat_nrows(const bound_mat_t mat)
+void
+utility_init(utility_t p, tkf91_generator_vecs_t h, slong *A, slong *B)
 {
-    return mat->r;
-}
-
-slong
-bound_mat_ncols(const bound_mat_t mat)
-{
-    return mat->c;
+    p->h = h;
+    slong rank = tkf91_generator_vecs_rank(p->h);
+    p->m0 = _fmpz_vec_init(rank);
+    p->m1 = _fmpz_vec_init(rank);
+    p->m2 = _fmpz_vec_init(rank);
+    p->A = A;
+    p->B = B;
 }
 
 void
-bound_node_init(bound_node_t x)
+utility_clear(utility_t p)
 {
-    x->pmax2 = NULL;
-    x->pmax3 = NULL;
-    x->top = NULL;
-    x->diag = NULL;
-    x->left = NULL;
-    x->crumb = 0;
-}
-
-slong
-_breadcrumb_mat_nnz(const breadcrumb_mat_t mat)
-{
-    breadcrumb_t pattern;
-    slong i, j, nnz;
-    pattern = CRUMB_WANT2 | CRUMB_WANT3 | CRUMB_CONTENDER;
-    nnz = 0;
-    for (i = 0; i < breadcrumb_mat_nrows(mat); i++)
-    {
-        for (j = 0; j < breadcrumb_mat_ncols(mat); j++)
-        {
-            if (*breadcrumb_mat_srcentry(mat, i, j) & pattern)
-            {
-                nnz++;
-            }
-        }
-    }
-    return nnz;
+    slong rank = tkf91_generator_vecs_rank(p->h);
+    _fmpz_vec_clear(p->m0, rank);
+    _fmpz_vec_clear(p->m1, rank);
+    _fmpz_vec_clear(p->m2, rank);
 }
 
 
-slong
-_breadcrumb_mat_max_row_nnz(const breadcrumb_mat_t mat)
-{
-    breadcrumb_t pattern;
-    slong i, j, best, curr;
-    pattern = CRUMB_WANT2 | CRUMB_WANT3 | CRUMB_CONTENDER;
-    best = 0;
-    curr = 0;
-    for (i = 0; i < breadcrumb_mat_nrows(mat); i++)
-    {
-        curr = 0;
-        for (j = 0; j < breadcrumb_mat_ncols(mat); j++)
-        {
-            if (*breadcrumb_mat_srcentry(mat, i, j) & pattern)
-            {
-                curr++;
-            }
-        }
-        if (curr > best)
-        {
-            best = curr;
-        }
-    }
-    return best;
-}
+
+
+
+
+
+
 
 fmpz *
-_bound_mat_max2ref(bound_mat_t mat, slong i, slong k)
+_pmax2(fmpz * celldata, slong rank)
 {
-    /* this function is intended to be called only during initialization */
-    /* i : row index of the entry */
-    /* k : the entry follows k nonzero entries in row i */
-    slong rank;
-    fmpz * base;
-    rank = mat->rank;
-    base = mat->brick_of_fmpz + (i % 2) * mat->max_row_nnz * 2 * rank;
-    return base + k * 2 * rank;
+    return celldata + 0 * rank;
 }
+
 
 fmpz *
-_bound_mat_max3ref(bound_mat_t mat, slong i, slong k)
+_pmax3(fmpz * celldata, slong rank)
 {
-    /* this function is intended to be called only during initialization */
-    /* i : row index of the entry */
-    /* k : the entry follows k nonzero entries in row i */
-    slong rank;
-    fmpz * base;
-    rank = mat->rank;
-    base = mat->brick_of_fmpz + (i % 2) * mat->max_row_nnz * 2 * rank;
-    return base + k * 2 * rank + rank;
+    return celldata + 1 * rank;
 }
 
 void
-bound_mat_init(bound_mat_t mat, breadcrumb_mat_t mask, slong rank)
+_cell_set_max2(fmpz *c, const fmpz *v, slong rank)
 {
-    slong nr, nc, nnz, max_row_nnz;
-    slong i, j, k;
-    slong idx;
-    breadcrumb_t crumb;
-    bound_node_ptr p;
-    bound_node_ptr * tmp;
+    _fmpz_vec_set(_pmax2(c, rank), v, rank);
+}
 
-    nr = breadcrumb_mat_nrows(mask);
-    nc = breadcrumb_mat_ncols(mask);
-    nnz = _breadcrumb_mat_nnz(mask);
-    max_row_nnz = _breadcrumb_mat_max_row_nnz(mask);
+void
+_cell_set_max3(fmpz *c, const fmpz *v, slong rank)
+{
+    _fmpz_vec_set(_pmax3(c, rank), v, rank);
+}
 
-    mat->r = nr;
-    mat->c = nc;
-    mat->nnz = nnz;
-    mat->rank = rank;
-    mat->max_row_nnz = max_row_nnz;
 
-    /* allocate arrays */
-    mat->indptr = flint_malloc((nr + 1) * sizeof(slong));
-    mat->indices = flint_malloc(nnz * sizeof(slong));
-    mat->data = flint_malloc(nnz * sizeof(bound_node_struct));
-    mat->brick_of_fmpz = _fmpz_vec_init(2 * max_row_nnz * 2 * rank);
 
-    /* temporary array, to help link together the nodes */
-    tmp = flint_malloc(nc * 2 * sizeof(bound_node_ptr));
+void *
+_init(void *userdata, size_t num)
+{
+    /*
+     * The userdata provides the rank of the generator matrix.
+     * The 'num' argument is the number of buffer cells requested
+     * by the general forward algorithm framework.
+     */
+    utility_ptr p = userdata;
+    slong rank = tkf91_generator_vecs_rank(p->h);
+    slong len = (slong) (2 * rank * num);
+    return _fmpz_vec_init(len);
+}
 
-    /* init the data */
-    for (i = 0; i < nnz; i++)
+void
+_clear(void *userdata, void *celldata, size_t num)
+{
+    utility_ptr p = userdata;
+    slong rank = tkf91_generator_vecs_rank(p->h);
+    slong len = (slong) (2 * rank * num);
+    _fmpz_vec_clear(celldata, len);
+}
+
+int
+_visit_boundary(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
+{
+    utility_ptr p = userdata;
+    tkf91_generator_vecs_ptr h = p->h;
+    slong rank = tkf91_generator_vecs_rank(h);
+
+    _fmpz_vec_zero(p->m0, rank);
+    _fmpz_vec_zero(p->m1, rank);
+    _fmpz_vec_zero(p->m2, rank);
+    if (i == 0 && j == 0)
     {
-        bound_node_init(mat->data + i);
+        _fmpz_vec_set(p->m1, h->m1_00, rank);
+    }
+    else if (i == 1 && j == 0)
+    {
+        _fmpz_vec_set(p->m0, h->m0_10, rank);
+    }
+    else if (i == 0 && j == 1)
+    {
+        _fmpz_vec_set(p->m2, h->m2_01, rank);
+    }
+    else
+    {
+        if (i == 0)
+        {
+            slong ntb = p->B[j - 1];
+            cell_ptr p2 = node->left;
+            fmpz *p2_max2 = _pmax2(p2, rank);
+            _fmpz_vec_add(p->m2, p2_max2, h->m2_0j_incr[ntb], rank);
+        }
+        else if (j == 0)
+        {
+            slong nta = p->A[i - 1];
+            cell_ptr p0 = node->top;
+            fmpz *p0_max3 = _pmax3(p0, rank);
+            _fmpz_vec_add(p->m0, p0_max3, h->m0_i0_incr[nta], rank);
+        }
+    }
+    return 0;
+}
+
+
+int
+_visit_center(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
+{
+    utility_ptr p = userdata;
+    tkf91_generator_vecs_ptr h = p->h;
+    slong rank = tkf91_generator_vecs_rank(h);
+    dp_t x = *dp_mat_entry(mat, i, j);
+
+    slong nta = p->A[i - 1];
+    slong ntb = p->B[j - 1];
+
+    if (dp_m0_is_interesting(x))
+    {
+        fmpz *p0_max3 = _pmax3(node->top, rank);
+        _fmpz_vec_add(p->m0, p0_max3, h->c0_incr[nta], rank);
     }
 
-    /* initialize the CSR matrix */
-    idx = 0;
-    mat->indptr[0] = 0;
-    for (i = 0; i < nr; i++)
+    if (dp_m1_is_interesting(x))
     {
-        k = 0;
-        for (j = 0; j < nc; j++)
-        {
-            tmp[(i % 2) * nc + j] = NULL;
-        }
-        for (j = 0; j < nc; j++)
-        {
-            crumb = *breadcrumb_mat_srcentry(mask, i, j);
-            if (crumb & (CRUMB_CONTENDER | CRUMB_WANT3 | CRUMB_WANT2))
-            {
-                mat->indices[idx] = j;
-                p = mat->data + idx;
-                tmp[(i % 2) * nc + j] = p;
-                p->pmax2 = _bound_mat_max2ref(mat, i, k);
-                p->pmax3 = _bound_mat_max3ref(mat, i, k);
-                if (0 < i)
-                {
-                    p->top = tmp[((i-1) % 2) * nc + j];
-                }
-                if (0 < i && 0 < j)
-                {
-                    p->diag = tmp[((i-1) % 2) * nc + (j-1)];
-                }
-                if (0 < j)
-                {
-                    p->left = tmp[(i % 2) * nc + (j-1)];
-                }
-                p->crumb = crumb;
-                idx++;
-                k++;
-            }
-        }
-        mat->indptr[i+1] = idx;
+        fmpz *p1_max3 = _pmax3(node->diag, rank);
+        _fmpz_vec_add(p->m1, p1_max3, h->c1_incr[nta*4+ntb], rank);
     }
 
-    flint_free(tmp);
+    if (dp_m2_is_interesting(x))
+    {
+        fmpz *p2_max2 = _pmax2(node->left, rank);
+        _fmpz_vec_add(p->m2, p2_max2, h->c2_incr[ntb], rank);
+    }
+    return 0;
 }
 
 
-void
-bound_mat_clear(bound_mat_t mat)
+int
+_visit_check_consensus(
+        void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
 {
-    /* free arrays */
-    flint_free(mat->indptr);
-    flint_free(mat->indices);
-    flint_free(mat->data);
-    _fmpz_vec_clear(mat->brick_of_fmpz,
-            2 * mat->max_row_nnz * 2 * mat->rank);
+    utility_ptr p = userdata;
+    tkf91_generator_vecs_ptr h = p->h;
+    slong rank = tkf91_generator_vecs_rank(h);
+    dp_t x = *dp_mat_entry(mat, i, j);
+
+    if (x & DP_MAX2)
+    {
+        if ((x & DP_MAX2_M1) && (x & DP_MAX2_M2))
+        {
+            if (!_fmpz_vec_equal(p->m1, p->m2, rank)) return -1;
+        }
+    }
+    if (x & DP_MAX3)
+    {
+        if ((x & DP_MAX3_M0) && (x & DP_MAX3_M1))
+        {
+            if (!_fmpz_vec_equal(p->m0, p->m1, rank)) return -1;
+        }
+        if ((x & DP_MAX3_M1) && (x & DP_MAX3_M2))
+        {
+            if (!_fmpz_vec_equal(p->m1, p->m2, rank)) return -1;
+        }
+        if ((x & DP_MAX3_M2) && (x & DP_MAX3_M0))
+        {
+            if (!_fmpz_vec_equal(p->m2, p->m0, rank)) return -1;
+        }
+    }
+    return 0;
 }
 
 
-void
+
+int
+_visit_update_celldata(
+        void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
+{
+    utility_ptr p = userdata;
+    tkf91_generator_vecs_ptr h = p->h;
+    slong rank = tkf91_generator_vecs_rank(h);
+    dp_t x = *dp_mat_entry(mat, i, j);
+
+    if (x & DP_MAX2)
+    {
+        if (x & DP_MAX2_M1)
+        {
+            _cell_set_max2(curr, p->m1, rank);
+        }
+        else if (x & DP_MAX2_M2)
+        {
+            _cell_set_max2(curr, p->m2, rank);
+        }
+    }
+    if (x & DP_MAX3)
+    {
+        if (x & DP_MAX3_M0)
+        {
+            _cell_set_max3(curr, p->m0, rank);
+        }
+        else if (x & DP_MAX3_M1)
+        {
+            _cell_set_max3(curr, p->m1, rank);
+        }
+        else if (x & DP_MAX3_M2)
+        {
+            _cell_set_max3(curr, p->m2, rank);
+        }
+    }
+    return 0;
+}
+
+
+int
+_visit(
+        void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
+{
+    int result;
+
+    /*
+     * Compute vectors associated with the subset of {m0, m1, m2}
+     * that is considered to be interesting for this cell according
+     * to the tableau flags.
+     * These vector values are stored in the object referenced
+     * by the utility pointer.
+     */
+    if (i < 1 || j < 1)
+    {
+        _visit_boundary(userdata, mat, i, j, curr, top, diag, left);
+    }
+    else
+    {
+        _visit_center(userdata, mat, i, j, curr, top, diag, left);
+    }
+
+    /*
+     * For max2 and max3, if the max is interesting then check
+     * for consensus among candidates.
+     * If there is no consensus then return a nonzero integer.
+     */
+    result = _visit_check_consensus(userdata, mat, i, j, curr, top, diag, left);
+    if (result)
+    {
+        return result;
+    }
+
+    /* Update the cell data. */
+    _visit_update_celldata(userdata, mat, i, j, curr, top, diag, left);
+
+    return 0;
+}
+
+
+
+
+
+
+
+int
 tkf91_dp_verify_symbolically(
         int *verified,
         fmpz_mat_t mat,
         const tkf91_generator_indices_t g,
-        breadcrumb_mat_t mask,
+        dp_mat_t tableau,
         expr_ptr * expressions_table,
         const slong *A,
         const slong *B)
@@ -269,7 +350,6 @@ tkf91_dp_verify_symbolically(
     fmpz_mat_t H, V;
     slong rank;
     tkf91_generator_vecs_t h;
-    bound_mat_t b;
     arb_ptr v;
     slong level;
 
@@ -281,26 +361,41 @@ tkf91_dp_verify_symbolically(
     fmpz_mat_init(V, fmpz_mat_nrows(mat), fmpz_mat_nrows(mat));
     _fmpz_mat_hnf_inverse_transform(H, V, &rank, mat);
 
-    /*
-    flint_printf("matrix rank ");
-    flint_printf("determined from the Hermite normal form: %wd\n", rank);
-    */
-
     tkf91_generator_vecs_init(h, g, V, rank);
     bound_mat_init(b, mask, rank);
 
     v = _arb_vec_init(rank);
     compute_hlogy(v, H, expressions_table, rank, level);
 
-    _tkf91_dp_verify_symbolically(verified, h, v, b, A, B);
+    /* this block replaces the old call to the symbolic verification */
+    int result;
+    {
+        forward_strategy_t s;
+        utility_t util;
+
+        utility_init(util, h, A, B);
+        s->init = _init;
+        s->clear = _clear;
+        s->visit = _visit;
+        s->sz_celldata = sizeof(cell_struct);
+        s->userdata = util;
+
+        result = dp_forward(tableau, s);
+        utility_clear(util);
+    }
 
     _arb_vec_clear(v, rank);
     fmpz_mat_clear(H);
     fmpz_mat_clear(V);
     tkf91_generator_vecs_clear(h);
-    bound_mat_clear(b);
+
+    return result;
 }
 
+
+
+
+/* the following functions are (were?) for debugging */
 
 int _check_equal(fmpz * a, fmpz * b, slong r, arb_ptr v);
 
@@ -350,313 +445,4 @@ _report(const char * name, fmpz * a, slong r)
         flint_printf("unavailable");
     }
     flint_printf("\n");
-}
-
-
-void
-_tkf91_dp_verify_symbolically(
-        int *verified,
-        tkf91_generator_vecs_t h,
-        arb_ptr v,
-        bound_mat_t b,
-        const slong *A,
-        const slong *B)
-{
-    /*
-     * Use only a forward pass, not a backward pass.
-     * This should be enough to check whether
-     * the directions indicated as plausible by the nodes of the bound_mat
-     * actually correspond to identical integer state vectors.
-     */
-    slong r;
-    slong nr;
-
-    bound_node_ptr p0, p1, p2;
-
-    fmpz * m0;
-    fmpz * m1;
-    fmpz * m2;
-
-    fmpz * m0_buf;
-    fmpz * m1_buf;
-    fmpz * m2_buf;
-
-    *verified = 1;
-
-    r = tkf91_generator_vecs_rank(h);
-    nr = bound_mat_nrows(b);
-
-    m0_buf = _fmpz_vec_init(r);
-    m1_buf = _fmpz_vec_init(r);
-    m2_buf = _fmpz_vec_init(r);
-
-    /* iterate over rows of the CSR dynamic programming matrix */
-    slong i, j, u;
-    slong nta, ntb;
-    slong start, stop;
-    bound_node_ptr node;
-    breadcrumb_t crumb, want2, want3;
-    for (i = 0; i < nr; i++)
-    {
-        start = b->indptr[i];
-        stop = b->indptr[i+1];
-        for (u = start; u < stop; u++)
-        {
-            j = b->indices[u];
-            node = b->data+u;
-
-            /* debug */
-            /*
-            flint_printf("csr iteration i=%wd j=%wd\n", i, j);
-            */
-
-            crumb = node->crumb;
-            want2 = crumb & CRUMB_WANT2;
-            want3 = crumb & (CRUMB_CONTENDER | CRUMB_WANT3);
-
-            /*
-             * At this point, the vector pointers point to an appropriate
-             * location in a cyclic buffer.
-             * For each of the two vectors, if the vector is requested
-             * then initialize its entries to zero, otherwise set
-             * the vector pointer to NULL.
-             */
-            if (want2)
-            {
-                _fmpz_vec_zero(node->pmax2, r);
-            }
-            else
-            {
-                node->pmax2 = NULL;
-            }
-            if (want3)
-            {
-                _fmpz_vec_zero(node->pmax3, r);
-            }
-            else
-            {
-                node->pmax3 = NULL;
-            }
-
-            /*
-             * Set m0, m1, m2 to either the appropriate utility fmpz vec
-             * or to NULL, depending upon whether the vector is requested.
-             */
-            m0 = m1 = m2 = NULL;
-            if (want3 && (node->crumb & CRUMB_TOP))
-            {
-                m0 = m0_buf;
-            }
-            if ((want3 && (node->crumb & CRUMB_DIAG)) ||
-                (want2 && (node->crumb & CRUMB_DIAG2)))
-            {
-                m1 = m1_buf;
-            }
-            if ((want3 && (node->crumb & CRUMB_LEFT)) ||
-                (want2 && (node->crumb & CRUMB_LEFT2)))
-            {
-                m2 = m2_buf;
-            }
-
-            /* the buffers are always available to the base cases */
-            if (i == 0 && j == 0)
-            {
-                m1 = m1_buf;
-            }
-            else if (i == 1 && j == 0)
-            {
-                m0 = m0_buf;
-            }
-            else if (i == 0 && j == 1)
-            {
-                m2 = m2_buf;
-            }
-
-            /* debugging */
-            if (want2 && !m1 && !m2)
-            {
-                flint_printf("want2 but neither m1 nor m2 is available\n");
-                abort();
-            }
-            if (want3 && !m0 && !m1 && !m2)
-            {
-                flint_printf("want3 but none of m0, m1, m2 are available\n");
-                abort();
-            }
-
-            if (i < 1 || j < 1)
-            {
-                if (i == 0 && j == 0)
-                {
-                    _fmpz_vec_set(m1, h->m1_00, r);
-                }
-                else if (i == 1 && j == 0)
-                {
-                    _fmpz_vec_set(m0, h->m0_10, r);
-                }
-                else if (i == 0 && j == 1)
-                {
-                    _fmpz_vec_set(m2, h->m2_01, r);
-                }
-                else
-                {
-                    if (i == 0)
-                    {
-                        if (m2)
-                        {
-                            ntb = B[j - 1];
-                            p2 = node->left;
-                            _fmpz_vec_add(m2, p2->pmax2, h->m2_0j_incr[ntb], r);
-                        }
-                    }
-                    else if (j == 0)
-                    {
-                        if (m0)
-                        {
-                            nta = A[i - 1];
-                            p0 = node->top;
-                            _fmpz_vec_add(m0, p0->pmax3, h->m0_i0_incr[nta], r);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                nta = A[i - 1];
-                ntb = B[j - 1];
-
-                if (m0)
-                {
-                    p0 = node->top;
-                    _fmpz_vec_add(m0, p0->pmax3, h->c0_incr[nta], r);
-                }
-
-                if (m1)
-                {
-                    p1 = node->diag;
-                    _fmpz_vec_add(m1, p1->pmax3, h->c1_incr[nta*4+ntb], r);
-                }
-
-                if (m2)
-                {
-                    p2 = node->left;
-                    _fmpz_vec_add(m2, p2->pmax2, h->c2_incr[ntb], r);
-                }
-            }
-
-            /*
-             * This is the verification step.
-             * In another module, numerical ties among subsets of
-             * {m0, m1, m2} may have been detected, and these ties
-             * will be checked here 'symbolically' using integer vectors.
-             * If elements of subsets that are numerically guessed
-             * to be identical have identical corresponding integer vectors,
-             * then the verification succeeds.
-             * Otherwise the verification fails.
-             * There are multiple possible explanations for verification
-             * failure.
-             * 1) a bug
-             * 2) a true numerical 'coincidence' slipped through, because
-             *    the factor refinement is only clever enough to work
-             *    with rational numbers but not sparse polynomials
-             * 3) the numerical bounds were not computed with
-             *    high enough precision
-             * Ideally the explanation is (3), but the other two explanations
-             * are also possible.
-             */
-            if (want2)
-            {
-                if ((crumb & CRUMB_DIAG2) && (crumb & CRUMB_LEFT2))
-                {
-                    if (!_check_equal(m1, m2, r, v)) {
-                        flint_printf("fail: want2 m1 vs m2\n");
-                        flint_printf("i=%wd j=%wd\n", i, j);
-                        goto fail;
-                    }
-                }
-            }
-            if (want3)
-            {
-                if ((crumb & CRUMB_TOP) && (crumb & CRUMB_DIAG))
-                {
-                    if (!_check_equal(m0, m1, r, v)) {
-                        flint_printf("fail: want3 m0 vs m1\n");
-                        flint_printf("i=%wd j=%wd\n", i, j);
-                        goto fail;
-                    }
-                }
-                if ((crumb & CRUMB_DIAG) && (crumb & CRUMB_LEFT))
-                {
-                    if (!_check_equal(m1, m2, r, v)) {
-                        flint_printf("fail: want3 m1 vs m2\n");
-                        flint_printf("i=%wd j=%wd\n", i, j);
-                        goto fail;
-                    }
-                }
-                if ((crumb & CRUMB_LEFT) && (crumb & CRUMB_TOP))
-                {
-                    if (!_check_equal(m2, m0, r, v)) {
-                        flint_printf("fail: want3 m2 vs m0\n");
-                        flint_printf("i=%wd j=%wd\n", i, j);
-                        goto fail;
-                    }
-                }
-            }
-
-            /* debug */
-            /*
-            _report("m0", m0, r);
-            _report("m1", m1, r);
-            _report("m2", m2, r);
-            */
-
-            /*
-             * Update the pmax2 and pmax3 vectors.
-             * It is not required to take a maximum because we just
-             * finished verifying equality of maxima.
-             */
-            if (want2)
-            {
-                if (m1)
-                {
-                    _fmpz_vec_set(node->pmax2, m1, r);
-                }
-                else if (m2)
-                {
-                    _fmpz_vec_set(node->pmax2, m2, r);
-                }
-            }
-            if (want3)
-            {
-                if (m0)
-                {
-                    _fmpz_vec_set(node->pmax3, m0, r);
-                }
-                else if (m1)
-                {
-                    _fmpz_vec_set(node->pmax3, m1, r);
-                }
-                else if (m2)
-                {
-                    _fmpz_vec_set(node->pmax3, m2, r);
-                }
-            }
-            /*
-            _report("pmax2", node->pmax2, r);
-            _report("pmax3", node->pmax3, r);
-            */
-        }
-    }
-
-    goto cleanup;
-
-fail:
-
-    *verified = 0;
-
-cleanup:
-
-    _fmpz_vec_clear(m0_buf, r);
-    _fmpz_vec_clear(m1_buf, r);
-    _fmpz_vec_clear(m2_buf, r);
 }

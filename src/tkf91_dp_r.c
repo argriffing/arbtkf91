@@ -1,9 +1,8 @@
 /*
  * Arbitrary precision tkf91 dynamic programming.
  *
- * After some experimentation, this method of using arb_t values
- * has turned out to be slower than explicitly tracking upper and lower
- * mag_t bounds.
+ * After some experimentation, this method of using arb_t values has been
+ * shown to be slower than explicitly tracking upper and lower mag_t bounds.
  */
 
 #include <time.h>
@@ -12,7 +11,7 @@
 
 #include "tkf91_dp.h"
 #include "tkf91_dp_r.h"
-#include "breadcrumbs.h"
+#include "dp.h"
 #include "wavefront_hermite.h"
 #include "tkf91_generator_vecs.h"
 
@@ -156,8 +155,8 @@ void tkf91_dynamic_programming_hermite(
      */
     slong nrows = szA + 1;
     slong ncols = szB + 1;
-    breadcrumb_mat_t crumb_mat;
-    breadcrumb_mat_init(crumb_mat, nrows, ncols);
+    dp_mat_t crumb_mat;
+    dp_mat_init(crumb_mat, nrows, ncols);
 
     /* define the wavefront matrix */
     hwave_mat_t wave;
@@ -319,7 +318,8 @@ void tkf91_dynamic_programming_hermite(
 
             /* fill the table for traceback */
             /* FIXME use the breadcrumb ambiguity bit as appropriate */
-            breadcrumb_ptr pcrumb = breadcrumb_mat_entry(crumb_mat, i, j);
+            /* FIXME This entire module is obsolete and needs to be rewritten */
+            dp_ptr pcrumb = dp_mat_entry(crumb_mat, i, j);
             best = _get_max3_checked(cell->m+0, cell->m+1, cell->m+2, rank);
             if (_fmpz_vec_equal(best->vec, cell->m[0].vec, rank))
             {
@@ -382,13 +382,13 @@ void tkf91_dynamic_programming_hermite(
     _arb_vec_dot_fmpz_vec(sol->log_probability, v, best->vec, rank, prec);
 
     /* do the traceback */
-    breadcrumb_mat_get_alignment(
+    dp_mat_get_alignment(
             sol->A, sol->B, &(sol->len),
             crumb_mat, A, B);
 
     /* clear the tables */
     hwave_mat_clear(wave);
-    breadcrumb_mat_clear(crumb_mat);
+    dp_mat_clear(crumb_mat);
 }
 
 

@@ -12,6 +12,8 @@
  * of as a json integer because it is likely to overflow json integer capacity.
  */
 
+#include <time.h>
+
 #include "flint/flint.h"
 #include "flint/fmpq.h"
 
@@ -24,6 +26,8 @@
 #include "tkf91_generator_indices.h"
 #include "model_params.h"
 #include "json_model_params.h"
+#include "bound_mat.h"
+#include "count_solutions.h"
 
 
 typedef struct
@@ -121,13 +125,14 @@ json_t *run(void * userdata, json_t *root)
     slong *A;
     slong *B;
     solution_t sol;
-    breadcrumb_mat_t crumb_mat;
+    dp_mat_t tableau;
     int result;
     const char * sequence_a;
     const char * sequence_b;
     json_t * parameters;
     json_error_t err;
     size_t flags;
+    slong nrows, ncols;
 
     if (userdata)
     {
@@ -180,22 +185,24 @@ json_t *run(void * userdata, json_t *root)
     alignment_init(aln, A, B, len_A);
     sequence_pair_init(sequences, aln);
 
-    /* init the tableau mask */
-    breadcrumb_mat_init(crumb_mat, sequences->len_A + 1, sequences->len_B + 1);
+    /* init the tableau table */
+    nrows = sequences->len_A + 1;
+    ncols = sequences->len_B + 1;
+    dp_mat_init(tableau, nrows, ncols);
 
     /* init the solution object */
-    solution_init(sol, sequences->len_A + sequences->len_B);
+    solution_init(sol, nrows + ncols);
 
     /* connect the tableau mask to the solution object */
-    sol->pmask = crumb_mat;
+    sol->mat = tableau;
 
     /* do enough of the traceback to get the solution mask */
     solve(sol, p, sequences);
 
     int optimal;
     int canonical;
-    breadcrumb_mat_check_alignment(
-            &optimal, &canonical, sol->pmask,
+    dp_mat_check_alignment(
+            &optimal, &canonical, sol->mat,
             aln->A, aln->B, aln->len);
 
     char * solution_count_string;
@@ -218,7 +225,7 @@ json_t *run(void * userdata, json_t *root)
     alignment_clear(aln);
     sequence_pair_clear(sequences);
     flint_free(_solution_count_string);
-    breadcrumb_mat_clear(crumb_mat);
+    dp_mat_clear(tableau);
 
     return j_out;
 }
@@ -239,6 +246,12 @@ solve(solution_t sol, const model_params_t p,
     slong szA = sequences->len_A;
     slong *B = sequences->B;
     slong szB = sequences->len_B;
+    int verbose = 0;
+    FILE * file = NULL;
+    if (verbose)
+    {
+        file = stderr;
+    }
 
     /* expressions registry and (refining) generator registry */
     reg_t er;
@@ -274,7 +287,7 @@ solve(solution_t sol, const model_params_t p,
         start = clock();
         int verified = 0;
         tkf91_dp_verify_symbolically(
-                &verified, mat, g, crumb_mat,
+                &verified, mat, generators, tableau,
                 expressions_table,
                 A, B);
         _fprint_elapsed(file, "symbolic verification", clock() - start);
@@ -288,7 +301,7 @@ solve(solution_t sol, const model_params_t p,
         fmpz_init(solution_count);
 
         start = clock();
-        count_solutions(solution_count, crumb_mat);
+        count_solutions(solution_count, tableau);
         _fprint_elapsed(file, "counting solutions", clock() - start);
 
         fmpz_set(sol->best_tie_count, solution_count);

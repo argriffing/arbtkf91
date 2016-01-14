@@ -7,20 +7,20 @@
 #include "dp.h"
 
 
-static void *_init(size_t num);
-static void _clear(void *celldata, size_t num);
+static void *_init(void *userdata, size_t num);
+static void _clear(void *userdata, void *celldata, size_t num);
 static int _visit(void *userdata, dp_mat_t mat,
         slong i, slong j,
         void *curr, void *top, void *diag, void *left);
 
 
-void *_init(size_t num)
+void *_init(void *userdata, size_t num)
 {
     return _fmpz_vec_init(num);
 }
 
 
-void _clear(void *celldata, size_t num)
+void _clear(void *userdata, void *celldata, size_t num)
 {
     _fmpz_vec_clear((fmpz *) celldata, num);
 }
