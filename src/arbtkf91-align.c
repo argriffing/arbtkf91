@@ -48,6 +48,7 @@ json_t *run(void * userdata, json_t *root)
     double rtol;
     json_error_t err;
     size_t flags;
+    slong nrows, ncols;
 
     if (userdata)
     {
@@ -93,7 +94,12 @@ json_t *run(void * userdata, json_t *root)
     B = flint_malloc(len_B * sizeof(slong));
     _fill_sequence_vector(B, sequence_b, len_B);
 
-    /* dispatch */
+    nrows = len_A + 1;
+    ncols = len_B + 1;
+    solution_init(sol, len_A + len_B);
+
+    /* dispatch, initializing a tableau if necessary */
+    dp_mat_t tableau;
     tkf91_dp_fn f = NULL;
     if (strcmp(precision, "float") == 0) {
         f = tkf91_dp_f;
@@ -103,9 +109,13 @@ json_t *run(void * userdata, json_t *root)
     }
     else if (strcmp(precision, "mag") == 0) {
         f = tkf91_dp_bound;
+        dp_mat_init(tableau, nrows, ncols);
+        sol->mat = tableau;
     }
     else if (strcmp(precision, "arb256") == 0) {
         f = tkf91_dp_r;
+        dp_mat_init(tableau, nrows, ncols);
+        sol->mat = tableau;
     }
     else {
         printf("expected the precision string to be one of ");
@@ -113,7 +123,6 @@ json_t *run(void * userdata, json_t *root)
         abort();
     }
 
-    solution_init(sol, len_A + len_B);
     solve(f, sol, rtol, p, A, len_A, B, len_B);
 
     j_out = json_pack("{s:o, s:s, s:s, s:b}",
@@ -126,6 +135,10 @@ json_t *run(void * userdata, json_t *root)
     flint_free(B);
     solution_clear(sol);
     model_params_clear(p);
+    if (sol->mat)
+    {
+        dp_mat_clear(sol->mat);
+    }
 
     return j_out;
 }

@@ -4,6 +4,7 @@
 #include "forward.h"
 #include "dp.h"
 #include "bound_mat.h"
+#include "unused.h"
 
 
 static void *_init(void *userdata, size_t num);
@@ -132,6 +133,9 @@ _visit_boundary(void *userdata, dp_mat_t mat,
     utility_ptr p = userdata;
     tkf91_generator_vecs_ptr h = p->h;
     slong rank = tkf91_generator_vecs_rank(h);
+    UNUSED(curr);
+    UNUSED(diag);
+    UNUSED(mat);
 
     _fmpz_vec_zero(p->m0, rank);
     _fmpz_vec_zero(p->m1, rank);
@@ -176,6 +180,7 @@ _visit_center(void *userdata, dp_mat_t mat,
     tkf91_generator_vecs_ptr h = p->h;
     slong rank = tkf91_generator_vecs_rank(h);
     dp_t x = *dp_mat_entry(mat, i, j);
+    UNUSED(curr);
 
     slong nta = p->A[i - 1];
     slong ntb = p->B[j - 1];
@@ -211,6 +216,10 @@ _visit_check_consensus(
     tkf91_generator_vecs_ptr h = p->h;
     slong rank = tkf91_generator_vecs_rank(h);
     dp_t x = *dp_mat_entry(mat, i, j);
+    UNUSED(curr);
+    UNUSED(top);
+    UNUSED(diag);
+    UNUSED(left);
 
     if (x & DP_MAX2)
     {
@@ -249,6 +258,9 @@ _visit_update_celldata(
     tkf91_generator_vecs_ptr h = p->h;
     slong rank = tkf91_generator_vecs_rank(h);
     dp_t x = *dp_mat_entry(mat, i, j);
+    UNUSED(top);
+    UNUSED(diag);
+    UNUSED(left);
 
     if (x & DP_MAX2)
     {

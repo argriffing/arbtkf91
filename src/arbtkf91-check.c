@@ -186,15 +186,13 @@ json_t *run(void * userdata, json_t *root)
     alignment_init(aln, A, B, len_A);
     sequence_pair_init(sequences, aln);
 
-    /* init the tableau table */
+    /* init the solution object */
     nrows = sequences->len_A + 1;
     ncols = sequences->len_B + 1;
-    dp_mat_init(tableau, nrows, ncols);
-
-    /* init the solution object */
     solution_init(sol, nrows + ncols);
 
-    /* connect the tableau mask to the solution object */
+    /* init the tableau and connect it to the solution object */
+    dp_mat_init(tableau, nrows, ncols);
     sol->mat = tableau;
 
     /* do enough of the traceback to get the solution mask */

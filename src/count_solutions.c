@@ -5,6 +5,7 @@
 #include "count_solutions.h"
 #include "forward.h"
 #include "dp.h"
+#include "unused.h"
 
 
 static void *_init(void *userdata, size_t num);
@@ -16,12 +17,14 @@ static int _visit(void *userdata, dp_mat_t mat,
 
 void *_init(void *userdata, size_t num)
 {
+    UNUSED(userdata);
     return _fmpz_vec_init(num);
 }
 
 
 void _clear(void *userdata, void *celldata, size_t num)
 {
+    UNUSED(userdata);
     _fmpz_vec_clear((fmpz *) celldata, num);
 }
 

@@ -53,7 +53,8 @@ CORE_SOURCES =  \
 	dp.c \
 	dp.h \
 	forward.c \
-	forward.h
+	forward.h \
+	unused.h
 
 JSON_SOURCES = \
 	json_model_params.c \

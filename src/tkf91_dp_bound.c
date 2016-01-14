@@ -13,6 +13,7 @@
 #include "dp.h"
 #include "forward.h"
 #include "printutil.h"
+#include "unused.h"
 
 
 typedef struct
@@ -281,6 +282,7 @@ static int _visit_center(void *userdata, dp_mat_t mat,
 void *
 _init(void *userdata, size_t num)
 {
+    UNUSED(userdata);
     cell_ptr p = malloc(num * sizeof(cell_struct));
     size_t i;
     for (i = 0; i < num; i++)
@@ -294,6 +296,7 @@ _init(void *userdata, size_t num)
 void
 _clear(void *userdata, void *celldata, size_t num)
 {
+    UNUSED(userdata);
     cell_ptr p = celldata;
     size_t i;
     for (i = 0; i < num; i++)
@@ -310,6 +313,9 @@ _visit_boundary(void *userdata, dp_mat_t mat,
         void *curr, void *top, void *diag, void *left)
 {
     utility_ptr p = userdata;
+    UNUSED(curr);
+    UNUSED(diag);
+    UNUSED(mat);
 
     mag_zero(p->lb_m0);
     mag_zero(p->lb_m1);
@@ -361,6 +367,7 @@ _visit_center(void *userdata, dp_mat_t mat,
 {
     utility_ptr p = userdata;
     dp_t x = *dp_mat_entry(mat, i, j);
+    UNUSED(curr);
 
     slong nta = p->A[i - 1];
     slong ntb = p->B[j - 1];
@@ -498,6 +505,7 @@ tkf91_dp_bound(
 {
     utility_t util;
     forward_strategy_t s;
+    slong nrows, ncols;
     clock_t start;
     int verbose = 0;
     FILE *file = NULL;
@@ -515,6 +523,16 @@ tkf91_dp_bound(
     if (!sol->mat)
     {
         fprintf(stderr, "tkf91_dp_bound: sol->mat is required\n");
+        abort();
+    }
+
+    nrows = dp_mat_nrows(sol->mat);
+    ncols = dp_mat_ncols(sol->mat);
+    if (nrows != (slong) szA + 1 ||
+        ncols != (slong) szB + 1)
+    {
+        fprintf(stderr, "tkf91_dp_bound: the sequence lengths are ");
+        fprintf(stderr, "incompatible with the tableau dimensions\n");
         abort();
     }
 

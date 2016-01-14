@@ -17,6 +17,8 @@
 #include "model_params.h"
 #include "json_model_params.h"
 #include "printutil.h"
+#include "dp.h"
+#include "vis.h"
 
 
 
@@ -52,7 +54,7 @@ json_t *run(void * userdata, json_t *root)
     }
 
     flags = JSON_STRICT;
-    json_unpack(root, "{s:o, s:s, s:s, s:s, s:s}",
+    result = json_unpack_ex(root, &err, flags, "{s:o, s:s, s:s, s:s, s:s}",
             "parameters", &parameters,
             "image_mode", &image_mode,
             "image_filename", &image_filename,
@@ -105,12 +107,21 @@ json_t *run(void * userdata, json_t *root)
     _fill_sequence_vector(B, sequence_b, len_B);
 
     solution_init(sol, len_A + len_B);
+
+    slong nrows, ncols;
+    nrows = len_A + 1;
+    ncols = len_B + 1;
+    dp_mat_t tableau;
+    dp_mat_init(tableau, nrows, ncols);
+    sol->mat = tableau;
+
     solve(sol, image_mode_full, image_filename, p, A, len_A, B, len_B);
 
     flint_free(A);
     flint_free(B);
     solution_clear(sol);
     model_params_clear(p);
+    dp_mat_clear(tableau);
 
     return NULL;
 }
@@ -162,9 +173,7 @@ solve(solution_t sol, int image_mode_full, const char * image_filename,
     tkf91_dp_bound(sol, req, mat, expressions_table, generators,
             A, szA, B, szB);
 
-    /* fixme the following block has been moved out of tkf91_dp_bound */
     /* create the tableau png image */
-    if (req->png_filename)
     {
         clock_t start = clock();
         if (req->image_mode_full)
