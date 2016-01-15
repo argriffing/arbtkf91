@@ -1,395 +1,474 @@
 /*
- * Arbitrary precision tkf91 dynamic programming.
- *
- * After some experimentation, this method of using arb_t values has been
- * shown to be slower than explicitly tracking upper and lower mag_t bounds.
+ * tkf91 dynamic programming cell bounds
+ * using a dense tableau with arb_t real balls.
  */
 
 #include <time.h>
 
+#include "mag.h"
+#include "arb.h"
+#include "arf.h"
 #include "arb_mat.h"
 
 #include "tkf91_dp.h"
-#include "tkf91_dp_r.h"
+#include "tkf91_dp_bound.h"
 #include "dp.h"
-#include "wavefront_hermite.h"
-#include "tkf91_generator_vecs.h"
+#include "forward.h"
+#include "printutil.h"
 #include "unused.h"
 
 
-
-
-void
-_hwave_element_add_vec(
-        hwave_element_t e, const fmpz * vec1, const fmpz * vec2, arb_srcptr v,
-        slong r, slong prec);
-
-void
-_hwave_element_set_vec(
-        hwave_element_t e, const fmpz * vec, arb_srcptr v,
-        slong r, slong prec);
-
-void
-_hwave_element_add_vec(
-        hwave_element_t e, const fmpz * vec1, const fmpz * vec2, arb_srcptr v,
-        slong r, slong prec)
+typedef struct
 {
-    _fmpz_vec_add(e->vec, vec1, vec2, r);
-    _arb_vec_dot_fmpz_vec(e->value, v, e->vec, r, prec);
-    e->status = HWAVE_STATUS_UNAMBIGUOUS;
+    arb_t m1_00;
+    arb_t m0_10;
+    arb_struct m0_i0_incr[4];
+    arb_t m2_01;
+    arb_struct m2_0j_incr[4];
+    arb_struct c0_incr[4];
+    arb_struct c1_incr[16];
+    arb_struct c2_incr[4];
+} tkf91_values_struct;
+typedef tkf91_values_struct tkf91_values_t[1];
+
+
+void tkf91_values_init(tkf91_values_t h,
+        const tkf91_generator_indices_t g,
+        mag_ptr m);
+
+void tkf91_values_clear(tkf91_values_t h);
+
+void _bounds_init(tkf91_values_t v, slong level,
+        fmpz_mat_t mat, expr_ptr * expressions_table,
+        const tkf91_generator_indices_t g);
+
+static void _arb_mat_get_col(arb_ptr v, const arb_mat_t mat, slong j);
+static void _arb_max(arb_t z, const arb_t x, const arb_t y);
+
+void
+_arb_mat_get_col(arb_ptr v, const arb_mat_t mat, slong j)
+{
+    slong i, nr;
+    nr = arb_mat_nrows(mat);
+    for (i = 0; i < nr; i++)
+    {
+        arb_set(v+i, arb_mat_entry(mat, i, j));
+    }
+}
+
+
+void
+_arb_max(arb_t z, const arb_t x, const arb_t y)
+{
+    if (arb_lt(x, y))
+    {
+        arb_set(z, y);
+    }
+    else if (arb_lt(y, x))
+    {
+        arb_set(z, x);
+    }
+    else
+    {
+        arf_max(arb_midref(z), arb_midref(x), arb_midref(y));
+        mag_max(arb_radref(z), arb_radref(x), arb_radref(y));
+    }
+}
+
+
+void
+tkf91_values_init(
+        tkf91_values_t h,
+        const tkf91_generator_indices_t g,
+        arb_ptr m)
+{
+    slong i, j;
+    arb_init_set(h->m1_00, m+g->m1_00);
+    arb_init_set(h->m0_10, m+g->m0_10);
+    arb_init_set(h->m2_01, m+g->m2_01);
+    for (i = 0; i < 4; i++)
+    {
+        arb_init_set(h->m0_i0_incr+i, m+g->m0_i0_incr[i]);
+        arb_init_set(h->m2_0j_incr+i, m+g->m2_0j_incr[i]);
+        arb_init_set(h->c0_incr+i, m+g->c0_incr[i]);
+        for (j = 0; j < 4; j++)
+        {
+            arb_init_set(h->c1_incr+i*4+j, m+g->c1_incr[i*4+j]);
+        }
+        arb_init_set(h->c2_incr+i, m+g->c2_incr[i]);
+    }
 }
 
 void
-_hwave_element_set_vec(
-        hwave_element_t e, const fmpz * vec, arb_srcptr v,
-        slong r, slong prec)
+tkf91_values_clear(tkf91_values_t h)
 {
-    /* Input:
-     *  e : one of the three elements of an hwave cell
-     *  vec : integer vector of r coefficients
-     *  v : arb vector of r real balls
-     *  r : the rank of the system
-     *  prec : precision for arb
-     */
-
-    /* copy the integer coefficients */
-    _fmpz_vec_set(e->vec, vec, r);
-
-    /* update the dot product */
-    _arb_vec_dot_fmpz_vec(e->value, v, e->vec, r, prec);
-
-    /*
-     * Mark that for this element the vector of integer coefficients
-     * is known unambiguously.
-     */
-    e->status = HWAVE_STATUS_UNAMBIGUOUS;
+    slong i, j;
+    arb_clear(h->m1_00);
+    arb_clear(h->m0_10);
+    arb_clear(h->m2_01);
+    for (i = 0; i < 4; i++)
+    {
+        arb_clear(h->m0_i0_incr+i);
+        arb_clear(h->m2_0j_incr+i);
+        arb_clear(h->c0_incr+i);
+        for (j = 0; j < 4; j++)
+        {
+            arb_clear(h->c1_incr+i*4+j);
+        }
+        arb_clear(h->c2_incr+i);
+    }
 }
 
-hwave_element_ptr
-_get_max3_checked(
-        hwave_element_ptr e0,
-        hwave_element_ptr e1,
-        hwave_element_ptr e2,
-        slong len);
 
-hwave_element_ptr
-_get_max3_checked(
-        hwave_element_ptr e0,
-        hwave_element_ptr e1,
-        hwave_element_ptr e2,
-        slong len)
+
+void
+_bounds_init(tkf91_values_t h, slong level,
+        fmpz_mat_t mat, expr_ptr * expressions_table,
+        const tkf91_generator_indices_t g)
 {
-    /*
-     * FIXME
-     * For now we abort if an ambiguity is detected numerically
-     * but not symbolically.
-     */
-    /* find the element with the greatest midpoint */
-    slong i;
-    hwave_element_ptr x[] = {e0, e1, e2};
+    slong nr, nc, prec;
+    arb_mat_t G, U, V;
 
-    /* for now require that all elements have unambiguous status */
-    for (i = 0; i < 3; i++)
+    prec = 1 << level;
+
+    /* count the generators and expressions respectively */
+    nr = fmpz_mat_nrows(mat);
+    nc = fmpz_mat_ncols(mat);
+
+    /* initialize the arbitrary precision integer exponent matrix */
+    arb_mat_init(G, nr, nc);
+    arb_mat_set_fmpz_mat(G, mat);
+
+    /* compute logs of expressions to the specified precision */
     {
-        if (x[i]->status == HWAVE_STATUS_AMBIGUOUS)
+        slong i;
+        arb_t x;
+        arb_init(x);
+        arb_mat_init(U, nc, 1);
+        for (i = 0; i < nc; i++)
         {
-            flint_printf("ambiguous status -- ");
-            flint_printf("handling this case is not yet implemented...\n");
-            abort();
+            expr_eval(x, expressions_table[i], level);
+            arb_log(arb_mat_entry(U, i, 0), x, prec);
         }
+        arb_clear(x);
     }
 
-    /* determine the element with greatest midpoint */
-    hwave_element_ptr best;
-    best = e0;
-    if (arf_cmp(arb_midref(best->value), arb_midref(e1->value)) < 0) {
-        best = e1;
-    }
-    if (arf_cmp(arb_midref(best->value), arb_midref(e2->value)) < 0) {
-        best = e2;
-    }
+    /* compute logs of generators */
+    arb_mat_init(V, nr, 1);
+    arb_mat_mul(V, G, U, prec);
 
-    /*
-     * If any element's value overlaps the value of the element
-     * whose midpoint is greatest, then complain if the integer coefficient
-     * vectors are not equal.
+    /* 
+     * Copy the column vector to a new vector
+     * and use it to initialize the structure.
      */
-    for (i = 0; i < 3; i++)
     {
-        if (arb_overlaps(best->value, x[i]->value))
-        {
-            if (!_fmpz_vec_equal(best->vec, x[i]->vec, len))
-            {
-                flint_printf("an ambiguity was detected numericaly ");
-                flint_printf("but not symbolically -- ");
-                flint_printf("dealing with this situation ");
-                flint_printf("is not yet implemented...\n");
-                abort();
-            }
-        }
+        arb_ptr v;
+        v = _arb_vec_init(nr);
+        _arb_mat_get_col(v, V, 0);
+        tkf_values_init(h, g, v);
+        _arb_vec_clear(v, nr);
     }
 
-    return best;
+    arb_mat_clear(G);
+    arb_mat_clear(U);
+    arb_mat_clear(V);
 }
 
-void tkf91_dynamic_programming_hermite(
-        solution_t sol, const request_t req,
-        tkf91_generator_vecs_t g,
-        arb_ptr v, slong rank, slong prec,
-        const slong *A, slong szA,
-        const slong *B, slong szB);
 
-void tkf91_dynamic_programming_hermite(
-        solution_t sol, const request_t req,
-        tkf91_generator_vecs_t g,
-        arb_ptr v, slong rank, slong prec,
-        const slong *A, slong szA,
-        const slong *B, slong szB)
+
+/*
+ * Each cell stores the lower bound and upper bound
+ * for max(m1, m2) and max(m0, m1, m2).
+ */
+
+typedef struct
 {
-    UNUSED(req);
+    arb_struct max2;
+    arb_struct max3;
+} cell_struct;
+typedef cell_struct cell_t[1];
+typedef cell_struct * cell_ptr;
+
+static void cell_init(cell_t x);
+static void cell_clear(cell_t x);
+
+void
+cell_init(cell_t x)
+{
+    arb_init(&(x->max2));
+    arb_init(&(x->max3));
+}
+
+void
+cell_clear(cell_t x)
+{
+    arb_clear(&(x->max2));
+    arb_clear(&(x->max3));
+}
+
+
+
+
+/* the tableau cell visitor sees this data */
+typedef struct
+{
+    slong level;
+    arb_t m0;
+    arb_t m1;
+    arb_t m2;
+    tkf91_values_t h;
+    const slong *A;
+    const slong *B;
+} utility_struct;
+typedef utility_struct utility_t[1];
+typedef utility_struct * utility_ptr;
+
+static void utility_clear(utility_t p);
+static void utility_init(utility_t p,
+        fmpz_mat_t mat,
+        expr_ptr * expressions_table,
+        const tkf91_generator_indices_t g,
+        const slong *A, const slong *B);
+
+void
+utility_init(utility_t p,
+        slong level,
+        fmpz_mat_t mat,
+        expr_ptr * expressions_table,
+        const tkf91_generator_indices_t g,
+        const slong *A, const slong *B)
+{
+    _bounds_init(p->h, level, mat, expressions_table, g);
+    arb_init(p->m0);
+    arb_init(p->m1);
+    arb_init(p->m2);
+    p->level = level;
+    p->A = A;
+    p->B = B;
+}
+
+void
+utility_clear(utility_t p)
+{
+    tkf91_values_clear(p->h);
+    arb_clear(p->m0);
+    arb_clear(p->m1);
+    arb_clear(p->m2);
+}
+
+
+
+static void *_init(void *userdata, size_t num);
+static void _clear(void *userdata, void *celldata, size_t num);
+static int _visit(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left);
+static int _visit_boundary(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left);
+static int _visit_center(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left);
+
+
+void *
+_init(void *userdata, size_t num)
+{
+    UNUSED(userdata);
+    cell_ptr p = malloc(num * sizeof(cell_struct));
+    size_t i;
+    for (i = 0; i < num; i++)
+    {
+        cell_init(p + i);
+    }
+    return p;
+}
+
+
+void
+_clear(void *userdata, void *celldata, size_t num)
+{
+    UNUSED(userdata);
+    cell_ptr p = celldata;
+    size_t i;
+    for (i = 0; i < num; i++)
+    {
+        cell_clear(p + i);
+    }
+    free(p);
+}
+
+
+int
+_visit_boundary(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
+{
+    utility_ptr p = userdata;
+    tkf91_values_ptr h = p->h;
+    slong prec = 1 << p->level;
+    UNUSED(curr);
+    UNUSED(diag);
+    UNUSED(mat);
+
+    arb_neg_inf(p->m0);
+    arb_neg_inf(p->m1);
+    arb_neg_inf(p->m2);
+
+    if (i == 0 && j == 0)
+    {
+        arb_set(p->m1, h->m1_00);
+    }
+    else if (i == 1 && j == 0)
+    {
+        arb_set(p->m0, h->m0_10);
+    }
+    else if (i == 0 && j == 1)
+    {
+        arb_set(p->m2, h->m2_01);
+    }
+    else
+    {
+        if (i == 0)
+        {
+            slong ntb = p->B[j - 1];
+            cell_ptr p2 = left;
+            arb_add(p->m2, &(p2->max2), h->m2_0j_incr+ntb, prec);
+        }
+        else if (j == 0)
+        {
+            slong nta = p->A[i - 1];
+            cell_ptr p0 = top;
+            arb_add(p->m0, &(p0->max3), h->m0_i0_incr+nta, prec);
+        }
+    }
+    return 0;
+}
+
+
+int
+_visit_center(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
+{
+    utility_ptr p = userdata;
+    tkf91_values_ptr h = p->h;
+    dp_t x = *dp_mat_entry(mat, i, j);
+    slong prec = 1 << p->level;
+    UNUSED(curr);
+
+    slong nta = p->A[i - 1];
+    slong ntb = p->B[j - 1];
+
+    if (dp_m0_is_interesting(x))
+    {
+        cell_ptr p0 = top;
+        arb_add(p->m0, &(p0->max3), h->c0_incr+nta, prec);
+    }
+
+    if (dp_m1_is_interesting(x))
+    {
+        cell_ptr p1 = diag;
+        arb_add(p->m1, &(p1->max3), h->c1_incr+nta*4 + ntb, prec);
+    }
+
+    if (dp_m2_is_interesting(x))
+    {
+        cell_ptr p2 = left;
+        arb_add(p->m2, &(p2->max2), h->c2_incr+ntb, prec);
+    }
+
+    return 0;
+}
+
+
+int
+_visit(void *userdata, dp_mat_t mat,
+        slong i, slong j,
+        void *curr, void *top, void *diag, void *left)
+{
+    utility_ptr p = userdata;
+    tkf91_values_ptr h = p->h;
+    cell_ptr c = curr;
+    dp_t *px = dp_mat_entry(mat, i, j);
+    dp_t x = *px;
 
     /*
-     * Define the matrix to be used for the traceback.
-     * The number of rows is one greater than the length of the first sequence,
-     * and the number of columns is one greater than the length of the second
-     * sequence.
+     * Update the upper and lower bounds of the subset of m0, m1, m2
+     * that is interesting for this cell according to the tableau flags.
      */
-    slong nrows = szA + 1;
-    slong ncols = szB + 1;
-    dp_mat_t crumb_mat;
-    dp_mat_init(crumb_mat, nrows, ncols);
-
-    /* define the wavefront matrix */
-    hwave_mat_t wave;
-    slong modulus = 3;
-    /* slong modulus = nrows + ncols - 1; */
-    hwave_mat_init(wave, nrows + ncols - 1, modulus, rank);
-
-    /* iterate over anti-diagonal bands of the dynamic programming matrix */
-    hwave_element_ptr best;
-    hwave_cell_ptr cell, p0, p1, p2;
-    slong i, j, k, l;
-    slong istart, jstart, lstart;
-    for (k = 0; k < nrows + ncols - 1; k++)
+    if (i < 1 || j < 1)
     {
-        if (k < nrows)
+        _visit_boundary(userdata, mat, i, j, curr, top, diag, left);
+    }
+    else
+    {
+        _visit_center(userdata, mat, i, j, curr, top, diag, left);
+    }
+
+    /* If max2 is interesting for this cell then update its bounds. */
+    if (x & DP_MAX2)
+    {
+        arb_neg_inf(&(c->max2));
+        if (x & DP_MAX2_M1)
         {
-            istart = k;
-            jstart = 0;
+            _arb_max(&(c->max2), &(c->max2), p->m1);
         }
-        else
+        if (x & DP_MAX2_M2)
         {
-            istart = nrows - 1;
-            jstart = k - (nrows - 1);
-        }
-        lstart = nrows - 1 + jstart - istart;
-
-        /* iterate over entries of the diagonal */
-        i = istart;
-        j = jstart;
-        l = lstart;
-        slong nta, ntb;
-        while (0 <= i && i < nrows && 0 <= j && j < ncols)
-        {
-            /* check some invariants */
-            if (k != i + j)
-            {
-                flint_printf("wavefront indexing problem ");
-                flint_printf("i=%wd j=%wd k=%wd\n", i, j, k);
-                abort();
-            }
-            if (l != nrows - 1 + j - i)
-            {
-                flint_printf("wavefront indexing problem ");
-                flint_printf("i=%wd j=%wd l=%wd\n", i, j, l);
-                abort();
-            }
-
-            cell = hwave_mat_entry(wave, k, l);
-            if (i == 0 && j == 0)
-            {
-                hwave_element_set_undefined(cell->m+0);
-                _hwave_element_set_vec(cell->m+1, g->m1_00, v, rank, prec);
-                hwave_element_set_undefined(cell->m+2);
-            }
-            else if (i == 1 && j == 0)
-            {
-                _hwave_element_set_vec(cell->m+0, g->m0_10, v, rank, prec);
-                hwave_element_set_undefined(cell->m+1);
-                hwave_element_set_undefined(cell->m+2);
-            }
-            else if (i == 0 && j == 1)
-            {
-                hwave_element_set_undefined(cell->m+0);
-                hwave_element_set_undefined(cell->m+1);
-                _hwave_element_set_vec(cell->m+2, g->m2_01, v, rank, prec);
-            }
-            else
-            {
-                if (i == 0)
-                {
-                    ntb = B[j - 1];
-                    p2 = hwave_mat_entry_left(wave, k, l);
-                    hwave_element_set_undefined(cell->m+0);
-                    hwave_element_set_undefined(cell->m+1);
-                    if (p2->m[2].status != HWAVE_STATUS_UNAMBIGUOUS)
-                    {
-                        flint_printf("found a not unambiguous status ");
-                        flint_printf("while filling the first row\n");
-                        abort();
-                    }
-                    _hwave_element_add_vec(
-                            cell->m+2,
-                            p2->m[2].vec,
-                            g->m2_0j_incr[ntb],
-                            v, rank, prec);
-                }
-                else if (j == 0)
-                {
-                    nta = A[i - 1];
-                    p0 = hwave_mat_entry_top(wave, k, l);
-                    if (p0->m[0].status != HWAVE_STATUS_UNAMBIGUOUS)
-                    {
-                        flint_printf("found a not unambiguous status ");
-                        flint_printf("while filling the first column\n");
-                        abort();
-                    }
-                    _hwave_element_add_vec(
-                            cell->m+0,
-                            p0->m[0].vec,
-                            g->m0_i0_incr[nta],
-                            v, rank, prec);
-                    hwave_element_set_undefined(cell->m+1);
-                    hwave_element_set_undefined(cell->m+2);
-                }
-                else
-                {
-                    nta = A[i - 1];
-                    ntb = B[j - 1];
-                    p0 = hwave_mat_entry_top(wave, k, l);
-                    p1 = hwave_mat_entry_diag(wave, k, l);
-                    p2 = hwave_mat_entry_left(wave, k, l);
-
-                    best = _get_max3_checked(p0->m+0, p0->m+1, p0->m+2, rank);
-                    if (best->status == HWAVE_STATUS_UNDEFINED)
-                    {
-                        hwave_element_set_undefined(cell->m+0);
-                    }
-                    else
-                    {
-                        _hwave_element_add_vec(
-                                cell->m+0,
-                                best->vec,
-                                g->c0_incr[nta],
-                                v, rank, prec);
-                    }
-
-                    best = _get_max3_checked(p1->m+0, p1->m+1, p1->m+2, rank);
-                    if (best->status == HWAVE_STATUS_UNDEFINED)
-                    {
-                        hwave_element_set_undefined(cell->m+1);
-                    }
-                    else
-                    {
-                        _hwave_element_add_vec(
-                                cell->m+1,
-                                best->vec,
-                                g->c1_incr[nta*4 + ntb],
-                                v, rank, prec);
-                    }
-
-                    /* use max3 to check only max2 by duplicating one -- */
-                    /* passing p2->m+1 twice is not a bug */
-                    /* TODO make a max2 convenience function for this... */
-                    best = _get_max3_checked(p2->m+1, p2->m+1, p2->m+2, rank);
-                    if (best->status == HWAVE_STATUS_UNDEFINED)
-                    {
-                        hwave_element_set_undefined(cell->m+2);
-                    }
-                    else
-                    {
-                        _hwave_element_add_vec(
-                                cell->m+2,
-                                best->vec,
-                                g->c2_incr[ntb],
-                                v, rank, prec);
-                    }
-                }
-            }
-
-            /* fill the table for traceback */
-            /* FIXME use the breadcrumb ambiguity bit as appropriate */
-            /* FIXME This entire module is obsolete and needs to be rewritten */
-            dp_ptr pcrumb = dp_mat_entry(crumb_mat, i, j);
-            best = _get_max3_checked(cell->m+0, cell->m+1, cell->m+2, rank);
-            if (_fmpz_vec_equal(best->vec, cell->m[0].vec, rank))
-            {
-                *pcrumb |= CRUMB_TOP;
-            }
-            if (_fmpz_vec_equal(best->vec, cell->m[1].vec, rank))
-            {
-                *pcrumb |= CRUMB_DIAG;
-            }
-            if (_fmpz_vec_equal(best->vec, cell->m[2].vec, rank))
-            {
-                *pcrumb |= CRUMB_LEFT;
-            }
-
-            /*
-            flint_printf("%wd %wd %wd %wd ", i, j, k, l);
-            flint_printf("%g %g %g\n",
-                    exp(cell->m0),
-                    exp(cell->m1),
-                    exp(cell->m2));
-            */
-
-            l += 2;
-            i--;
-            j++;
+            _arb_max(&(c->max2), &(c->max2), p->m2);
         }
     }
 
-    /* report the probability matrices */
-    /*
-    slong c;
-    arf_ptr mid;
-    for (c = 0; c < 3; c++)
+    /* If max3 is interesting for this cell then update its bounds. */
+    if (x & DP_MAX3)
     {
-        flint_printf("m%wd:\n", c);
-        for (i = 0; i < nrows; i++)
+        arb_neg_inf(&(c->max3));
+        if (x & DP_MAX3_M0)
         {
-            for (j = 0; j < ncols; j++)
-            {
-                k = i + j;
-                l = nrows - 1 + j - i;
-                cell = hwave_mat_entry(wave, k, l);
-                mid = arb_midref(cell->m[c].value);
-                flint_printf("%.17lf ", exp(arf_get_d(mid, ARF_RND_NEAR)));
-            }
-            flint_printf("\n");
+            _arb_max(&(c->max3), &(c->max3), p->m0);
         }
-        flint_printf("\n");
+        if (x & DP_MAX3_M1)
+        {
+            _arb_max(&(c->max3), &(c->max3), p->m1);
+        }
+        if (x & DP_MAX3_M2)
+        {
+            _arb_max(&(c->max3), &(c->max3), p->m2);
+        }
     }
-    flint_printf("\n");
-    */
 
-    /* report the score */
-    i = nrows - 1;
-    j = ncols - 1;
-    k = i + j;
-    l = nrows - 1 + j - i;
-    cell = hwave_mat_entry(wave, k, l);
-    best = _get_max3_checked(cell->m+0, cell->m+1, cell->m+2, rank);
-    _arb_vec_dot_fmpz_vec(sol->log_probability, v, best->vec, rank, prec);
+    /* If max2 is interesting for this cell then update its candidate flags */
+    if (x & DP_MAX2)
+    {
+        if ((x & DP_MAX2_M1) && arb_lt(p->m1, &(c->max2)))
+        {
+            *px &= ~DP_MAX2_M1;
+        }
+        if ((x & DP_MAX2_M2) && arb_lt(p->m2, &(c->max2)))
+        {
+            *px &= ~DP_MAX2_M2;
+        }
+    }
 
-    /* do the traceback */
-    dp_mat_get_alignment(
-            sol->A, sol->B, &(sol->len),
-            crumb_mat, A, B);
+    /* If max3 is interesting for this cell then update its candidate flags */
+    if (x & DP_MAX3)
+    {
+        if ((x & DP_MAX3_M0) && arb_lt(p->m0, &(c->max3)))
+        {
+            *px &= ~DP_MAX3_M0;
+        }
+        if ((x & DP_MAX3_M1) && arb_lt(p->m1, &(c->max3)))
+        {
+            *px &= ~DP_MAX3_M1;
+        }
+        if ((x & DP_MAX3_M2) && arb_lt(p->m2, &(c->max3)))
+        {
+            *px &= ~DP_MAX3_M2;
+        }
+    }
 
-    /* clear the tables */
-    hwave_mat_clear(wave);
-    dp_mat_clear(crumb_mat);
+    return 0;
 }
 
 
@@ -401,118 +480,75 @@ tkf91_dp_r(
         const slong *A, size_t szA,
         const slong *B, size_t szB)
 {
-    /* Inputs:
-     *   mat : the generator matrix -- mat_ij where i is a generator index
-     *         and j is an expression index.
-     *   expressions_table : map from expression index to expression object
-     *   g : a struct with tkf91 generator indices
-     */
-
-    fmpz_mat_t H, V;
-    slong level, prec, rank;
-    tkf91_generator_vecs_t h;
-
-    /*
-     * For now, use an arbitrary precision.
-     * In later versions of this program,
-     * we could decide to adjust it dynamically if it is detected
-     * to be insufficient.
-     */
-    level = 8;
-    prec = 1 << level;
-
-    /* Compute a Hermite decomposition of the generator matrix. */
-    /* U*mat = H ; U^-1 = V ; rank = rank(H) */
-    fmpz_mat_init(H, fmpz_mat_nrows(mat), fmpz_mat_ncols(mat));
-    fmpz_mat_init(V, fmpz_mat_nrows(mat), fmpz_mat_nrows(mat));
-    _fmpz_mat_hnf_inverse_transform(H, V, &rank, mat);
-
-    /*
-    flint_fprintf(stderr, "matrix rank revealed by the ");
-    flint_fprintf(stderr, "Hermite normal form: %wd\n", rank);
-    */
-
-    /*
-     * 'vecify' a structure with tkf91 generators,
-     * by pointing the member variables to copies of rows of V.
-     */
-    tkf91_generator_vecs_init(h, g, V, rank);
-
-    arb_ptr v;
-    v = _arb_vec_init(rank);
-    compute_hlogy(v, H, expressions_table, rank, level);
+    slong level = 8;
+    _tkf91_dp_r(level, sol, req, mat, expressions_table, g, A, szA, B, szB);
+}
 
 
-    /*
-     * Begin checking some invariants.
-     * Require that the result of the calculation does not depend on the basis.
-     *
-     * Initialize an arbitrary precision matrix.
-     * This will be part of the calculation G*log(y)
-     * which gives the score of each generator.
-     */
-    /*
-    arb_mat_t arbG;
-    arb_mat_init(arbG, fmpz_mat_nrows(mat), fmpz_mat_ncols(mat));
-    arb_mat_set_fmpz_mat(arbG, mat);
-    */
-
-    /*
-     * Compute the generator logs G*log(y).
-     */
-    /*
-    arb_mat_t generator_logs;
-    arb_mat_init(generator_logs, fmpz_mat_nrows(mat), 1);
-    arb_mat_mul(generator_logs, arbG, expression_logs, prec);
-    */
-
-    /*
-    flint_printf("log probability for each generator:\n");
-    arb_mat_printd(generator_logs, 15);
-    flint_printf("\n");
-    */
-
-    /*
-     * Compute dot products which should be equivalent.
-     */
-    /*
-    flint_printf("a presumably equivalent calculation in a different basis\n");
-    for (i = 0; i < fmpz_mat_nrows(mat); i++)
+void
+tkf91_dp_r_level(
+        slong level, solution_t sol, const request_t req,
+        fmpz_mat_t mat, expr_ptr * expressions_table,
+        const tkf91_generator_indices_t g,
+        const slong *A, size_t szA,
+        const slong *B, size_t szB)
+{
+    utility_t util;
+    forward_strategy_t s;
+    slong nrows, ncols;
+    clock_t start;
+    int verbose = 0;
+    FILE *file = NULL;
+    if (verbose)
     {
-        _arb_vec_dot_fmpz_vec(x, v, V->rows[i], rank, prec);
-
-        flint_printf("first %wd columns of row %wd of V : ", rank, i);
-        flint_printf("\n");
-        _fmpz_vec_print(V->rows[i], rank);
-        flint_printf("dot product : ");
-
-        arb_printd(x, 15);
-        flint_printf("\n");
+        file = stderr;
     }
-    flint_printf("\n");
-    */
 
-    /*
-    flint_printf("V:\n"); fmpz_mat_print_pretty(V); flint_printf("\n");
-    flint_printf("H:\n"); fmpz_mat_print_pretty(H); flint_printf("\n");
-    */
+    if (!req->trace)
+    {
+        flint_fprintf(stderr, "tkf91_dp_r (level %wd): ", level);
+        flint_fprintf(stderr, "req->trace is required\n");
+        abort();
+    }
 
-    /* clear temporary variables */
-    fmpz_mat_clear(H);
-    fmpz_mat_clear(V);
-    /*
-    arb_mat_clear(arbG);
-    arb_mat_clear(generator_logs);
-    */
+    if (!sol->mat)
+    {
+        flint_fprintf(stderr, "tkf91_dp_r (level %wd): ", level);
+        flint_fprintf(stderr, "sol->mat is required\n");
+        abort();
+    }
 
-    /* do the thing */
-    tkf91_dynamic_programming_hermite(
-            sol, req, h, v, rank, prec, A, szA, B, szB);
+    nrows = dp_mat_nrows(sol->mat);
+    ncols = dp_mat_ncols(sol->mat);
+    if (nrows != (slong) szA + 1 ||
+        ncols != (slong) szB + 1)
+    {
+        flint_fprintf(stderr, "tkf91_dp_r (level %wd): ", level);
+        flint_fprintf(stderr, "the sequence lengths are ");
+        fprinflint_tf(stderr, "incompatible with the tableau dimensions\n");
+        abort();
+    }
 
-    /* this will have aborted if not optimal so set optimality to true */
-    sol->optimality_flag = 1;
+    start = clock();
+    utility_init(util, mat, expressions_table, g, A, B);
+    s->init = _init;
+    s->clear = _clear;
+    s->visit = _visit;
+    s->sz_celldata = sizeof(cell_struct);
+    s->userdata = util;
+    dp_forward(sol->mat, s);
+    utility_clear(util);
+    _fprint_elapsed(file, "dynamic programming", clock() - start);
 
-    /* clear the remaining variables */
-    _arb_vec_clear(v, rank);
-    tkf91_generator_vecs_clear(h);
+    /* update flags using a backward pass through the tableau */
+    start = clock();
+    dp_mat_backward(sol->mat);
+    _fprint_elapsed(file, "backward algorithm pass", clock() - start);
+
+    /* extract the alignment */
+    start = clock();
+    dp_mat_get_alignment(
+            sol->A, sol->B, &(sol->len),
+            sol->mat, A, B);
+    _fprint_elapsed(file, "alignment traceback", clock() - start);
 }
