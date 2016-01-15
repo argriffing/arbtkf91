@@ -4,12 +4,9 @@
  *
  * Output format:
  * {
- * "alignment_is_optimal" : "yes" | "no" | "undetermined",
- * "alignment_is_canonical" : "yes" | "no" | "undetermined",
- * "number_of_optimal_alignments" : <integer-as-string> | "undetermined"
+ * "alignment_is_optimal" : bool,
+ * "alignment_is_canonical" : bool
  * }
- * The number of optimal alignments is reported as a json string instead
- * of as a json integer because it is likely to overflow json integer capacity.
  */
 
 #include <time.h>
@@ -22,12 +19,12 @@
 #include "runjson.h"
 #include "jsonutil.h"
 #include "tkf91_dp_bound.h"
+#include "tkf91_dp_r.h"
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
 #include "model_params.h"
 #include "json_model_params.h"
 #include "bound_mat.h"
-#include "count_solutions.h"
 #include "printutil.h"
 
 
@@ -204,26 +201,14 @@ json_t *run(void * userdata, json_t *root)
             &optimal, &canonical, sol->mat,
             aln->A, aln->B, aln->len);
 
-    char * solution_count_string;
-    char * _solution_count_string = NULL;
-    char undetermined[] = "undetermined";
-    solution_count_string = undetermined;
-    if (sol->has_best_tie_count)
-    {
-        _solution_count_string = fmpz_get_str(NULL, 10, sol->best_tie_count);
-        solution_count_string = _solution_count_string;
-    }
-
-    j_out = json_pack("{s:s, s:s, s:s}",
-            "alignment_is_optimal", (optimal ? "yes" : "no"),
-            "alignment_is_canonical", (canonical ? "yes" : "no"),
-            "number_of_optimal_alignments", solution_count_string);
+    j_out = json_pack("{s:b, s:b}",
+            "alignment_is_optimal", optimal,
+            "alignment_is_canonical", canonical);
 
     solution_clear(sol);
     model_params_clear(p);
     alignment_clear(aln);
     sequence_pair_clear(sequences);
-    flint_free(_solution_count_string);
     dp_mat_clear(tableau);
 
     return j_out;
@@ -275,38 +260,9 @@ solve(solution_t sol, const model_params_t p,
     req->png_filename = NULL;
     req->trace = 1;
 
-    tkf91_dp_bound(
+    tkf91_dp_high(
             sol, req, mat, expressions_table, generators,
             A, szA, B, szB);
-
-    /* fixme the following code block has been moved from tkf91_dp_bound */
-    /* symbolic verification */
-    /* this should be updated to use the forward pass framework */
-    {
-        clock_t start = clock();
-        tkf91_dp_verify_symbolically(
-                &sol->optimality_flag, 
-                mat, generators, sol->mat,
-                expressions_table,
-                A, B);
-        _fprint_elapsed(file, "symbolic verification", clock() - start);
-    }
-
-    /* fixme the following code block has been moved from tkf91_dp_bound */
-    /* count the solutions */
-    {
-        clock_t start = clock();
-        fmpz_t solution_count;
-        fmpz_init(solution_count);
-
-        count_solutions(solution_count, sol->mat);
-
-        fmpz_set(sol->best_tie_count, solution_count);
-        sol->has_best_tie_count = 1;
-
-        fmpz_clear(solution_count);
-        _fprint_elapsed(file, "counting solutions", clock() - start);
-    }
 
     fmpz_mat_clear(mat);
     flint_free(expressions_table);

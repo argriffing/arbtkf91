@@ -33,8 +33,6 @@ typedef struct
     char * B;
     slong len;
     arb_t log_probability;
-    fmpz_t best_tie_count;
-    int has_best_tie_count;
     int optimality_flag;
     dp_mat_ptr mat;
 } solution_struct;
@@ -62,8 +60,6 @@ solution_print(const solution_t x)
  */
 typedef struct
 {
-    int image_mode_full;
-    const char * png_filename;
     int trace;
     double rtol;
 } request_struct;

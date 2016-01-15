@@ -11,6 +11,7 @@
 #include "arb_mat.h"
 
 #include "tkf91_dp.h"
+#include "tkf91_dp_r.h"
 #include "tkf91_dp_bound.h"
 #include "dp.h"
 #include "forward.h"
@@ -30,20 +31,22 @@ typedef struct
     arb_struct c2_incr[4];
 } tkf91_values_struct;
 typedef tkf91_values_struct tkf91_values_t[1];
+typedef tkf91_values_struct * tkf91_values_ptr;
 
 
-void tkf91_values_init(tkf91_values_t h,
+static void tkf91_values_init(tkf91_values_t h,
         const tkf91_generator_indices_t g,
-        mag_ptr m);
+        arb_ptr m);
 
-void tkf91_values_clear(tkf91_values_t h);
+static void tkf91_values_clear(tkf91_values_t h);
 
-void _bounds_init(tkf91_values_t v, slong level,
+static void _bounds_init(tkf91_values_t v, slong level,
         fmpz_mat_t mat, expr_ptr * expressions_table,
         const tkf91_generator_indices_t g);
 
 static void _arb_mat_get_col(arb_ptr v, const arb_mat_t mat, slong j);
 static void _arb_max(arb_t z, const arb_t x, const arb_t y);
+static void _arb_init_set(arb_t z, const arb_t x);
 
 void
 _arb_mat_get_col(arb_ptr v, const arb_mat_t mat, slong j)
@@ -56,6 +59,12 @@ _arb_mat_get_col(arb_ptr v, const arb_mat_t mat, slong j)
     }
 }
 
+void
+_arb_init_set(arb_t z, const arb_t x)
+{
+    arb_init(z);
+    arb_set(z, x);
+}
 
 void
 _arb_max(arb_t z, const arb_t x, const arb_t y)
@@ -83,19 +92,19 @@ tkf91_values_init(
         arb_ptr m)
 {
     slong i, j;
-    arb_init_set(h->m1_00, m+g->m1_00);
-    arb_init_set(h->m0_10, m+g->m0_10);
-    arb_init_set(h->m2_01, m+g->m2_01);
+    _arb_init_set(h->m1_00, m+g->m1_00);
+    _arb_init_set(h->m0_10, m+g->m0_10);
+    _arb_init_set(h->m2_01, m+g->m2_01);
     for (i = 0; i < 4; i++)
     {
-        arb_init_set(h->m0_i0_incr+i, m+g->m0_i0_incr[i]);
-        arb_init_set(h->m2_0j_incr+i, m+g->m2_0j_incr[i]);
-        arb_init_set(h->c0_incr+i, m+g->c0_incr[i]);
+        _arb_init_set(h->m0_i0_incr+i, m+g->m0_i0_incr[i]);
+        _arb_init_set(h->m2_0j_incr+i, m+g->m2_0j_incr[i]);
+        _arb_init_set(h->c0_incr+i, m+g->c0_incr[i]);
         for (j = 0; j < 4; j++)
         {
-            arb_init_set(h->c1_incr+i*4+j, m+g->c1_incr[i*4+j]);
+            _arb_init_set(h->c1_incr+i*4+j, m+g->c1_incr[i*4+j]);
         }
-        arb_init_set(h->c2_incr+i, m+g->c2_incr[i]);
+        _arb_init_set(h->c2_incr+i, m+g->c2_incr[i]);
     }
 }
 
@@ -165,7 +174,7 @@ _bounds_init(tkf91_values_t h, slong level,
         arb_ptr v;
         v = _arb_vec_init(nr);
         _arb_mat_get_col(v, V, 0);
-        tkf_values_init(h, g, v);
+        tkf91_values_init(h, g, v);
         _arb_vec_clear(v, nr);
     }
 
@@ -225,6 +234,7 @@ typedef utility_struct * utility_ptr;
 
 static void utility_clear(utility_t p);
 static void utility_init(utility_t p,
+        slong level,
         fmpz_mat_t mat,
         expr_ptr * expressions_table,
         const tkf91_generator_indices_t g,
@@ -481,13 +491,14 @@ tkf91_dp_r(
         const slong *B, size_t szB)
 {
     slong level = 8;
-    _tkf91_dp_r(level, sol, req, mat, expressions_table, g, A, szA, B, szB);
+    tkf91_dp_r_level(level,
+            sol, req, mat, expressions_table, g, A, szA, B, szB);
 }
 
 
 void
-tkf91_dp_r_level(
-        slong level, solution_t sol, const request_t req,
+tkf91_dp_r_level(slong level,
+        solution_t sol, const request_t req,
         fmpz_mat_t mat, expr_ptr * expressions_table,
         const tkf91_generator_indices_t g,
         const slong *A, size_t szA,
@@ -506,14 +517,14 @@ tkf91_dp_r_level(
 
     if (!req->trace)
     {
-        flint_fprintf(stderr, "tkf91_dp_r (level %wd): ", level);
+        flint_fprintf(stderr, "tkf91_dp_r_(level %wd): ", level);
         flint_fprintf(stderr, "req->trace is required\n");
         abort();
     }
 
     if (!sol->mat)
     {
-        flint_fprintf(stderr, "tkf91_dp_r (level %wd): ", level);
+        flint_fprintf(stderr, "tkf91_dp_r_(level %wd): ", level);
         flint_fprintf(stderr, "sol->mat is required\n");
         abort();
     }
@@ -523,14 +534,14 @@ tkf91_dp_r_level(
     if (nrows != (slong) szA + 1 ||
         ncols != (slong) szB + 1)
     {
-        flint_fprintf(stderr, "tkf91_dp_r (level %wd): ", level);
+        flint_fprintf(stderr, "tkf91_dp_r_(level %wd): ", level);
         flint_fprintf(stderr, "the sequence lengths are ");
-        fprinflint_tf(stderr, "incompatible with the tableau dimensions\n");
+        flint_fprintf(stderr, "incompatible with the tableau dimensions\n");
         abort();
     }
 
     start = clock();
-    utility_init(util, mat, expressions_table, g, A, B);
+    utility_init(util, level, mat, expressions_table, g, A, B);
     s->init = _init;
     s->clear = _clear;
     s->visit = _visit;
@@ -551,4 +562,39 @@ tkf91_dp_r_level(
             sol->A, sol->B, &(sol->len),
             sol->mat, A, B);
     _fprint_elapsed(file, "alignment traceback", clock() - start);
+}
+
+
+void
+tkf91_dp_high(
+        solution_t sol, const request_t req,
+        fmpz_mat_t mat, expr_ptr * expressions_table,
+        const tkf91_generator_indices_t g,
+        const slong *A, size_t szA,
+        const slong *B, size_t szB)
+{
+    slong level = -1;
+    sol->optimality_flag = 0;
+    while (!sol->optimality_flag)
+    {
+        if (level < 0)
+        {
+            tkf91_dp_mag(
+                    sol, req, mat, expressions_table, g,
+                    A, szA, B, szB);
+            level = 6;
+        }
+        else
+        {
+            tkf91_dp_r_level(level,
+                    sol, req, mat, expressions_table, g,
+                    A, szA, B, szB);
+            level++;
+        }
+        tkf91_dp_verify_symbolically(
+                &sol->optimality_flag, 
+                mat, g, sol->mat,
+                expressions_table,
+                A, B);
+    }
 }

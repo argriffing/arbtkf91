@@ -1,7 +1,9 @@
 /*
- * Align sequences.
- * Input and output uses json.
- * The output has all of the terms expected by the 'arbtkf91-check' tool.
+ * Count the number of optimal sequences.
+ * Input and output uses json for consistency with the other scripts,
+ * although that seems somewhat silly in this case because the
+ * output is just a single number that is likely so large that it
+ * cannot even be represented in json except as a string.
  */
 
 #include <time.h>
@@ -13,19 +15,17 @@
 
 #include "runjson.h"
 #include "jsonutil.h"
-#include "tkf91_dp_f.h"
-#include "tkf91_dp_d.h"
 #include "tkf91_dp_r.h"
-#include "tkf91_dp_bound.h"
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
 #include "model_params.h"
 #include "json_model_params.h"
+#include "count_solutions.h"
 
 
 
 void
-solve(tkf91_dp_fn f, solution_t sol, double rtol, const model_params_t p,
+solve(tkf91_dp_fn f, solution_t sol, const model_params_t p,
         const slong *A, slong len_A, const slong *B, slong len_B);
 
 
@@ -43,11 +43,10 @@ json_t *run(void * userdata, json_t *root)
     json_t *parameters;
     const char * sequence_a;
     const char * sequence_b;
-    const char * precision;
-    double rtol;
     json_error_t err;
     size_t flags;
     slong nrows, ncols;
+    dp_mat_t tableau;
 
     if (userdata)
     {
@@ -57,12 +56,10 @@ json_t *run(void * userdata, json_t *root)
 
     flags = JSON_STRICT;
     result = json_unpack_ex(root, &err, flags,
-            "{s:O, s:s, s:s, s:F, s:s}",
+            "{s:O, s:s, s:s}",
             "parameters", &parameters,
             "sequence_a", &sequence_a,
-            "sequence_b", &sequence_b,
-            "rtol", &rtol,
-            "precision", &precision);
+            "sequence_b", &sequence_b);
     if (result)
     {
         fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
@@ -96,47 +93,27 @@ json_t *run(void * userdata, json_t *root)
     nrows = len_A + 1;
     ncols = len_B + 1;
     solution_init(sol, len_A + len_B);
+    dp_mat_init(tableau, nrows, ncols);
+    sol->mat = tableau;
 
-    /* dispatch, initializing a tableau if necessary */
-    dp_mat_t tableau;
-    tkf91_dp_fn f = NULL;
-    if (strcmp(precision, "float") == 0) {
-        f = tkf91_dp_f;
-    }
-    else if (strcmp(precision, "double") == 0) {
-        f = tkf91_dp_d;
-    }
-    else if (strcmp(precision, "mag") == 0) {
-        f = tkf91_dp_mag;
-        dp_mat_init(tableau, nrows, ncols);
-        sol->mat = tableau;
-    }
-    else if (strcmp(precision, "high") == 0) {
-        f = tkf91_dp_high;
-        dp_mat_init(tableau, nrows, ncols);
-        sol->mat = tableau;
-    }
-    else {
-        printf("expected the precision string to be one of ");
-        printf("{float | double | mag | high}\n");
-        abort();
+    char * solution_count_string;
+    {
+        fmpz_t count;
+        fmpz_init(count);
+        solve(count, sol, p, A, len_A, B, len_B);
+        solution_count_string = fmpz_get_str(NULL, 10, count);
+        fmpz_clear(count);
     }
 
-    solve(f, sol, rtol, p, A, len_A, B, len_B);
+    j_out = json_pack("{s:s}",
+            "number_of_optimal_alignments", solution_count_string);
 
-    j_out = json_pack("{s:o, s:s, s:s}",
-            "parameters", parameters,
-            "sequence_a", sol->A,
-            "sequence_b", sol->B);
-
+    flint_free(_solution_count_string);
     flint_free(A);
     flint_free(B);
     solution_clear(sol);
     model_params_clear(p);
-    if (sol->mat)
-    {
-        dp_mat_clear(sol->mat);
-    }
+    dp_mat_clear(tableau);
 
     return j_out;
 }
@@ -144,7 +121,7 @@ json_t *run(void * userdata, json_t *root)
 
 
 void
-solve(tkf91_dp_fn f, solution_t sol, double rtol, const model_params_t p,
+solve(fmpz_t res, solution_t sol, const model_params_t p,
         const slong *A, slong szA, const slong *B, slong szB)
 {
     tkf91_rationals_t r;
@@ -176,9 +153,9 @@ solve(tkf91_dp_fn f, solution_t sol, double rtol, const model_params_t p,
     /* init request object */
     req->png_filename = NULL;
     req->trace = 1;
-    req->rtol = rtol;
 
-    f(sol, req, mat, expressions_table, generators, A, szA, B, szB);
+    tkf91_dp_high(sol, req, mat, expressions_table, generators, A, szA, B, szB);
+    count_solutions(res, sol->mat);
 
     fmpz_mat_clear(mat);
     flint_free(expressions_table);

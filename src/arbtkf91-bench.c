@@ -7,8 +7,7 @@
  * "ticks_per_second" : integer,
  * "elapsed_ticks" : [integer, integer, ..., integer],
  * "sequence_a" : string,
- * "sequence_b" : string,
- * "verified" : bool
+ * "sequence_b" : string
  * }
  *
  */
@@ -112,15 +111,15 @@ json_t *run(void * userdata, json_t *root)
         f = tkf91_dp_d;
     }
     else if (strcmp(precision, "mag") == 0) {
-        f = tkf91_dp_bound;
+        f = tkf91_dp_mag;
     }
-    else if (strcmp(precision, "arb256") == 0) {
-        f = tkf91_dp_r;
+    else if (strcmp(precision, "high") == 0) {
+        f = tkf91_dp_high;
     }
     else
     {
         fprintf(stderr, "expected the precision string to be one of ");
-        fprintf(stderr, "{'float' | 'double' | 'mag' | 'arb256'}\n");
+        fprintf(stderr, "{'float' | 'double' | 'mag' | 'high'}\n");
         abort();
     }
 
@@ -141,12 +140,11 @@ json_t *run(void * userdata, json_t *root)
         json_array_append_new(elapsed_ticks, json_integer((json_int_t) diff));
     }
 
-    j_out = json_pack("{s:i, s:o, s:s, s:s, s:b}",
+    j_out = json_pack("{s:i, s:o, s:s, s:s}",
             "ticks_per_second", (json_int_t) CLOCKS_PER_SEC,
             "elapsed_ticks", elapsed_ticks,
             "sequence_a", sol->A,
-            "sequence_b", sol->B,
-            "verified", sol->optimality_flag);
+            "sequence_b", sol->B);
 
     flint_free(A);
     flint_free(B);

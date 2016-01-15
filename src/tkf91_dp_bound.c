@@ -30,13 +30,13 @@ typedef struct
 typedef tkf91_values_struct tkf91_values_t[1];
 
 
-void tkf91_values_init(tkf91_values_t h,
+static void tkf91_values_init(tkf91_values_t h,
         const tkf91_generator_indices_t g,
         mag_ptr m);
 
-void tkf91_values_clear(tkf91_values_t h);
+static void tkf91_values_clear(tkf91_values_t h);
 
-void _bounds_init(tkf91_values_t lb, tkf91_values_t ub,
+static void _bounds_init(tkf91_values_t lb, tkf91_values_t ub,
         fmpz_mat_t mat, expr_ptr * expressions_table,
         const tkf91_generator_indices_t g);
 
@@ -496,7 +496,7 @@ _visit(void *userdata, dp_mat_t mat,
 
 
 void
-tkf91_dp_bound(
+tkf91_dp_mag(
         solution_t sol, const request_t req,
         fmpz_mat_t mat, expr_ptr * expressions_table,
         const tkf91_generator_indices_t g,
@@ -516,13 +516,13 @@ tkf91_dp_bound(
 
     if (!req->trace)
     {
-        fprintf(stderr, "tkf91_dp_bound: req->trace is required\n");
+        fprintf(stderr, "tkf91_dp_mag: req->trace is required\n");
         abort();
     }
 
     if (!sol->mat)
     {
-        fprintf(stderr, "tkf91_dp_bound: sol->mat is required\n");
+        fprintf(stderr, "tkf91_dp_mag: sol->mat is required\n");
         abort();
     }
 
@@ -531,7 +531,7 @@ tkf91_dp_bound(
     if (nrows != (slong) szA + 1 ||
         ncols != (slong) szB + 1)
     {
-        fprintf(stderr, "tkf91_dp_bound: the sequence lengths are ");
+        fprintf(stderr, "tkf91_dp_mag: the sequence lengths are ");
         fprintf(stderr, "incompatible with the tableau dimensions\n");
         abort();
     }

@@ -23,8 +23,7 @@ The command line program uses json on stdin and stdout as follows.
         "tau" : {"num" : 1, "denom" : 10}
     },
     "sequence_a": "ACGACTAGTCA-GC-TACG-AT-CGA-CT-C-ATTCAACTGACTGACA-TCGACTTA",
-    "sequence_b": "A-GAG-AGTAATGCATACGCATGC-ATCTGCTATTC---TG-CTG-CAGTGG--T-A",
-    "verified": true
+    "sequence_b": "A-GAG-AGTAATGCATACGCATGC-ATCTGCTATTC---TG-CTG-CAGTGG--T-A"
 }
 ```
 
