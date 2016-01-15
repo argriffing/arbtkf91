@@ -230,12 +230,6 @@ solve(solution_t sol, const model_params_t p,
     slong szA = sequences->len_A;
     slong *B = sequences->B;
     slong szB = sequences->len_B;
-    int verbose = 0;
-    FILE * file = NULL;
-    if (verbose)
-    {
-        file = stderr;
-    }
 
     /* expressions registry and (refining) generator registry */
     reg_t er;
@@ -257,7 +251,6 @@ solve(solution_t sol, const model_params_t p,
     expressions_table = reg_vec(er);
 
     /* init request object */
-    req->png_filename = NULL;
     req->trace = 1;
 
     tkf91_dp_high(

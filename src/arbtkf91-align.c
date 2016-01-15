@@ -174,7 +174,6 @@ solve(tkf91_dp_fn f, solution_t sol, double rtol, const model_params_t p,
     expressions_table = reg_vec(er);
 
     /* init request object */
-    req->png_filename = NULL;
     req->trace = 1;
     req->rtol = rtol;
 

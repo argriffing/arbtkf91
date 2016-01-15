@@ -6,8 +6,6 @@
  * cannot even be represented in json except as a string.
  */
 
-#include <time.h>
-
 #include "flint/flint.h"
 #include "flint/fmpq.h"
 
@@ -23,10 +21,8 @@
 #include "count_solutions.h"
 
 
-
-void
-solve(tkf91_dp_fn f, solution_t sol, const model_params_t p,
-        const slong *A, slong len_A, const slong *B, slong len_B);
+void solve(fmpz_t res, solution_t sol, const model_params_t p,
+        const slong *A, slong szA, const slong *B, slong szB);
 
 
 json_t *run(void * userdata, json_t *root);
@@ -108,7 +104,7 @@ json_t *run(void * userdata, json_t *root)
     j_out = json_pack("{s:s}",
             "number_of_optimal_alignments", solution_count_string);
 
-    flint_free(_solution_count_string);
+    flint_free(solution_count_string);
     flint_free(A);
     flint_free(B);
     solution_clear(sol);
@@ -151,7 +147,6 @@ solve(fmpz_t res, solution_t sol, const model_params_t p,
     expressions_table = reg_vec(er);
 
     /* init request object */
-    req->png_filename = NULL;
     req->trace = 1;
 
     tkf91_dp_high(sol, req, mat, expressions_table, generators, A, szA, B, szB);

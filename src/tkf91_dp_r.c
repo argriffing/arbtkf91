@@ -17,6 +17,7 @@
 #include "forward.h"
 #include "printutil.h"
 #include "unused.h"
+#include "bound_mat.h"
 
 
 typedef struct
@@ -398,7 +399,6 @@ _visit(void *userdata, dp_mat_t mat,
         void *curr, void *top, void *diag, void *left)
 {
     utility_ptr p = userdata;
-    tkf91_values_ptr h = p->h;
     cell_ptr c = curr;
     dp_t *px = dp_mat_entry(mat, i, j);
     dp_t x = *px;
