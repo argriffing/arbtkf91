@@ -136,6 +136,12 @@ Examples
 [7957, 7407, 4340, 4354, 4357, 4315, 4350, 4323, 4336, 4324]
 ```
 
+`examples$ jq '.samples=10 | .precision="high"' in1k.json | arbtkf91-bench | jq '. | .elapsed_ticks'`
+```javascript
+[211531, 211210, 210721, 210981, 210999, 211034, 211010, 210787, 211070, 203003]
+```
+
+
 ### check
 
 `examples$ arbtkf91-align < in.json | arbtkf91-check`

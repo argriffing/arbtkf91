@@ -56,6 +56,7 @@ json_t *run(void * userdata, json_t *root)
     double rtol;
     json_error_t err;
     size_t flags;
+    slong nrows, ncols;
 
     if (userdata)
     {
@@ -106,10 +107,15 @@ json_t *run(void * userdata, json_t *root)
     B = flint_malloc(len_B * sizeof(slong));
     _fill_sequence_vector(B, sequence_b, len_B);
 
+    nrows = len_A + 1;
+    ncols = len_B + 1;
+
     /* dispatch */
     tkf91_dp_fn f = NULL;
+    int requires_tableau = 0;
     if (precision == NULL) {
         f = tkf91_dp_high;
+        requires_tableau = 1;
     }
     else if (strcmp(precision, "float") == 0) {
         f = tkf91_dp_f;
@@ -119,9 +125,11 @@ json_t *run(void * userdata, json_t *root)
     }
     else if (strcmp(precision, "mag") == 0) {
         f = tkf91_dp_mag;
+        requires_tableau = 1;
     }
     else if (strcmp(precision, "high") == 0) {
         f = tkf91_dp_high;
+        requires_tableau = 1;
     }
     else
     {
@@ -134,11 +142,21 @@ json_t *run(void * userdata, json_t *root)
     clock_t start, diff;
     json_t *elapsed_ticks;
     elapsed_ticks = json_array();
+    dp_mat_t tableau;
     for (i = 0; i < samples; i++)
     {
         start = clock();
         solution_init(sol, len_A + len_B);
+        if (requires_tableau)
+        {
+            dp_mat_init(tableau, nrows, ncols);
+            sol->mat = tableau;
+        }
         solve(f, sol, rtol, p, A, len_A, B, len_B);
+        if (requires_tableau)
+        {
+            dp_mat_clear(tableau);
+        }
         if (i < samples - 1)
         {
             solution_clear(sol);
