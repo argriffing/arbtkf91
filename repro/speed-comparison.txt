@@ -8,46 +8,46 @@ Seq1 length: 100  Seq2 length: 100
 Elapsed Time in millisecs: 0
 Doing benchmark 2
 Seq1 length: 1000  Seq2 length: 1000
-Elapsed Time in millisecs: 5.5
+Elapsed Time in millisecs: 5.6
 Doing benchmark 3
 Seq1 length: 10000  Seq2 length: 10000
-Elapsed Time in millisecs: 772.1
+Elapsed Time in millisecs: 1944.8
 Benchmarked succesfully!
 ~/git-repos/arbtkf91/repro
 
 python bench-compare.py --sequences=../../bioinf2015/implementation-team2/doc/sequences --precision=float
 benchmark 0 ...
 seq1 length: 10 seq2 length: 10
-elapsed milliseconds: 0.2485
+elapsed milliseconds: 0.2452
 
 benchmark 1 ...
 seq1 length: 100 seq2 length: 100
-elapsed milliseconds: 0.2843
+elapsed milliseconds: 0.2813
 
 benchmark 2 ...
 seq1 length: 1000 seq2 length: 1000
-elapsed milliseconds: 3.7535
+elapsed milliseconds: 3.7534
 
 benchmark 3 ...
 seq1 length: 10000 seq2 length: 10000
-elapsed milliseconds: 451.2365
+elapsed milliseconds: 449.7887
 
 
 python bench-compare.py --sequences=../../bioinf2015/implementation-team2/doc/sequences --precision=double
 benchmark 0 ...
 seq1 length: 10 seq2 length: 10
-elapsed milliseconds: 0.2492
+elapsed milliseconds: 0.2468
 
 benchmark 1 ...
 seq1 length: 100 seq2 length: 100
-elapsed milliseconds: 0.291
+elapsed milliseconds: 0.2923
 
 benchmark 2 ...
 seq1 length: 1000 seq2 length: 1000
-elapsed milliseconds: 4.8875
+elapsed milliseconds: 5.0466
 
 benchmark 3 ...
 seq1 length: 10000 seq2 length: 10000
-elapsed milliseconds: 706.3818
+elapsed milliseconds: 1759.8773
 
 

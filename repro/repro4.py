@@ -56,13 +56,10 @@ def main(args):
                 sequence_a=d['sequence_a'],
                 sequence_b=d['sequence_b'])
             d = runjson([check], j_in)
-            if d['alignment_is_canonical'] == 'yes':
+            if d['alignment_is_canonical']:
                 ncanon += 1
-            if d['alignment_is_optimal'] == 'yes':
+            if d['alignment_is_optimal']:
                 nopt += 1
-            #if d['alignment_is_canonical'] == 'no':
-                #print('a:', a)
-                #print('b:', b)
             k += 1
         print('total number of alignments:', k)
         print('number of optimal alignments:', nopt)
@@ -75,7 +72,7 @@ if __name__ == '__main__':
     parser.add_argument('--bench-data', required=True,
             help='benchmark data directory')
     parser.add_argument('--precision', required=True,
-            choices=('float', 'double', 'mag', 'arb256'))
+            choices=('float', 'double', 'mag', 'high'))
     parser.add_argument('--rtol', type=float, default=0.0,
             help="relative tolerance for float and double precision")
     args = parser.parse_args()

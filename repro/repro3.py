@@ -78,9 +78,9 @@ def main(args):
             a_aln = lines[2]
             b_aln = lines[3]
             js = check_pair(a_aln, b_aln)
-            if js['alignment_is_canonical'] == 'yes':
+            if js['alignment_is_canonical']:
                 ncanon += 1
-            if js['alignment_is_optimal'] == 'yes':
+            if js['alignment_is_optimal']:
                 nopt += 1
             k += 1
         print(name)
