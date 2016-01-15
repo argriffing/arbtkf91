@@ -55,9 +55,13 @@ json_t *run(void * userdata, json_t *root)
         abort();
     }
 
+    /* default values of optional json arguments */
+    rtol = 0;
+    precision = NULL;
+
     flags = JSON_STRICT;
     result = json_unpack_ex(root, &err, flags,
-            "{s:O, s:s, s:s, s:F, s:s}",
+            "{s:O, s:s, s:s, s?F, s?s}",
             "parameters", &parameters,
             "sequence_a", &sequence_a,
             "sequence_b", &sequence_b,
@@ -100,7 +104,13 @@ json_t *run(void * userdata, json_t *root)
     /* dispatch, initializing a tableau if necessary */
     dp_mat_t tableau;
     tkf91_dp_fn f = NULL;
-    if (strcmp(precision, "float") == 0) {
+    if (precision == NULL) {
+        /* by default use high precision */
+        f = tkf91_dp_high;
+        dp_mat_init(tableau, nrows, ncols);
+        sol->mat = tableau;
+    }
+    else if (strcmp(precision, "float") == 0) {
         f = tkf91_dp_f;
     }
     else if (strcmp(precision, "double") == 0) {

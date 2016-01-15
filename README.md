@@ -170,6 +170,11 @@ These example commands assume that the current directory is `examples`.
 
 ### count
 
+`$ arbtkf91-count < in.json`
+```javascript
+{"number_of_optimal_alignments": "56"}
+```
+
 
 ### image
 

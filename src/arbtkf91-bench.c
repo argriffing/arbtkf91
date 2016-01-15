@@ -1,6 +1,6 @@
 /*
  * Benchmark an alignment strategy.
- * The json form is used for both the input and the output.
+ * The json format is used for both the input and the output.
  *
  * output:
  * {
@@ -63,9 +63,13 @@ json_t *run(void * userdata, json_t *root)
         abort();
     }
 
+    /* default values of optional json arguments */
+    rtol = 0;
+    precision = NULL;
+
     flags = JSON_STRICT;
     result = json_unpack_ex(root, &err, flags,
-            "{s:o, s:s, s:s, s:i, s:F, s:s}",
+            "{s:o, s:s, s:s, s:i, s?F, s?s}",
             "parameters", &parameters,
             "sequence_a", &sequence_a,
             "sequence_b", &sequence_b,
@@ -104,7 +108,10 @@ json_t *run(void * userdata, json_t *root)
 
     /* dispatch */
     tkf91_dp_fn f = NULL;
-    if (strcmp(precision, "float") == 0) {
+    if (precision == NULL) {
+        f = tkf91_dp_high;
+    }
+    else if (strcmp(precision, "float") == 0) {
         f = tkf91_dp_f;
     }
     else if (strcmp(precision, "double") == 0) {
