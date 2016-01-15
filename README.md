@@ -3,10 +3,21 @@ Introduction
 
 The arbtkf91 program tries to compute the maximum probability tkf91 alignment
 for a given sequence pair and set of parameter values.
-The numerical error is controlled in such a way that for many inputs
-it is possible to verify that the alignment is optimal.
 
-The command line program uses json on stdin and stdout as follows.
+Numerical error is controlled using the
+[exact computation paradigm](http://www.cgal.org/exact.html),
+so that for many inputs it is possible to verify that the alignment is optimal.
+This involves comparing alignment scores and using combinatorics tricks to
+identify situations where scores are exactly equal.
+If the comparison is inconclusive, then the scores are re-evaluated
+with increased numerical precision.
+Unlike CGAL, the combinatorics tricks used by arbtkf91 are probably not
+comprehensive, so it may be possible that the program will hang
+as precision is fruitlessly increased in an attempt to distinguish
+between identical scores.
+
+The program runs on the command line using the [json](http://www.json.org/)
+format for input and output.
 
 `$ arbtkf91-align < examples/in.json`
 
