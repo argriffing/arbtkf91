@@ -105,7 +105,7 @@ int write_tableau_image(const char * filename,
     png_infop info_ptr;
     int code, width, height;
     png_byte r, g, b, a;
-    dp_t curr, top, diag, left;
+    dp_t curr;
 
     fout = NULL;
     png_ptr = NULL;
@@ -171,7 +171,6 @@ int write_tableau_image(const char * filename,
     png_write_info(png_ptr, info_ptr);
 
     /* write image data one row at a time */
-    dp_t want_any = (CRUMB_WANT2 | CRUMB_WANT3);
     int i, j, di, dj;
     buf_t buf;
     buf_init(buf, nrows, ncols);
@@ -183,23 +182,23 @@ int write_tableau_image(const char * filename,
         for (j = 0; j < ncols; j++)
         {
             curr = *dp_mat_entry(mat, i, j);
-            top = diag = left = 0;
-            if (i) top = *dp_mat_entry(mat, i-1, j);
-            if (i && j) diag = *dp_mat_entry(mat, i-1, j-1);
-            if (j) left = *dp_mat_entry(mat, i, j-1);
 
             /*
              * Draw this tableau cell and its connections to its
              * neighbors with non-larger row or column indices.
+             *
+             * Note that it's not important to be careful about
+             * drawing connections from tableau cells on the boundary,
+             * because those boundary pixels will be written into the png.
              */
 
             /* draw the cell itself, without connections */
             r = 0; g = 0; b = 0; a = 0;
-            if (curr & CRUMB_CONTENDER) {
+            if (curr & DP_TRACE) {
                 _myblue(&r, &g, &b, &a);
-            } else if (curr & CRUMB_WANT3) {
+            } else if (curr & DP_MAX3) {
                 _firebrick(&r, &g, &b, &a);
-            } else if (curr & CRUMB_WANT2) {
+            } else if (curr & DP_MAX2) {
                 r = 0; g = 255; b = 0; a = 255;
             } else {
                 r = 245; g = 245; b = 245; a = 255;
@@ -210,62 +209,42 @@ int write_tableau_image(const char * filename,
                 }
             }
 
-            /* top connections */
-            if ((curr & want_any) && (top & want_any))
+            /* top connection */
+            if (dp_m0_is_interesting(curr))
             {
-                r = 0; b = 0; g = 0; a=0;
-                if (curr & CRUMB_TOP)
+                r = 0; g = 255; b = 0; a=255;
+                if ((curr & DP_TRACE) && (curr & DP_MAX3_M0))
                 {
-                    r = 0; g = 255; b = 0; a = 255;
-                }
-                if ((top & CRUMB_CONTENDER) && (curr & CRUMB_CONTENDER))
-                {
-                    if (curr & CRUMB_TOP)
-                    {
-                        _myblue(&r, &g, &b, &a);
-                    }
+                    _myblue(&r, &g, &b, &a);
                 }
                 buf_set_rgba(buf, j, 0, 3, r, g, b, a);
                 buf_set_rgba(buf, j, 1, 3, r, g, b, a);
             }
 
-            /* left connections */
-            if ((curr & want_any) && (left & want_any))
+            /* diagonal connection */
+            if (dp_m1_is_interesting(curr))
             {
-                r = 0; b = 0; g = 0; a = 0;
-                if (curr & CRUMB_LEFT2)
+                r = 0; g = 255; b = 0; a=255;
+                if ((curr & DP_TRACE) && (curr & DP_MAX3_M1))
                 {
-                    r = 0; g = 255; b = 0; a = 255;
+                    _myblue(&r, &g, &b, &a);
                 }
-                if ((left & CRUMB_CONTENDER) && (curr & CRUMB_CONTENDER))
+                buf_set_rgba(buf, j, 0, 0, r, g, b, a);
+                buf_set_rgba(buf, j, 1, 1, r, g, b, a);
+            }
+
+            /* left connection */
+            if (dp_m2_is_interesting(curr))
+            {
+                r = 0; g = 255; b = 0; a=255;
+                if ((curr & DP_TRACE) && (curr & DP_MAX3_M2))
                 {
-                    if (curr & CRUMB_LEFT)
-                    {
-                        _myblue(&r, &g, &b, &a);
-                    }
+                    _myblue(&r, &g, &b, &a);
                 }
                 buf_set_rgba(buf, j, 3, 0, r, g, b, a);
                 buf_set_rgba(buf, j, 3, 1, r, g, b, a);
             }
 
-            /* diagonal connections */
-            if ((curr & want_any) && (diag & want_any))
-            {
-                r = 0; b = 0; g = 0; a = 0;
-                if (curr & CRUMB_DIAG2)
-                {
-                    r = 0; g = 255; b = 0; a = 255;
-                }
-                if ((diag & CRUMB_CONTENDER) && (curr & CRUMB_CONTENDER))
-                {
-                    if (curr & CRUMB_DIAG)
-                    {
-                        _myblue(&r, &g, &b, &a);
-                    }
-                }
-                buf_set_rgba(buf, j, 0, 0, r, g, b, a);
-                buf_set_rgba(buf, j, 1, 1, r, g, b, a);
-            }
         }
 
         /* write the row, trimming off the first two rows and cols of pixels */
@@ -378,11 +357,11 @@ int write_simple_tableau_image(const char * filename,
 
             /* draw the cell itself, without connections */
             r = 0; g = 0; b = 0; a = 0;
-            if (curr & CRUMB_CONTENDER) {
+            if (curr & DP_TRACE) {
                 _myblue(&r, &g, &b, &a);
-            } else if (curr & CRUMB_WANT3) {
+            } else if (curr & DP_MAX3) {
                 _firebrick(&r, &g, &b, &a);
-            } else if (curr & CRUMB_WANT2) {
+            } else if (curr & DP_MAX2) {
                 r = 0; g = 255; b = 0; a = 255;
             }
             pixel_row[PIXEL_WIDTH * j + 0] = r;
