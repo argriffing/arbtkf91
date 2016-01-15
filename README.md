@@ -31,8 +31,6 @@ The command line program uses json on stdin and stdout as follows.
 
 ```javascript
 {
-    "precision" : "mag",
-    "rtol" : 0,
     "parameters" :
     {
         "pa" : {"num" : 25, "denom" : 100},
@@ -113,11 +111,9 @@ with the `$ nosetests -v` command.
 Examples
 --------
 
-These example commands assume that the current directory is `examples`.
-
 ### align
 
-`$ arbtkf91-align < in.json | jq '. | {a: .sequence_a, b: .sequence_b}'`
+`examples$ arbtkf91-align < in.json | jq '. | {a: .sequence_a, b: .sequence_b}'`
 
 
 ```javascript
@@ -130,19 +126,19 @@ These example commands assume that the current directory is `examples`.
 
 ### bench
 
-`$ jq '.samples=10 | .precision="float"' in1k.json | arbtkf91-bench | jq '. | .elapsed_ticks'`
+`examples$ jq '.samples=10 | .precision="float"' in1k.json | arbtkf91-bench | jq '. | .elapsed_ticks'`
 ```javascript
 [5206, 4800, 3439, 3425, 3425, 3412, 3434, 3420, 3413, 3410]
 ```
 
-`$ jq '.samples=10 | .precision="double"' in1k.json | arbtkf91-bench | jq '. | .elapsed_ticks'`
+`examples$ jq '.samples=10 | .precision="double"' in1k.json | arbtkf91-bench | jq '. | .elapsed_ticks'`
 ```javascript
 [7957, 7407, 4340, 4354, 4357, 4315, 4350, 4323, 4336, 4324]
 ```
 
 ### check
 
-`$ arbtkf91-align < in.json | arbtkf91-check`
+`examples$ arbtkf91-align < in.json | arbtkf91-check`
 ```javascript
 {
     "alignment_is_optimal": true,
@@ -151,7 +147,7 @@ These example commands assume that the current directory is `examples`.
 ```
 
 
-`$ jq '.precision="float" | .rtol=3e-7' fails-high-tolerance.json | arbtkf91-align | arbtkf91-check`
+`examples$ jq '.precision="float" | .rtol=3e-7' fails-high-tolerance.json | arbtkf91-align | arbtkf91-check`
 ```javascript
 {
     "alignment_is_optimal": false,
@@ -159,7 +155,7 @@ These example commands assume that the current directory is `examples`.
 }
 ```
 
-`$ jq '.precision="float" | .rtol=3e-7' needs-high-tolerance.json | arbtkf91-align | arbtkf91-check`
+`examples$ jq '.precision="float" | .rtol=3e-7' needs-high-tolerance.json | arbtkf91-align | arbtkf91-check`
 ```javascript
 {
     "alignment_is_optimal": true,
@@ -170,7 +166,7 @@ These example commands assume that the current directory is `examples`.
 
 ### count
 
-`$ arbtkf91-count < in.json`
+`examples$ arbtkf91-count < in.json`
 ```javascript
 {"number_of_optimal_alignments": "56"}
 ```
@@ -178,11 +174,11 @@ These example commands assume that the current directory is `examples`.
 
 ### image
 
-`$ jq '.image_mode="full" | .image_filename="tableau.png"' in.json | arbtkf91-image`
+`examples$ jq '.image_mode="full" | .image_filename="tableau.png"' in.json | arbtkf91-image`
 
 ![tableau](https://github.com/argriffing/arbtkf91/blob/master/examples/tableau.png)
 
 
-`$ jq '.image_mode="simple" | .image_filename="needs-high.tableau.png"' needs-high-tolerance.json | arbtkf91-image`
+`examples$ jq '.image_mode="simple" | .image_filename="needs-high.tableau.png"' needs-high-tolerance.json | arbtkf91-image`
 
 ![tableau](https://github.com/argriffing/arbtkf91/blob/master/examples/needs-high.tableau.png)
