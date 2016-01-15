@@ -1,18 +1,10 @@
 /*
- * Benchmark an alignment strategy.
- * The json format is used for both the input and the output.
- *
- * output:
- * {
- * "ticks_per_second" : integer,
- * "elapsed_ticks" : [integer, integer, ..., integer],
- * "sequence_a" : string,
- * "sequence_b" : string
- * }
- *
+ * Count the number of optimal sequences.
+ * Input and output uses json for consistency with the other scripts,
+ * although that seems somewhat silly in this case because the
+ * output is just a single number that is likely so large that it
+ * cannot even be represented in json except as a string.
  */
-
-#include <time.h>
 
 #include "flint/flint.h"
 #include "flint/fmpq.h"
@@ -21,20 +13,16 @@
 
 #include "runjson.h"
 #include "jsonutil.h"
-#include "tkf91_dp_f.h"
-#include "tkf91_dp_d.h"
 #include "tkf91_dp_r.h"
-#include "tkf91_dp_bound.h"
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
 #include "model_params.h"
 #include "json_model_params.h"
+#include "count_solutions.h"
 
 
-
-void
-solve(tkf91_dp_fn f, solution_t sol, double rtol, const model_params_t p,
-        const slong *A, slong len_A, const slong *B, slong len_B);
+void solve(fmpz_t res, solution_t sol, const model_params_t p,
+        const slong *A, slong szA, const slong *B, slong szB);
 
 
 json_t *run(void * userdata, json_t *root);
@@ -48,14 +36,13 @@ json_t *run(void * userdata, json_t *root)
     slong *B;
     solution_t sol;
     int result;
-    int samples;
-    json_t * parameters;
+    json_t *parameters;
     const char * sequence_a;
     const char * sequence_b;
-    const char * precision;
-    double rtol;
     json_error_t err;
     size_t flags;
+    slong nrows, ncols;
+    dp_mat_t tableau;
 
     if (userdata)
     {
@@ -63,19 +50,12 @@ json_t *run(void * userdata, json_t *root)
         abort();
     }
 
-    /* default values of optional json arguments */
-    rtol = 0;
-    precision = NULL;
-
     flags = JSON_STRICT;
     result = json_unpack_ex(root, &err, flags,
-            "{s:o, s:s, s:s, s:i, s?F, s?s}",
+            "{s:O, s:s, s:s}",
             "parameters", &parameters,
             "sequence_a", &sequence_a,
-            "sequence_b", &sequence_b,
-            "samples", &samples,
-            "rtol", &rtol,
-            "precision", &precision);
+            "sequence_b", &sequence_b);
     if (result)
     {
         fprintf(stderr, "error: on line %d: %s\n", err.line, err.text);
@@ -106,57 +86,30 @@ json_t *run(void * userdata, json_t *root)
     B = flint_malloc(len_B * sizeof(slong));
     _fill_sequence_vector(B, sequence_b, len_B);
 
-    /* dispatch */
-    tkf91_dp_fn f = NULL;
-    if (precision == NULL) {
-        f = tkf91_dp_high;
-    }
-    else if (strcmp(precision, "float") == 0) {
-        f = tkf91_dp_f;
-    }
-    else if (strcmp(precision, "double") == 0) {
-        f = tkf91_dp_d;
-    }
-    else if (strcmp(precision, "mag") == 0) {
-        f = tkf91_dp_mag;
-    }
-    else if (strcmp(precision, "high") == 0) {
-        f = tkf91_dp_high;
-    }
-    else
+    nrows = len_A + 1;
+    ncols = len_B + 1;
+    solution_init(sol, len_A + len_B);
+    dp_mat_init(tableau, nrows, ncols);
+    sol->mat = tableau;
+
+    char * solution_count_string;
     {
-        fprintf(stderr, "expected the precision string to be one of ");
-        fprintf(stderr, "{'float' | 'double' | 'mag' | 'high'}\n");
-        abort();
+        fmpz_t count;
+        fmpz_init(count);
+        solve(count, sol, p, A, len_A, B, len_B);
+        solution_count_string = fmpz_get_str(NULL, 10, count);
+        fmpz_clear(count);
     }
 
-    int i;
-    clock_t start, diff;
-    json_t *elapsed_ticks;
-    elapsed_ticks = json_array();
-    for (i = 0; i < samples; i++)
-    {
-        start = clock();
-        solution_init(sol, len_A + len_B);
-        solve(f, sol, rtol, p, A, len_A, B, len_B);
-        if (i < samples - 1)
-        {
-            solution_clear(sol);
-        }
-        diff = clock() - start;
-        json_array_append_new(elapsed_ticks, json_integer((json_int_t) diff));
-    }
+    j_out = json_pack("{s:s}",
+            "number_of_optimal_alignments", solution_count_string);
 
-    j_out = json_pack("{s:i, s:o, s:s, s:s}",
-            "ticks_per_second", (json_int_t) CLOCKS_PER_SEC,
-            "elapsed_ticks", elapsed_ticks,
-            "sequence_a", sol->A,
-            "sequence_b", sol->B);
-
+    flint_free(solution_count_string);
     flint_free(A);
     flint_free(B);
     solution_clear(sol);
     model_params_clear(p);
+    dp_mat_clear(tableau);
 
     return j_out;
 }
@@ -164,7 +117,7 @@ json_t *run(void * userdata, json_t *root)
 
 
 void
-solve(tkf91_dp_fn f, solution_t sol, double rtol, const model_params_t p,
+solve(fmpz_t res, solution_t sol, const model_params_t p,
         const slong *A, slong szA, const slong *B, slong szB)
 {
     tkf91_rationals_t r;
@@ -195,9 +148,9 @@ solve(tkf91_dp_fn f, solution_t sol, double rtol, const model_params_t p,
 
     /* init request object */
     req->trace = 1;
-    req->rtol = rtol;
 
-    f(sol, req, mat, expressions_table, generators, A, szA, B, szB);
+    tkf91_dp_high(sol, req, mat, expressions_table, generators, A, szA, B, szB);
+    count_solutions(res, sol->mat);
 
     fmpz_mat_clear(mat);
     flint_free(expressions_table);

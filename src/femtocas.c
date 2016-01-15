@@ -2,6 +2,7 @@
 #include "flint/fmpq.h"
 #include "arb.h"
 #include "femtocas.h"
+#include "unused.h"
 
 
 /* generic expression initialization */

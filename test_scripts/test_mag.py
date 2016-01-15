@@ -78,8 +78,8 @@ def check_mag(model_params, a, b):
         sequence_a=d['sequence_a'],
         sequence_b=d['sequence_b'])
     d = runjson([check], j_in)
-    assert_equal(d['alignment_is_canonical'], 'yes')
-    assert_equal(d['alignment_is_optimal'], 'yes')
+    assert_equal(d['alignment_is_canonical'], True)
+    assert_equal(d['alignment_is_optimal'], True)
 
 def check_for_smoke(precision, rtol, model_params, a, b):
     # smoke test for float and double precision

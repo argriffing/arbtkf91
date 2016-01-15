@@ -13,5 +13,5 @@ $ cd ..
 $ nosetests
 
 Another configure option:
-$ ../configure CPPFLAGS='-I/usr/local/include/flint' --prefix=~/.local CFLAGS='-march=native -O3 -ffast-math -g'
+$ ../configure CPPFLAGS='-I/usr/local/include/flint' --prefix=~/.local CFLAGS='-march=native -O3 -ffast-math -g -Wall -Wextra'
 

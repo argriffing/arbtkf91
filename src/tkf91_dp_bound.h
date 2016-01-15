@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 
-void tkf91_dp_bound(
+void tkf91_dp_mag(
         solution_t, const request_t,
         fmpz_mat_t mat, expr_ptr * expressions_table,
         const tkf91_generator_indices_t g,

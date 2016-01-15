@@ -4,13 +4,12 @@
  *
  * Output format:
  * {
- * "alignment_is_optimal" : "yes" | "no" | "undetermined",
- * "alignment_is_canonical" : "yes" | "no" | "undetermined",
- * "number_of_optimal_alignments" : <integer-as-string> | "undetermined"
+ * "alignment_is_optimal" : bool,
+ * "alignment_is_canonical" : bool
  * }
- * The number of optimal alignments is reported as a json string instead
- * of as a json integer because it is likely to overflow json integer capacity.
  */
+
+#include <time.h>
 
 #include "flint/flint.h"
 #include "flint/fmpq.h"
@@ -20,10 +19,13 @@
 #include "runjson.h"
 #include "jsonutil.h"
 #include "tkf91_dp_bound.h"
+#include "tkf91_dp_r.h"
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
 #include "model_params.h"
 #include "json_model_params.h"
+#include "bound_mat.h"
+#include "printutil.h"
 
 
 typedef struct
@@ -121,13 +123,14 @@ json_t *run(void * userdata, json_t *root)
     slong *A;
     slong *B;
     solution_t sol;
-    breadcrumb_mat_t crumb_mat;
+    dp_mat_t tableau;
     int result;
     const char * sequence_a;
     const char * sequence_b;
     json_t * parameters;
     json_error_t err;
     size_t flags;
+    slong nrows, ncols;
 
     if (userdata)
     {
@@ -180,45 +183,33 @@ json_t *run(void * userdata, json_t *root)
     alignment_init(aln, A, B, len_A);
     sequence_pair_init(sequences, aln);
 
-    /* init the tableau mask */
-    breadcrumb_mat_init(crumb_mat, sequences->len_A + 1, sequences->len_B + 1);
-
     /* init the solution object */
-    solution_init(sol, sequences->len_A + sequences->len_B);
+    nrows = sequences->len_A + 1;
+    ncols = sequences->len_B + 1;
+    solution_init(sol, nrows + ncols);
 
-    /* connect the tableau mask to the solution object */
-    sol->pmask = crumb_mat;
+    /* init the tableau and connect it to the solution object */
+    dp_mat_init(tableau, nrows, ncols);
+    sol->mat = tableau;
 
     /* do enough of the traceback to get the solution mask */
     solve(sol, p, sequences);
 
     int optimal;
     int canonical;
-    breadcrumb_mat_check_alignment(
-            &optimal, &canonical, sol->pmask,
+    dp_mat_check_alignment(
+            &optimal, &canonical, sol->mat,
             aln->A, aln->B, aln->len);
 
-    char * solution_count_string;
-    char * _solution_count_string = NULL;
-    char undetermined[] = "undetermined";
-    solution_count_string = undetermined;
-    if (sol->has_best_tie_count)
-    {
-        _solution_count_string = fmpz_get_str(NULL, 10, sol->best_tie_count);
-        solution_count_string = _solution_count_string;
-    }
-
-    j_out = json_pack("{s:s, s:s, s:s}",
-            "alignment_is_optimal", (optimal ? "yes" : "no"),
-            "alignment_is_canonical", (canonical ? "yes" : "no"),
-            "number_of_optimal_alignments", solution_count_string);
+    j_out = json_pack("{s:b, s:b}",
+            "alignment_is_optimal", optimal,
+            "alignment_is_canonical", canonical);
 
     solution_clear(sol);
     model_params_clear(p);
     alignment_clear(aln);
     sequence_pair_clear(sequences);
-    flint_free(_solution_count_string);
-    breadcrumb_mat_clear(crumb_mat);
+    dp_mat_clear(tableau);
 
     return j_out;
 }
@@ -260,10 +251,9 @@ solve(solution_t sol, const model_params_t p,
     expressions_table = reg_vec(er);
 
     /* init request object */
-    req->png_filename = NULL;
     req->trace = 1;
 
-    tkf91_dp_bound(
+    tkf91_dp_high(
             sol, req, mat, expressions_table, generators,
             A, szA, B, szB);
 

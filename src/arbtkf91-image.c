@@ -2,8 +2,6 @@
  * Visualize the tableau.
  */
 
-#include <time.h>
-
 #include "flint/flint.h"
 #include "flint/fmpq.h"
 
@@ -11,11 +9,14 @@
 
 #include "runjson.h"
 #include "jsonutil.h"
-#include "tkf91_dp_bound.h"
+#include "tkf91_dp_r.h"
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
 #include "model_params.h"
 #include "json_model_params.h"
+#include "printutil.h"
+#include "dp.h"
+#include "vis.h"
 
 
 
@@ -51,7 +52,7 @@ json_t *run(void * userdata, json_t *root)
     }
 
     flags = JSON_STRICT;
-    json_unpack(root, "{s:o, s:s, s:s, s:s, s:s}",
+    result = json_unpack_ex(root, &err, flags, "{s:o, s:s, s:s, s:s, s:s}",
             "parameters", &parameters,
             "image_mode", &image_mode,
             "image_filename", &image_filename,
@@ -104,12 +105,21 @@ json_t *run(void * userdata, json_t *root)
     _fill_sequence_vector(B, sequence_b, len_B);
 
     solution_init(sol, len_A + len_B);
+
+    slong nrows, ncols;
+    nrows = len_A + 1;
+    ncols = len_B + 1;
+    dp_mat_t tableau;
+    dp_mat_init(tableau, nrows, ncols);
+    sol->mat = tableau;
+
     solve(sol, image_mode_full, image_filename, p, A, len_A, B, len_B);
 
     flint_free(A);
     flint_free(B);
     solution_clear(sol);
     model_params_clear(p);
+    dp_mat_clear(tableau);
 
     return NULL;
 }
@@ -147,13 +157,23 @@ solve(solution_t sol, int image_mode_full, const char * image_filename,
 
     expressions_table = reg_vec(er);
 
-    /* init request object */
-    req->image_mode_full = image_mode_full;
-    req->png_filename = image_filename;
+    /* init request object ... this is beginning to look vestigial */
     req->trace = 1;
 
-    tkf91_dp_bound(sol, req, mat, expressions_table, generators,
+    tkf91_dp_high(sol, req, mat, expressions_table, generators,
             A, szA, B, szB);
+
+    /* create the tableau png image */
+    if (image_mode_full)
+    {
+        write_tableau_image(
+                image_filename, sol->mat, "tkf91 tableau");
+    }
+    else
+    {
+        write_simple_tableau_image(
+                image_filename, sol->mat, "tkf91 tableau");
+    }
 
     fmpz_mat_clear(mat);
     flint_free(expressions_table);

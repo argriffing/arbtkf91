@@ -4,6 +4,7 @@
 #include "generators.h"
 #include "tkf91_generators.h"
 #include "tkf91_generator_indices.h"
+#include "unused.h"
 
 
 void gen_add_p0_bar(generator_reg_t g, tkf91_expressions_ptr p, slong k);
