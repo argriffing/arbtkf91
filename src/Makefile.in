@@ -14,6 +14,8 @@
 
 @SET_MAKE@
 
+# https://www.gnu.org/software/autoconf-archive/ax_valgrind_check.html
+
 VPATH = @srcdir@
 am__is_gnu_make = test -n '$(MAKEFILE_LIST)' && test -n '$(MAKELEVEL)'
 am__make_running_with_option = \

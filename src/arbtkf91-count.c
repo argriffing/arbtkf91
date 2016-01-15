@@ -52,7 +52,7 @@ json_t *run(void * userdata, json_t *root)
 
     flags = JSON_STRICT;
     result = json_unpack_ex(root, &err, flags,
-            "{s:O, s:s, s:s}",
+            "{s:o, s:s, s:s}",
             "parameters", &parameters,
             "sequence_a", &sequence_a,
             "sequence_b", &sequence_b);

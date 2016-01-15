@@ -3545,6 +3545,9 @@ fi
 ac_config_headers="$ac_config_headers config.h"
 
 
+# https://www.gnu.org/software/autoconf-archive/ax_valgrind_check.html
+#AX_VALGRIND_CHECK
+
 # http://stackoverflow.com/questions/5298830
 
 

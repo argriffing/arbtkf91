@@ -3,6 +3,9 @@ AM_INIT_AUTOMAKE([foreign -Wall -Werror])
 AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])
 
+# https://www.gnu.org/software/autoconf-archive/ax_valgrind_check.html
+#AX_VALGRIND_CHECK
+
 # http://stackoverflow.com/questions/5298830
 AC_CONFIG_MACRO_DIR([autoconf_macros])
 AX_CC_MAXOPT

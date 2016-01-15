@@ -4,6 +4,7 @@
 ## https://www.gnu.org/software/automake/manual/html_node/General-Operation.html
 ## https://www.lrde.epita.fr/~adl/dl/autotools.pdf
 
+# https://www.gnu.org/software/autoconf-archive/ax_valgrind_check.html
 
 bin_PROGRAMS = arbtkf91-align arbtkf91-check arbtkf91-image arbtkf91-bench arbtkf91-count
 
