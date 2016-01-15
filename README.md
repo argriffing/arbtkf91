@@ -9,10 +9,10 @@ Numerical error is controlled using the
 so that for many inputs it is possible to verify that the alignment is optimal.
 This involves comparing alignment scores and using combinatorics tricks to
 identify situations where scores are exactly equal.
-If the comparison is inconclusive, then the scores are re-evaluated
+If the comparison is inconclusive then the scores are re-evaluated
 with increased numerical precision.
 Unlike CGAL, the combinatorics tricks used by arbtkf91 are probably not
-comprehensive, so it may be possible that the program will hang
+exhaustive, so it may be possible that the program will hang
 as precision is fruitlessly increased in an attempt to distinguish
 between identical scores.
 
