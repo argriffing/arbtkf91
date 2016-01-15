@@ -14,13 +14,28 @@ extern "C" {
 #endif
 
 
-void
-tkf91_dp_r(
+void tkf91_dp_r(
         solution_t, const request_t,
         fmpz_mat_t mat, expr_ptr * expressions_table,
         const tkf91_generator_indices_t g,
         const slong *A, size_t szA,
         const slong *B, size_t szB);
+
+void tkf91_dp_r_level(
+        slong level,
+        solution_t sol, const request_t req,
+        fmpz_mat_t mat, expr_ptr * expressions_table,
+        const tkf91_generator_indices_t g,
+        const slong *A, size_t szA,
+        const slong *B, size_t szB);
+
+void tkf91_dp_high(
+        solution_t sol, const request_t req,
+        fmpz_mat_t mat, expr_ptr * expressions_table,
+        const tkf91_generator_indices_t g,
+        const slong *A, size_t szA,
+        const slong *B, size_t szB);
+
 
 
 #ifdef __cplusplus

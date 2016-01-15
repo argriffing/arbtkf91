@@ -4,7 +4,7 @@
 #include "flint/flint.h"
 #include "flint/fmpz.h"
 
-#include "breadcrumbs.h"
+#include "dp.h"
 
 
 #ifdef __cplusplus
@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 
-void count_solutions(fmpz_t res, const breadcrumb_mat_t mat);
+void count_solutions(fmpz_t res, dp_mat_t mat);
 
 
 #ifdef __cplusplus

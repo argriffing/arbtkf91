@@ -5,13 +5,14 @@
 ## https://www.lrde.epita.fr/~adl/dl/autotools.pdf
 
 
-bin_PROGRAMS = arbtkf91-align arbtkf91-check arbtkf91-image arbtkf91-bench
+bin_PROGRAMS = arbtkf91-align arbtkf91-check arbtkf91-image arbtkf91-bench arbtkf91-count
+
 check_PROGRAMS = t-expressions t-factor_refine t-femtocas t-generators
+
 TESTS = $(check_PROGRAMS)
 
 CORE_SOURCES =  \
 	bound_mat.c \
-	breadcrumbs.c \
 	count_solutions.c \
 	expressions.c \
 	factor_refine.c \
@@ -29,9 +30,7 @@ CORE_SOURCES =  \
 	tkf91_rationals.c \
 	tkf91_rgenerators.c \
 	vis.c \
-	wavefront_hermite.c \
 	bound_mat.h \
-	breadcrumbs.h \
 	count_solutions.h \
 	expressions.h \
 	factor_refine.h \
@@ -51,7 +50,11 @@ CORE_SOURCES =  \
 	tkf91_rationals.h \
 	tkf91_rgenerators.h \
 	vis.h \
-	wavefront_hermite.h
+	dp.c \
+	dp.h \
+	forward.c \
+	forward.h \
+	unused.h
 
 JSON_SOURCES = \
 	json_model_params.c \
@@ -72,3 +75,4 @@ arbtkf91_align_SOURCES =  $(ALL_SOURCES) arbtkf91-align.c
 arbtkf91_bench_SOURCES =  $(ALL_SOURCES) arbtkf91-bench.c
 arbtkf91_image_SOURCES =  $(ALL_SOURCES) arbtkf91-image.c
 arbtkf91_check_SOURCES =  $(ALL_SOURCES) arbtkf91-check.c
+arbtkf91_count_SOURCES =  $(ALL_SOURCES) arbtkf91-count.c

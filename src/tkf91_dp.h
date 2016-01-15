@@ -13,7 +13,7 @@
 #include "flint/fmpz_mat.h"
 
 #include "expressions.h"
-#include "breadcrumbs.h"
+#include "dp.h"
 #include "tkf91_generator_indices.h"
 
 
@@ -33,10 +33,8 @@ typedef struct
     char * B;
     slong len;
     arb_t log_probability;
-    fmpz_t best_tie_count;
-    int has_best_tie_count;
     int optimality_flag;
-    breadcrumb_mat_ptr pmask;
+    dp_mat_ptr mat;
 } solution_struct;
 typedef solution_struct solution_t[1];
 
@@ -62,8 +60,6 @@ solution_print(const solution_t x)
  */
 typedef struct
 {
-    int image_mode_full;
-    const char * png_filename;
     int trace;
     double rtol;
 } request_struct;

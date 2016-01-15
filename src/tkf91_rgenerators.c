@@ -7,6 +7,7 @@
 #include "tkf91_generators.h"
 #include "tkf91_rgenerators.h"
 #include "tkf91_generator_indices.h"
+#include "unused.h"
 
 
 void rgen_add_p0_bar(rgen_reg_ptr g,

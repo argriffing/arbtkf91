@@ -79,7 +79,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = arbtkf91-align$(EXEEXT) arbtkf91-check$(EXEEXT) \
-	arbtkf91-image$(EXEEXT) arbtkf91-bench$(EXEEXT)
+	arbtkf91-image$(EXEEXT) arbtkf91-bench$(EXEEXT) \
+	arbtkf91-count$(EXEEXT)
 check_PROGRAMS = t-expressions$(EXEEXT) t-factor_refine$(EXEEXT) \
 	t-femtocas$(EXEEXT) t-generators$(EXEEXT)
 subdir = src
@@ -100,16 +101,15 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am__objects_1 = bound_mat.$(OBJEXT) breadcrumbs.$(OBJEXT) \
-	count_solutions.$(OBJEXT) expressions.$(OBJEXT) \
-	factor_refine.$(OBJEXT) femtocas.$(OBJEXT) \
-	generators.$(OBJEXT) model_params.$(OBJEXT) \
+am__objects_1 = bound_mat.$(OBJEXT) count_solutions.$(OBJEXT) \
+	expressions.$(OBJEXT) factor_refine.$(OBJEXT) \
+	femtocas.$(OBJEXT) generators.$(OBJEXT) model_params.$(OBJEXT) \
 	rgenerators.$(OBJEXT) tkf91_dp_bound.$(OBJEXT) \
 	tkf91_dp.$(OBJEXT) tkf91_dp_d.$(OBJEXT) tkf91_dp_f.$(OBJEXT) \
 	tkf91_dp_r.$(OBJEXT) tkf91_generators.$(OBJEXT) \
 	tkf91_generator_vecs.$(OBJEXT) tkf91_rationals.$(OBJEXT) \
-	tkf91_rgenerators.$(OBJEXT) vis.$(OBJEXT) \
-	wavefront_hermite.$(OBJEXT)
+	tkf91_rgenerators.$(OBJEXT) vis.$(OBJEXT) dp.$(OBJEXT) \
+	forward.$(OBJEXT)
 am__objects_2 = json_model_params.$(OBJEXT) jsonutil.$(OBJEXT) \
 	runjson.$(OBJEXT)
 am__objects_3 = $(am__objects_1) $(am__objects_2)
@@ -122,6 +122,9 @@ arbtkf91_bench_LDADD = $(LDADD)
 am_arbtkf91_check_OBJECTS = $(am__objects_3) arbtkf91-check.$(OBJEXT)
 arbtkf91_check_OBJECTS = $(am_arbtkf91_check_OBJECTS)
 arbtkf91_check_LDADD = $(LDADD)
+am_arbtkf91_count_OBJECTS = $(am__objects_3) arbtkf91-count.$(OBJEXT)
+arbtkf91_count_OBJECTS = $(am_arbtkf91_count_OBJECTS)
+arbtkf91_count_LDADD = $(LDADD)
 am_arbtkf91_image_OBJECTS = $(am__objects_3) arbtkf91-image.$(OBJEXT)
 arbtkf91_image_OBJECTS = $(am_arbtkf91_image_OBJECTS)
 arbtkf91_image_LDADD = $(LDADD)
@@ -167,13 +170,15 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(arbtkf91_align_SOURCES) $(arbtkf91_bench_SOURCES) \
-	$(arbtkf91_check_SOURCES) $(arbtkf91_image_SOURCES) \
-	$(t_expressions_SOURCES) $(t_factor_refine_SOURCES) \
-	$(t_femtocas_SOURCES) $(t_generators_SOURCES)
+	$(arbtkf91_check_SOURCES) $(arbtkf91_count_SOURCES) \
+	$(arbtkf91_image_SOURCES) $(t_expressions_SOURCES) \
+	$(t_factor_refine_SOURCES) $(t_femtocas_SOURCES) \
+	$(t_generators_SOURCES)
 DIST_SOURCES = $(arbtkf91_align_SOURCES) $(arbtkf91_bench_SOURCES) \
-	$(arbtkf91_check_SOURCES) $(arbtkf91_image_SOURCES) \
-	$(t_expressions_SOURCES) $(t_factor_refine_SOURCES) \
-	$(t_femtocas_SOURCES) $(t_generators_SOURCES)
+	$(arbtkf91_check_SOURCES) $(arbtkf91_count_SOURCES) \
+	$(arbtkf91_image_SOURCES) $(t_expressions_SOURCES) \
+	$(t_factor_refine_SOURCES) $(t_femtocas_SOURCES) \
+	$(t_generators_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -499,7 +504,6 @@ top_srcdir = @top_srcdir@
 TESTS = $(check_PROGRAMS)
 CORE_SOURCES = \
 	bound_mat.c \
-	breadcrumbs.c \
 	count_solutions.c \
 	expressions.c \
 	factor_refine.c \
@@ -517,9 +521,7 @@ CORE_SOURCES = \
 	tkf91_rationals.c \
 	tkf91_rgenerators.c \
 	vis.c \
-	wavefront_hermite.c \
 	bound_mat.h \
-	breadcrumbs.h \
 	count_solutions.h \
 	expressions.h \
 	factor_refine.h \
@@ -539,7 +541,11 @@ CORE_SOURCES = \
 	tkf91_rationals.h \
 	tkf91_rgenerators.h \
 	vis.h \
-	wavefront_hermite.h
+	dp.c \
+	dp.h \
+	forward.c \
+	forward.h \
+	unused.h
 
 JSON_SOURCES = \
 	json_model_params.c \
@@ -558,6 +564,7 @@ arbtkf91_align_SOURCES = $(ALL_SOURCES) arbtkf91-align.c
 arbtkf91_bench_SOURCES = $(ALL_SOURCES) arbtkf91-bench.c
 arbtkf91_image_SOURCES = $(ALL_SOURCES) arbtkf91-image.c
 arbtkf91_check_SOURCES = $(ALL_SOURCES) arbtkf91-check.c
+arbtkf91_count_SOURCES = $(ALL_SOURCES) arbtkf91-count.c
 all: all-am
 
 .SUFFIXES:
@@ -650,6 +657,10 @@ arbtkf91-check$(EXEEXT): $(arbtkf91_check_OBJECTS) $(arbtkf91_check_DEPENDENCIES
 	@rm -f arbtkf91-check$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(arbtkf91_check_OBJECTS) $(arbtkf91_check_LDADD) $(LIBS)
 
+arbtkf91-count$(EXEEXT): $(arbtkf91_count_OBJECTS) $(arbtkf91_count_DEPENDENCIES) $(EXTRA_arbtkf91_count_DEPENDENCIES) 
+	@rm -f arbtkf91-count$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(arbtkf91_count_OBJECTS) $(arbtkf91_count_LDADD) $(LIBS)
+
 arbtkf91-image$(EXEEXT): $(arbtkf91_image_OBJECTS) $(arbtkf91_image_DEPENDENCIES) $(EXTRA_arbtkf91_image_DEPENDENCIES) 
 	@rm -f arbtkf91-image$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(arbtkf91_image_OBJECTS) $(arbtkf91_image_LDADD) $(LIBS)
@@ -679,13 +690,15 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arbtkf91-align.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arbtkf91-bench.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arbtkf91-check.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arbtkf91-count.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arbtkf91-image.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bound_mat.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/breadcrumbs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/count_solutions.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/expressions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/factor_refine.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/femtocas.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/forward.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/generators.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/json_model_params.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/jsonutil.Po@am__quote@
@@ -706,7 +719,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tkf91_rationals.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tkf91_rgenerators.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vis.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wavefront_hermite.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
