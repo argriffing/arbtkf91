@@ -1,6 +1,7 @@
-#include <stdio.h>
+#include "flint/flint.h"
 
 #include "model_params.h"
+
 
 void
 model_params_init(model_params_t p)
@@ -27,15 +28,6 @@ model_params_clear(model_params_t p)
         fmpq_clear(p->pi+i);
     }
 }
-
-
-/* TODO this needs fmpq_fprint support...
-void
-_fmpq_fprint_named(FILE * file, const fmpq_t p, const char *name)
-{
-    flint_fprintf(file, "%s: ", name);
-}
-*/
 
 
 void
