@@ -96,6 +96,7 @@ Something like the usual autotools installation commands should
 work if you are lucky:
 
 ```shell
+$ ./autogen.sh
 $ ./configure CPPFLAGS='-I/path/to/include/flint'
 $ make
 $ make check
