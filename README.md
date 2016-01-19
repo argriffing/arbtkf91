@@ -61,9 +61,12 @@ format for input and output.
 Requirements
 ------------
 
-The arbtkf91 code has been tested only on Linux.
+The arbtkf91 code has been tested only on Linux,
+and the installation requires [autotools](https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html)
+which should be available as `autotools-dev`
+on Linux distributions based on debian.
 
-It depends on these C libraries:
+The arbtkf91 package depends on these C libraries:
  * [arb](https://github.com/fredrik-johansson/arb)
    -- C library for arbitrary-precision interval arithmetic
  * [flint2](https://github.com/wbhart/flint2)
